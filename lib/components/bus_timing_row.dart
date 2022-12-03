@@ -1,0 +1,64 @@
+import 'package:flutter/material.dart';
+import 'package:sgbus/pages/bus_route.dart';
+import 'package:sgbus/components/bus_timing_est.dart';
+
+class BusTiming extends StatefulWidget {
+  final data;
+  const BusTiming(this.data);
+  // const BusTiming({Key? key}) : super(key: key);
+
+  @override
+  _BusTimingState createState() => _BusTimingState();
+}
+
+class _BusTimingState extends State<BusTiming> {
+  @override
+  Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
+
+    return Padding(
+      padding: const EdgeInsets.all(2.5),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          BusRoute(widget.data['ServiceNo'])));
+            },
+            child: Container(
+              width: width,
+              decoration: BoxDecoration(
+                border: Border.all(color: (Colors.transparent)),
+                // borderRadius: const BorderRadius.all(Radius.circular(20)),
+                // color: Colors.blueAccent[100],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: width * 0.2,
+                      child: Text(widget.data['ServiceNo'],
+                          style: Theme.of(context).textTheme.headline6),
+                    ),
+                    const Spacer(),
+                    Row(children: [
+                      BusTimingEst(data: widget.data['NextBus']),
+                      BusTimingEst(data: widget.data['NextBus2']),
+                      BusTimingEst(data: widget.data['NextBus3'])
+                    ]),
+                  ],
+                ),
+              ),
+              // height: height,
+            ),
+          ),
+          const Divider()
+        ],
+      ),
+    );
+  }
+}
