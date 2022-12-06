@@ -51,31 +51,20 @@ class _DownloadPageState extends State<DownloadPage> {
         get(routesEndpoint).then((data) async {
           var routes = data.body;
           await prefs.setString('routes', routes);
+
+          await prefs.setString(
+              'version', DateTime.now().millisecondsSinceEpoch.toString());
           setState(() {
-            downloadStatus = 'Getting version info...';
-          });
-          final versionEndpoint = Uri.parse('$endpoint/api/data/version');
-          get(versionEndpoint).then((versionData) async {
-            var response = jsonDecode(versionData.body);
-            var version = response['version'];
-            await prefs.setString('version', version.toString());
-
-            setState(() {
-              if (kReleaseMode) {
-                downloadStatus = 'Downloaded!';
-              } else {
-                downloadStatus = 'Please hot restart the app';
-              }
-            });
-
             if (kReleaseMode) {
-              Restart.restartApp();
+              downloadStatus = 'Downloaded!';
+            } else {
+              downloadStatus = 'Please hot restart the app';
             }
-          }).catchError(() {
-            setState(() {
-              error = true;
-            });
           });
+
+          if (kReleaseMode) {
+            Restart.restartApp();
+          }
         }).catchError((err) {
           setState(() {
             error = true;

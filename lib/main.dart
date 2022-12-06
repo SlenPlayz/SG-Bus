@@ -158,40 +158,46 @@ class _RootPageState extends State<RootPage> {
       setState(() {
         isLoaded = true;
       });
+
+      int daysSinceLastUpdate = DateTime.now()
+          .difference(
+              DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion)))
+          .inDays;
+
+      if (daysSinceLastUpdate > 14 || daysSinceLastUpdate < 0) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Update dataset'),
+              content: const Text(
+                  "It's been a while since the last update. We recomend updating. This should take less than a minute"),
+              actions: [
+                TextButton(
+                  onPressed: (() {
+                    Navigator.of(context).pop();
+                  }),
+                  child: const Text('Later'),
+                ),
+                TextButton(
+                  onPressed: (() {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (context) => const DownloadPage()));
+                  }),
+                  child: const Text('Update'),
+                ),
+              ],
+            );
+          },
+        );
+      }
+
       const String endpoint = serverURL;
 
       final versionEndpoint = Uri.parse('$endpoint/api/launch');
 
       get(versionEndpoint).then((data) {
         var response = jsonDecode(data.body);
-        var version = response['version'].toString();
-        if (localVersion != version) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Dataset update avalible'),
-                content: const Text(
-                    'The data on your phone is outdated. We recomend updating. This should take less than a minute'),
-                actions: [
-                  TextButton(
-                    onPressed: (() {
-                      Navigator.of(context).pop();
-                    }),
-                    child: const Text('Later'),
-                  ),
-                  TextButton(
-                    onPressed: (() {
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => const DownloadPage()));
-                    }),
-                    child: const Text('Update'),
-                  ),
-                ],
-              );
-            },
-          );
-        }
         List alerts = response['alerts'];
         alerts.forEach((alert) {
           showDialog(
