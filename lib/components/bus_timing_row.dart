@@ -46,9 +46,9 @@ class _BusTimingState extends State<BusTiming> {
                     ),
                     const Spacer(),
                     Row(children: [
-                      BusTimingEst(data: widget.data['NextBus']),
-                      BusTimingEst(data: widget.data['NextBus2']),
-                      BusTimingEst(data: widget.data['NextBus3'])
+                      BusTimingEst(data: widget.data['NextBus'] ?? null),
+                      BusTimingEst(data: widget.data['NextBus2'] ?? null),
+                      BusTimingEst(data: widget.data['NextBus3'] ?? null)
                     ]),
                   ],
                 ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BusTimingEst extends StatelessWidget {
-  const BusTimingEst({Key? key, required this.data}) : super(key: key);
+  const BusTimingEst({Key? key, this.data}) : super(key: key);
   final data;
 
   @override
@@ -25,16 +25,15 @@ class BusTimingEst extends StatelessWidget {
       } else {
         estimatedArrTime = diff.round().toString();
       }
+      if (data['Type'] == 'SD') {
+        doubleStat = 'Single';
+      } else if (data['Type'] == 'DD') {
+        doubleStat = 'Double';
+      } else if (data['Type'] == 'BD') {
+        doubleStat = 'Bendy';
+      }
     } else {
       estimatedArrTime = '-';
-    }
-
-    if (data['Type'] == 'SD') {
-      doubleStat = 'Single';
-    } else if (data['Type'] == 'DD') {
-      doubleStat = 'Double';
-    } else if (data['Type'] == 'BD') {
-      doubleStat = 'Bendy';
     }
 
     return SizedBox(
@@ -53,12 +52,14 @@ class BusTimingEst extends StatelessWidget {
                     width: 7,
                     height: 7,
                     decoration: BoxDecoration(
-                      color: (data['Load'] != '')
-                          ? (data['Load'] == 'SEA')
-                              ? Colors.green[200]
-                              : (data['Load'] == 'SDA')
-                                  ? Colors.amber[200]
-                                  : Colors.red[200]
+                      color: (data != null)
+                          ? (data['Load'] != '')
+                              ? (data['Load'] == 'SEA')
+                                  ? Colors.green[200]
+                                  : (data['Load'] == 'SDA')
+                                      ? Colors.amber[200]
+                                      : Colors.red[200]
+                              : Colors.transparent
                           : Colors.transparent,
                       shape: BoxShape.circle,
                     ),

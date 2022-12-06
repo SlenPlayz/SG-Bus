@@ -30,8 +30,65 @@ class _StopState extends State<Stop> {
   var _favouriteStops;
   var prefs;
   var stopIsFavourited = false;
-  bool isRefreshing = false;
+  bool isLoading = true;
+  bool error = false;
+  String errMsg = '';
   static const String endpoint = serverURL;
+
+  Future<void> getArrTimings() async {
+    try {
+      final url = Uri.parse('$endpoint/${widget.stopid}');
+      Response timings = await get(url);
+      var response = timings.body;
+
+      var arrivalData = jsonDecode(response);
+
+      arrivalData['Services'].forEach((x) {
+        arrTimings.forEach((element) {
+          var index = arrTimings.indexOf(element);
+          if (element['ServiceNo'] == x['ServiceNo']) {
+            arrTimings[index] = x;
+          }
+        });
+      });
+
+      setState(() {
+        arrTimings = arrTimings;
+        isLoading = false;
+      });
+    } catch (e) {
+      error = true;
+      errMsg = e.toString();
+      if (errMsg.startsWith('Failed host lookup:')) {
+        errMsg = 'Unable to connect to server';
+      }
+      setState(() {
+        isLoading = false;
+      });
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              icon: Icon(Icons.warning_amber_rounded),
+              title: Text('Failed to get arrival timings'),
+              content: Text(errMsg),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    getArrTimings();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Retry'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Dismiss'),
+                ),
+              ],
+            );
+          });
+    }
+  }
 
   Future<void> loadStop() async {
     prefs = await SharedPreferences.getInstance();
@@ -42,43 +99,24 @@ class _StopState extends State<Stop> {
         stopIsFavourited = true;
       }
     }
-
     List data = getStops();
 
     for (var element in data) {
       if (element['id'].toLowerCase().contains((widget.stopid).toLowerCase())) {
+        services = element["Services"];
+
+        services.sort((a, b) => int.parse(a.replaceAll(RegExp(r"\D"), ''))
+            .compareTo(int.parse(b.replaceAll(RegExp(r"\D"), ''))));
+        services.forEach((s) {
+          arrTimings.add({"ServiceNo": s});
+        });
         setState(() {
           name = element['Name'];
+          arrTimings = arrTimings;
         });
       }
     }
-
-    // setState(() {
-    //   arrTimings = [];
-    // });
-
-    final url = Uri.parse('$endpoint/${widget.stopid}');
-    Response timings = await get(url);
-    var pd = timings.body;
-
-    var pdd = jsonDecode(pd);
-
-    setState(() {
-      arrTimings = pdd['Services'];
-    });
-  }
-
-  Future<void> refresh() async {
-    final url = Uri.parse('$endpoint/${widget.stopid}');
-    Response timings = await get(url);
-    var pd = timings.body;
-
-    var pdd = jsonDecode(pd);
-
-    setState(() {
-      arrTimings = pdd['Services'];
-      isRefreshing = false;
-    });
+    getArrTimings();
   }
 
   Future<void> favourite() async {
@@ -128,30 +166,28 @@ class _StopState extends State<Stop> {
             IconButton(
                 onPressed: () {
                   setState(() {
-                    isRefreshing = true;
+                    isLoading = true;
                   });
-                  refresh();
+                  getArrTimings();
                 },
                 icon: const Icon(Icons.refresh))
           ],
         ),
-        body: arrTimings.isNotEmpty
-            ? Column(
-                children: [
-                  isRefreshing ? const LinearProgressIndicator() : Container(),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: refresh,
-                      child: ListView.builder(
-                        itemCount: arrTimings.length,
-                        itemBuilder: (context, index) {
-                          return BusTiming(arrTimings[index]);
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : const Center(child: CircularProgressIndicator()));
+        body: Column(
+          children: [
+            isLoading ? const LinearProgressIndicator() : Container(),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: getArrTimings,
+                child: ListView.builder(
+                  itemCount: arrTimings.length,
+                  itemBuilder: (context, index) {
+                    return BusTiming(arrTimings[index]);
+                  },
+                ),
+              ),
+            ),
+          ],
+        ));
   }
 }
