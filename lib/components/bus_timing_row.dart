@@ -36,7 +36,7 @@ class _BusTimingState extends State<BusTiming> {
                 // color: Colors.blueAccent[100],
               ),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(18.5),
                 child: Row(
                   children: [
                     SizedBox(

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
@@ -24,6 +26,13 @@ class _StopState extends State<Stop> {
     }
   }
 
+  final BannerAd Ad = BannerAd(
+    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
+    size: AdSize.banner,
+    request: AdRequest(),
+    listener: BannerAdListener(),
+  );
+
   List services = [];
   String name = '';
   List arrTimings = [];
@@ -31,13 +40,15 @@ class _StopState extends State<Stop> {
   var prefs;
   var stopIsFavourited = false;
   bool isLoading = true;
+  bool isAdLoaded = false;
   bool error = false;
   String errMsg = '';
   static const String endpoint = serverURL;
+  late AdWidget adWidget;
 
   Future<void> getArrTimings() async {
     try {
-      final url = Uri.parse('$endpoint/${widget.stopid}');
+      final url = Uri.parse('$endpoint/api/${widget.stopid}');
       Response timings = await get(url);
       var response = timings.body;
 
@@ -116,7 +127,19 @@ class _StopState extends State<Stop> {
         });
       }
     }
+
+    if (adsEnabled) loadAd();
     getArrTimings();
+  }
+
+  Future<void> loadAd() async {
+    try {
+      adWidget = AdWidget(ad: Ad);
+      await Ad.load();
+      isAdLoaded = true;
+    } catch (e) {
+      print(e);
+    }
   }
 
   Future<void> favourite() async {
@@ -187,6 +210,14 @@ class _StopState extends State<Stop> {
                 ),
               ),
             ),
+            isAdLoaded
+                ? Container(
+                    alignment: Alignment.center,
+                    child: adWidget,
+                    width: Ad.size.width.toDouble(),
+                    height: Ad.size.height.toDouble(),
+                  )
+                : Container(),
           ],
         ));
   }

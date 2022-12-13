@@ -87,19 +87,19 @@ class _RouteMapState extends State<RouteMap> {
   }
 
   void initRouteLine() {
-    var routes = getRoutes();
-    List routeArrayRaw = [];
+    // var routes = getRoutes();
+    // List routeArrayRaw = [];
 
-    for (var route in routes) {
-      if (route['properties']['number'] == widget.sno) {
-        routeArrayRaw = route['geometry']['coordinates'];
-        break;
-      }
-    }
+    // for (var route in routes) {
+    //   if (route['properties']['number'] == widget.sno) {
+    //     routeArrayRaw = route['geometry']['coordinates'];
+    //     break;
+    //   }
+    // }
 
-    routeArrayRaw.forEach((coordinate) {
-      routeAsLatLng.add(LatLng(coordinate[1], coordinate[0]));
-    });
+    // routeArrayRaw.forEach((coordinate) {
+    //   routeAsLatLng.add(LatLng(coordinate[1], coordinate[0]));
+    // });
   }
 
   @override
@@ -171,14 +171,14 @@ class _RouteMapState extends State<RouteMap> {
                   ),
                   LocationMarkerLayerOptions(),
                   // MarkerLayerOptions(markers: stops, ),
-                  PolylineLayerOptions(
-                    polylines: [
-                      Polyline(
-                          points: routeAsLatLng,
-                          color: Colors.blue,
-                          strokeWidth: 2),
-                    ],
-                  ),
+                  // PolylineLayerOptions(
+                  //   polylines: [
+                  //     Polyline(
+                  //         points: routeAsLatLng,
+                  //         color: Colors.blue,
+                  //         strokeWidth: 2),
+                  //   ],
+                  // ),
                   MarkerClusterLayerOptions(
                     markers: stops,
                     maxClusterRadius: 25,

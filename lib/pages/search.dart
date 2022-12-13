@@ -22,7 +22,7 @@ class _SearchState extends State<Search> {
 
   void searchBuses() {
     _busSearchRes = [];
-    if (searchQuery.text == null || searchQuery.text == '') {
+    if (searchQuery.text == '') {
       svcs.forEach((key, value) {
         _busSearchRes.add({"sno": key, "route": value['name']});
       });
