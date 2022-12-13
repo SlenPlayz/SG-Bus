@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sgbus/pages/route_map.dart';
+import 'package:sgbus/pages/route_tracker.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
 
@@ -97,6 +98,39 @@ class _BusRouteState extends State<BusRoute> {
                           MaterialPageRoute(
                               builder: (context) =>
                                   Stop(shownRoute[index]["id"])));
+                    },
+                    onLongPress: () {
+                      index == 0
+                          ? null
+                          : showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return SimpleDialog(
+                                  title: Text(shownRoute[index]['Name']),
+                                  children: [
+                                    index != 0
+                                        ? SimpleDialogOption(
+                                            child: TextButton(
+                                              child: Text('Go here'),
+                                              onPressed: () => Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          RouteTracker(
+                                                              serviceNo:
+                                                                  widget.sno,
+                                                              destStopID:
+                                                                  shownRoute[
+                                                                          index]
+                                                                      ["id"],
+                                                              route:
+                                                                  shownRoute))),
+                                            ),
+                                          )
+                                        : Container()
+                                  ],
+                                );
+                              });
                     },
                     child: ListTile(
                       title: Text(shownRoute[index]['Name']),
