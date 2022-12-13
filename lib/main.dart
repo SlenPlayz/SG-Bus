@@ -4,6 +4,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/download_page.dart';
@@ -16,6 +17,14 @@ import 'package:sgbus/scripts/data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
+
+  RequestConfiguration adConfig =
+      RequestConfiguration(testDeviceIds: ["BFE1A462271EE8B4883DB5FC72D986A0"]);
+
+  MobileAds.instance.updateRequestConfiguration(adConfig);
+
   runApp(const MyApp());
 }
 
@@ -124,13 +133,9 @@ class _RootPageState extends State<RootPage> {
 
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
-    var routes = prefs.getString('routes');
     var localVersion = prefs.getString('version');
 
-    if (stops == null ||
-        svcs == null ||
-        routes == null ||
-        localVersion == null) {
+    if (stops == null || svcs == null || localVersion == null) {
       showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -154,7 +159,6 @@ class _RootPageState extends State<RootPage> {
     } else {
       saveStops(stops);
       saveSvcs(svcs);
-      saveRoutes(routes);
       setState(() {
         isLoaded = true;
       });
