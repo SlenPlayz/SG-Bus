@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -42,47 +44,60 @@ class _DownloadPageState extends State<DownloadPage> {
     final stopsEndpoint = Uri.parse('$endpoint/api/data/stops');
     get(stopsEndpoint).then((stopsData) async {
       var stops = stopsData.body;
-      await prefs.setString('stops', stops);
+      try {
+        await prefs.setString('stops', stops);
 
-      setState(() {
-        downloadStatus = 'Downloading services...';
-      });
-
-      final svcsEndpoint = Uri.parse('$endpoint/api/data/services');
-      get(svcsEndpoint).then((svcsData) async {
-        var svcs = svcsData.body;
-        await prefs.setString('svcs', svcs);
-        // setState(() {
-        //   downloadStatus = 'Downloading routes...';
-        // });
-        await prefs.setString(
-            'version', DateTime.now().millisecondsSinceEpoch.toString());
         setState(() {
-          if (kReleaseMode) {
-            downloadStatus = 'Downloaded!';
-          } else {
-            downloadStatus = 'Please hot restart the app';
-          }
+          downloadStatus = 'Downloading services...';
         });
 
-        if (kReleaseMode) {
-          Restart.restartApp();
-        }
-        // final routesEndpoint = Uri.parse('$endpoint/api/data/routes');
-        // get(routesEndpoint).then((data) async {
-        //   var routes = data.body;
-        //   await prefs.setString('routes', routes);
+        final svcsEndpoint = Uri.parse('$endpoint/api/data/services');
+        get(svcsEndpoint).then((svcsData) async {
+          var svcs = svcsData.body;
+          try {
+            var js1 = jsonDecode(svcs);
+            await prefs.setString('svcs', svcs);
+            // setState(() {
+            //   downloadStatus = 'Downloading routes...';
+            // });
+            await prefs.setString(
+                'version', DateTime.now().millisecondsSinceEpoch.toString());
+            setState(() {
+              if (kReleaseMode) {
+                downloadStatus = 'Downloaded!';
+              } else {
+                downloadStatus = 'Please hot restart the app';
+              }
+            });
+            if (kReleaseMode) {
+              Restart.restartApp();
+            }
+          } catch (e) {
+            setState(() {
+              error = true;
+            });
+          }
 
-        // }).catchError((err) {
-        //   setState(() {
-        //     error = true;
-        //   });
-        // });
-      }).catchError((err) {
+          // final routesEndpoint = Uri.parse('$endpoint/api/data/routes');
+          // get(routesEndpoint).then((data) async {
+          //   var routes = data.body;
+          //   await prefs.setString('routes', routes);
+
+          // }).catchError((err) {
+          //   setState(() {
+          //     error = true;
+          //   });
+          // });
+        }).catchError((err) {
+          setState(() {
+            error = true;
+          });
+        });
+      } catch (e) {
         setState(() {
           error = true;
         });
-      });
+      }
     }).catchError((err) {
       setState(() {
         error = true;
@@ -121,8 +136,20 @@ class _DownloadPageState extends State<DownloadPage> {
             ),
           ),
           body: error
-              ? const Text(
-                  "Sorry, we couldnt download the data try again later")
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 20.0),
+                        child: Icon(Icons.warning, size: 50),
+                      ),
+                      const Text(
+                          "Sorry, we couldnt download the data try again later"),
+                    ],
+                  ),
+                )
               : Stack(
                   children: [
                     Center(
