@@ -136,8 +136,8 @@ class _RouteMapState extends State<RouteMap> {
                   maxZoom: 19.4,
                   minZoom: 2,
                   maxBounds: LatLngBounds.fromPoints([
-                    LatLng(1.950830, 103.561056),
-                    LatLng(0.867249, 104.068245)
+                    LatLng(2.150830, 103.361056),
+                    LatLng(0.667249, 104.368245)
                   ]),
                 ),
                 nonRotatedChildren: [

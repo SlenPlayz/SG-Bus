@@ -98,8 +98,12 @@ class _StopsMapState extends State<StopsMap> {
       setState(() {
         isLoaded = true;
       });
-      mapController.onReady.then((value) =>
-          mapController.move(LatLng(postion.latitude, postion.longitude), 18));
+      if (LatLngBounds.fromPoints(
+              [LatLng(2.150830, 103.361056), LatLng(0.667249, 104.368245)])
+          .contains(LatLng(postion.latitude, postion.longitude))) {
+        mapController.onReady.then((value) => mapController.move(
+            LatLng(postion.latitude, postion.longitude), 18));
+      }
     }).catchError((err) {
       setState(() {
         isLoaded = true;
@@ -144,15 +148,42 @@ class _StopsMapState extends State<StopsMap> {
               floatingActionButton: FloatingActionButton(
                 onPressed: () async {
                   getLocation().then((position) {
-                    mapController.move(
-                        LatLng(position.latitude, position.longitude), 18);
+                    if (LatLngBounds.fromPoints([
+                      LatLng(2.150830, 103.361056),
+                      LatLng(0.667249, 104.368245)
+                    ]).contains(
+                        LatLng(position.latitude, position.longitude))) {
+                      mapController.move(
+                          LatLng(position.latitude, position.longitude), 18);
+                    } else {
+                      showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              icon: Icon(Icons.warning),
+                              title: Text('Unable to move to current location'),
+                              content: Text(
+                                  "Seems like you aren't in SG. Sorry but the map can only show places in singapore."),
+                              actions: [
+                                TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text('Dismiss'))
+                              ],
+                            );
+                          });
+                    }
                   }).catchError((err) {
                     showDialog(
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
                             icon: const Icon(Icons.warning),
-                            title: Text(err),
+                            title: (err.runtimeType == String)
+                                ? Text(errorMsg)
+                                : Text(
+                                    'An unknown error occured while trying to move to your location'),
                             actions: [
                               (errorCode == 1)
                                   ? TextButton(
@@ -199,8 +230,8 @@ class _StopsMapState extends State<StopsMap> {
                   maxZoom: 19.4,
                   minZoom: 2,
                   maxBounds: LatLngBounds.fromPoints([
-                    LatLng(1.930830, 103.561056),
-                    LatLng(0.937249, 104.068245)
+                    LatLng(2.150830, 103.361056),
+                    LatLng(0.667249, 104.368245)
                   ]),
                 ),
                 nonRotatedChildren: [
