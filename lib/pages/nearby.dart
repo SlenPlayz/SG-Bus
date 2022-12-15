@@ -158,23 +158,38 @@ class _NearbyState extends State<Nearby> {
                     ],
                   )),
                 )
-              : ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: nearbyStops.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    var stop = nearbyStops[index];
-                    return ListTile(
-                      title: Text(stop['Name']),
-                      subtitle: Text(stop['id']),
-                      trailing: Text('${stop['dist']}m'),
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => Stop(stop['id'])));
-                      },
-                    );
-                  })
+              : nearbyStops.isNotEmpty
+                  ? ListView.builder(
+                      padding: EdgeInsets.zero,
+                      itemCount: nearbyStops.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        var stop = nearbyStops[index];
+                        return ListTile(
+                          title: Text(stop['Name']),
+                          subtitle: Text(stop['id']),
+                          trailing: Text('${stop['dist']}m'),
+                          onTap: () {
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => Stop(stop['id'])));
+                          },
+                        );
+                      })
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 20.0),
+                            child: Icon(Icons.warning, size: 50),
+                          ),
+                          const Text(
+                              "There doesn't seem to be any stops near you."),
+                        ],
+                      ),
+                    )
           : const Padding(
               padding: EdgeInsets.all(15.0),
               child: Center(
