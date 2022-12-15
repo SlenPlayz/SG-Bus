@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/mrt_map.dart';
@@ -16,16 +18,30 @@ import 'package:sgbus/pages/search.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
 
-  RequestConfiguration adConfig =
-      RequestConfiguration(testDeviceIds: ["BFE1A462271EE8B4883DB5FC72D986A0"]);
+  RequestConfiguration adConfig = RequestConfiguration(
+      testDeviceIds:
+          kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
 
   MobileAds.instance.updateRequestConfiguration(adConfig);
 
-  runApp(const MyApp());
+  if (kReleaseMode) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn =
+            'https://7dc195a0ea1742c89c3cf4e9f8f18f83@o4504325797445632.ingest.sentry.io/4504325798559744';
+        // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
+        // We recommend adjusting this value in production.
+        options.tracesSampleRate = 0.5;
+      },
+      appRunner: () => runApp(MyApp()),
+    );
+  } else {
+    runApp(const MyApp());
+  }
 }
 
 class MyApp extends StatelessWidget {
