@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -17,12 +19,14 @@ class RouteMap extends StatefulWidget {
 
 class _RouteMapState extends State<RouteMap> {
   bool isLoaded = false;
+  bool isAdLoaded = false;
   List<LatLng> routeAsLatLng = [];
   List bsids = [];
   List bsnos = [];
   String routeType = '';
   List shownRoute = [];
   List routeStops = [];
+  late AdWidget adWidget;
   var currRoute;
 
   List<Marker> stops = [];
@@ -32,6 +36,13 @@ class _RouteMapState extends State<RouteMap> {
       super.setState(fn);
     }
   }
+
+  final BannerAd Ad = BannerAd(
+    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
+    size: AdSize.banner,
+    request: AdRequest(),
+    listener: BannerAdListener(),
+  );
 
   Future<void> loadRoute() async {
     List bstopsList = getStops();
@@ -86,6 +97,18 @@ class _RouteMapState extends State<RouteMap> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => Stop(id)));
   }
 
+  Future<void> loadAd() async {
+    try {
+      adWidget = AdWidget(ad: Ad);
+      await Ad.load();
+      setState(() {
+        isAdLoaded = true;
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
   void initRouteLine() {
     // var routes = getRoutes();
     // List routeArrayRaw = [];
@@ -107,6 +130,7 @@ class _RouteMapState extends State<RouteMap> {
     super.initState();
     initStops();
     initRouteLine();
+    if (adsEnabled) loadAd();
     setState(() {
       stops = stops;
       isLoaded = true;
@@ -125,72 +149,88 @@ class _RouteMapState extends State<RouteMap> {
               appBar: AppBar(
                 title: Text('${'Service ' + widget.sno} route map'),
               ),
-              body: FlutterMap(
-                options: MapOptions(
-                  plugins: [
-                    MarkerClusterPlugin(),
-                    const LocationMarkerPlugin()
-                  ],
-                  center: LatLng(1.420270, 103.811959),
-                  zoom: 10,
-                  maxZoom: 19.4,
-                  minZoom: 2,
-                  maxBounds: LatLngBounds.fromPoints([
-                    LatLng(2.150830, 103.361056),
-                    LatLng(0.667249, 104.368245)
-                  ]),
-                ),
-                nonRotatedChildren: [
-                  Container(
-                    height: height,
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: isDarkMode
-                          ? const Image(
-                              image: AssetImage('assets/mapbox-logo-white.png'),
-                              width: 100,
-                            )
-                          : const Image(
-                              image: AssetImage('assets/mapbox-logo-black.png'),
-                              width: 100,
-                            ),
+              body: Column(
+                children: [
+                  Expanded(
+                    child: FlutterMap(
+                      options: MapOptions(
+                        plugins: [
+                          MarkerClusterPlugin(),
+                          const LocationMarkerPlugin()
+                        ],
+                        center: LatLng(1.420270, 103.811959),
+                        zoom: 10,
+                        maxZoom: 19.4,
+                        minZoom: 2,
+                        maxBounds: LatLngBounds.fromPoints([
+                          LatLng(2.150830, 103.361056),
+                          LatLng(0.667249, 104.368245)
+                        ]),
+                      ),
+                      nonRotatedChildren: [
+                        Container(
+                          height: height,
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: isDarkMode
+                                ? const Image(
+                                    image: AssetImage(
+                                        'assets/mapbox-logo-white.png'),
+                                    width: 100,
+                                  )
+                                : const Image(
+                                    image: AssetImage(
+                                        'assets/mapbox-logo-black.png'),
+                                    width: 100,
+                                  ),
+                          ),
+                        ),
+                      ],
+                      layers: [
+                        TileLayerOptions(
+                          maxZoom: 19,
+                          urlTemplate: isDarkMode
+                              ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
+                              : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+                          additionalOptions: {
+                            "access_token": mapboxAccessToken,
+                          },
+                          userAgentPackageName: 'com.slen.sgbus',
+                        ),
+                        LocationMarkerLayerOptions(),
+                        // MarkerLayerOptions(markers: stops, ),
+                        // PolylineLayerOptions(
+                        //   polylines: [
+                        //     Polyline(
+                        //         points: routeAsLatLng,
+                        //         color: Colors.blue,
+                        //         strokeWidth: 2),
+                        //   ],
+                        // ),
+                        MarkerClusterLayerOptions(
+                          markers: stops,
+                          maxClusterRadius: 25,
+                          onMarkerTap: (e) {
+                            openStopByPos(e.point);
+                          },
+                          builder: (context, markers) {
+                            return CircleAvatar(
+                              child: Text(markers.length.toString()),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ],
-                layers: [
-                  TileLayerOptions(
-                    maxZoom: 19,
-                    urlTemplate: isDarkMode
-                        ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
-                        : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-                    additionalOptions: {
-                      "access_token": mapboxAccessToken,
-                    },
-                    userAgentPackageName: 'com.slen.sgbus',
-                  ),
-                  LocationMarkerLayerOptions(),
-                  // MarkerLayerOptions(markers: stops, ),
-                  // PolylineLayerOptions(
-                  //   polylines: [
-                  //     Polyline(
-                  //         points: routeAsLatLng,
-                  //         color: Colors.blue,
-                  //         strokeWidth: 2),
-                  //   ],
-                  // ),
-                  MarkerClusterLayerOptions(
-                    markers: stops,
-                    maxClusterRadius: 25,
-                    onMarkerTap: (e) {
-                      openStopByPos(e.point);
-                    },
-                    builder: (context, markers) {
-                      return CircleAvatar(
-                        child: Text(markers.length.toString()),
-                      );
-                    },
-                  ),
+                  isAdLoaded
+                      ? Container(
+                          alignment: Alignment.center,
+                          child: adWidget,
+                          width: Ad.size.width.toDouble(),
+                          height: Ad.size.height.toDouble(),
+                        )
+                      : Container()
                 ],
               ),
             )
