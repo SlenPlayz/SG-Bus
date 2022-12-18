@@ -105,7 +105,8 @@ class _StopsMapState extends State<StopsMap> {
         Marker(
           point: LatLng(element["cords"][1], element["cords"][0]),
           builder: (context) => const CircleAvatar(
-            child: Icon(Icons.directions_bus),
+            child: Icon(Icons.directions_bus, color: Colors.white),
+            backgroundColor: Colors.black,
           ),
         ),
       );
@@ -303,7 +304,11 @@ class _StopsMapState extends State<StopsMap> {
                           },
                           builder: (context, markers) {
                             return CircleAvatar(
-                              child: Text(markers.length.toString()),
+                              child: Text(
+                                markers.length.toString(),
+                                style: TextStyle(color: Colors.white),
+                              ),
+                              backgroundColor: Colors.black,
                             );
                           },
                         ),

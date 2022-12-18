@@ -73,7 +73,8 @@ class _RouteMapState extends State<RouteMap> {
       stops.add(Marker(
         point: LatLng(stop["cords"][1], stop["cords"][0]),
         builder: (context) => const CircleAvatar(
-          child: Icon(Icons.directions_bus),
+          child: Icon(Icons.directions_bus, color: Colors.white,),
+          backgroundColor: Colors.black,
         ),
       ));
     }
@@ -216,7 +217,8 @@ class _RouteMapState extends State<RouteMap> {
                           },
                           builder: (context, markers) {
                             return CircleAvatar(
-                              child: Text(markers.length.toString()),
+                              child: Text(markers.length.toString(), style: TextStyle(color: Colors.white),),
+                              backgroundColor: Colors.black,
                             );
                           },
                         ),
