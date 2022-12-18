@@ -257,6 +257,8 @@ class _RouteTrackerState extends State<RouteTracker> {
                   )
                 : Column(
                     children: [
+                      Text(
+                          'This feature is still in beta and may not work as intended'),
                       Padding(
                         padding: const EdgeInsets.all(15.0),
                         child: Center(
