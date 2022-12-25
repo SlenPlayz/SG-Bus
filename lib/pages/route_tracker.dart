@@ -46,7 +46,11 @@ class _RouteTrackerState extends State<RouteTracker> {
 
   Map getNearest(lat, long) {
     var nearest;
-    widget.route.forEach((s) {
+    List routeToLoop = widget.route;
+    if (route.isNotEmpty && widget.isLoopSvc) {
+      routeToLoop = route;
+    }
+    routeToLoop.forEach((s) {
       var dist =
           Geolocator.distanceBetween(lat, long, s['cords'][1], s['cords'][0]);
       s['dist'] = dist;
