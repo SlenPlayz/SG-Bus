@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:location/location.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class RouteTracker extends StatefulWidget {
   const RouteTracker(
       {Key? key,
       required this.serviceNo,
       required this.destStopID,
+      required this.isLoopSvc,
       required this.route})
       : super(key: key);
   final serviceNo;
   final destStopID;
+  final isLoopSvc;
   final route;
 
   @override
@@ -28,6 +32,7 @@ class _RouteTrackerState extends State<RouteTracker> {
   var posStream;
   String message = 'Loading...';
   ScrollController scrollController = ScrollController();
+  Location location = new Location();
 
   Future<void> requestGPSPermission() async {
     await Geolocator.requestPermission();
@@ -56,7 +61,7 @@ class _RouteTrackerState extends State<RouteTracker> {
 
   Future<bool> checkGPSPerms() async {
     // Check if GPS is enabled
-    bool isGPSEnabled = await Geolocator.isLocationServiceEnabled();
+    bool isGPSEnabled = await location.serviceEnabled();
     if (!isGPSEnabled) {
       error = true;
       errorMsg = 'GPS is disabled';
@@ -65,7 +70,7 @@ class _RouteTrackerState extends State<RouteTracker> {
     }
 
     //Check is GPS Permission is given
-    LocationPermission permission = await Geolocator.checkPermission();
+    var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       error = true;
       errorMsg = 'GPS Permissions not given';
@@ -80,6 +85,42 @@ class _RouteTrackerState extends State<RouteTracker> {
       errorCode = 3;
       return Future.error(errorMsg);
     }
+
+    if (!(await Permission.locationAlways.isGranted)) {
+      errorCode = 5;
+      error = true;
+      errorMsg = 'Background location permission not granted';
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text(
+                  'Background location and notification permission not granted'),
+              content: Text(
+                  'SG Bus needs these permissions to continue checking the distance to your destiantion even when the app is closed'),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    loadTracker();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Retry'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await Permission.locationAlways.request();
+                    await Permission.notification.request();
+                    loadTracker();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('Request'),
+                )
+              ],
+            );
+          });
+      return Future.error(errorMsg);
+    }
+    location.enableBackgroundMode(enable: true);
 
     return true;
   }
@@ -126,7 +167,7 @@ class _RouteTrackerState extends State<RouteTracker> {
         setState(() {
           isLoading = false;
         });
-        posStream = Geolocator.getPositionStream().listen((position) {
+        posStream = location.onLocationChanged.listen((position) {
           nearestStop = getNearest(position.latitude, position.longitude);
           if (!checkIfFollowingRoute()) {
             setState(() {
@@ -143,9 +184,11 @@ class _RouteTrackerState extends State<RouteTracker> {
           }
           if (nearestStop['dist'] < 100) {
             if (route.contains(nearestStop)) {
-              scrollController.animateTo(60.0 * route.indexOf(nearestStop),
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.easeIn);
+              if (!error) {
+                scrollController.animateTo(60.0 * route.indexOf(nearestStop),
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.easeIn);
+              }
               var stopsLeft = getRouteFromNearest(nearestStop['id']).length;
               if (nearestStop['id'] == widget.destStopID) {
                 setState(() {
@@ -187,7 +230,9 @@ class _RouteTrackerState extends State<RouteTracker> {
           }
         });
       }
-    }).catchError((err) => setState(() => isLoading = false));
+    }).catchError((err) {
+      setState(() => isLoading = false);
+    });
   }
 
   @override
@@ -198,6 +243,7 @@ class _RouteTrackerState extends State<RouteTracker> {
 
   @override
   void dispose() {
+    location.enableBackgroundMode(enable: false);
     posStream?.cancel();
     super.dispose();
   }
@@ -210,7 +256,9 @@ class _RouteTrackerState extends State<RouteTracker> {
           )
         : Scaffold(
             appBar: AppBar(
-              title: Text(widget.serviceNo + ' to ' + destStop['Name']),
+              title: !error
+                  ? Text(widget.serviceNo + ' to ' + destStop['Name'])
+                  : Text(''),
               elevation: 0.0,
               scrolledUnderElevation: 0,
             ),
@@ -249,7 +297,18 @@ class _RouteTrackerState extends State<RouteTracker> {
                                             icon: const Icon(
                                                 Icons.location_searching),
                                             label: const Text('Request GPS'))
-                                        : Container()
+                                        : (errorCode == 5)
+                                            ? TextButton.icon(
+                                                onPressed: () {
+                                                  Permission.locationAlways
+                                                      .request();
+                                                  loadTracker();
+                                                },
+                                                icon: const Icon(
+                                                    Icons.location_searching),
+                                                label: const Text(
+                                                    'Request Background GPS'))
+                                            : Container()
                           ],
                         )
                       ],

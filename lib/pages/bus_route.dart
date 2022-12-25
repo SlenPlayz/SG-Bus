@@ -88,14 +88,14 @@ class _BusRouteState extends State<BusRoute> {
             : Container()
       ]),
       body: ((currRoute != null) && (currRoute['name'] != null))
-          ? ListView(
-            children: [for( var stop in shownRoute) InkWell(
+          ? ListView(children: [
+              for (var stop in shownRoute)
+                InkWell(
                     onTap: () {
                       Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) =>
-                                  Stop(stop["id"])));
+                              builder: (context) => Stop(stop["id"])));
                     },
                     onLongPress: () {
                       shownRoute.indexOf(stop) == 0
@@ -106,23 +106,21 @@ class _BusRouteState extends State<BusRoute> {
                                 return SimpleDialog(
                                   title: Text(stop['Name']),
                                   children: [
-                                         SimpleDialogOption(
-                                            child: TextButton(
-                                              child: Text('Go here'),
-                                              onPressed: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          RouteTracker(
-                                                              serviceNo:
-                                                                  widget.sno,
-                                                              destStopID:
-                                                                  stop
-                                                                      ["id"],
-                                                              route:
-                                                                  shownRoute))),
-                                            ),
-                                          )
+                                    SimpleDialogOption(
+                                      child: TextButton(
+                                        child: Text('Go here'),
+                                        onPressed: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (context) =>
+                                                    RouteTracker(
+                                                      serviceNo: widget.sno,
+                                                      destStopID: stop["id"],
+                                                      route: shownRoute,
+                                                      isLoopSvc: (routeType != 'PTP'),
+                                                    ))),
+                                      ),
+                                    )
                                   ],
                                 );
                               });
@@ -130,8 +128,8 @@ class _BusRouteState extends State<BusRoute> {
                     child: ListTile(
                       title: Text(stop['Name']),
                       subtitle: Text(stop["id"]),
-                    )) ]
-          )
+                    ))
+            ])
           : const Center(
               child: CircularProgressIndicator(),
             ),
