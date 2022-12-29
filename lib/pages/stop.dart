@@ -70,8 +70,10 @@ class _StopState extends State<Stop> {
     } catch (e) {
       error = true;
       errMsg = e.toString();
-      if (errMsg.startsWith('Failed host lookup:')) {
-        errMsg = 'Unable to connect to server';
+      if (errMsg.startsWith('Failed host lookup:') ||
+          errMsg.startsWith('Connection failed')) {
+        errMsg =
+            'Unable to connect to server. Make sure that Wifi or Mobile data is enabled.';
       }
       setState(() {
         isLoading = false;
