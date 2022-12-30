@@ -110,15 +110,16 @@ class _BusRouteState extends State<BusRoute> {
                                       child: TextButton(
                                         child: Text('Go here'),
                                         onPressed: () => Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (context) =>
-                                                    RouteTracker(
-                                                      serviceNo: widget.sno,
-                                                      destStopID: stop["id"],
-                                                      route: shownRoute,
-                                                      isLoopSvc: (routeType != 'PTP'),
-                                                    ))),
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => RouteTracker(
+                                              serviceNo: widget.sno,
+                                              destStopID: stop["id"],
+                                              route: shownRoute,
+                                              isLoopSvc: (routeType != 'PTP'),
+                                            ),
+                                          ),
+                                        ),
                                       ),
                                     )
                                   ],

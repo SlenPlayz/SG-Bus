@@ -27,14 +27,12 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
-  permission_handler: ^10.2.0
   shared_preferences: ^2.0.15
   google_mobile_ads: ^2.3.0
   sentry_flutter: ^6.18.1
   dynamic_color: ^1.4.0
   restart_app: ^1.1.1
   geolocator: ^9.0.1
-  location: ^4.2.0
   http: ^0.13.5
   flutter:
     sdk: flutter

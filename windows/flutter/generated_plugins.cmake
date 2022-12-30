@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
   geolocator_windows
-  permission_handler_windows
   sentry_flutter
 )
 
