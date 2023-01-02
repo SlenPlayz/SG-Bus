@@ -33,6 +33,7 @@ dependencies:
   dynamic_color: ^1.4.0
   restart_app: ^1.1.1
   geolocator: ^9.0.1
+  wakelock: ^0.6.2
   http: ^0.13.5
   flutter:
     sdk: flutter

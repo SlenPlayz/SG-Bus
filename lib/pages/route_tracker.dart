@@ -1,3 +1,4 @@
+import 'package:wakelock/wakelock.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -205,11 +206,13 @@ class _RouteTrackerState extends State<RouteTracker> {
   @override
   void dispose() {
     posStream?.cancel();
+    Wakelock.disable();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Wakelock.enable();
     return isLoading
         ? Center(
             child: CircularProgressIndicator(),
