@@ -32,6 +32,7 @@ dependencies:
   package_info_plus: ^3.0.2
   sentry_flutter: ^6.18.1
   dynamic_color: ^1.4.0
+  in_app_update: ^4.0.1
   restart_app: ^1.1.1
   geolocator: ^9.0.1
   wakelock: ^0.6.2
