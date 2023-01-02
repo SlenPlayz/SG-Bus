@@ -187,6 +187,15 @@ class _RouteMapState extends State<RouteMap> {
                                   ),
                           ),
                         ),
+                        AttributionWidget(attributionBuilder: ((BuildContext context) {
+                          return Container(
+                            child: Padding(
+                              padding: const EdgeInsets.all(2.0),
+                              child: Text('© Mapbox © OpenStreetMap'),
+                            ),
+                            color: Color.fromARGB(255, 161, 161, 161).withOpacity(0.3),
+                          );
+                        }))
                       ],
                       layers: [
                         TileLayerOptions(
