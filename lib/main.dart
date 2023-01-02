@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/download_page.dart';
@@ -146,6 +147,7 @@ class _RootPageState extends State<RootPage> {
 
   void checkData() async {
     prefs = await SharedPreferences.getInstance();
+    PackageInfo appInfo = await PackageInfo.fromPlatform();
 
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
@@ -216,7 +218,9 @@ class _RootPageState extends State<RootPage> {
 
       final versionEndpoint = Uri.parse('$endpoint/api/launch');
 
-      get(versionEndpoint).then((data) {
+      get(versionEndpoint, headers: {
+        "version": appInfo.buildNumber
+      }).then((data) {
         var response = jsonDecode(data.body);
         List alerts = response['alerts'];
         alerts.forEach((alert) {
