@@ -8,6 +8,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RouteMap extends StatefulWidget {
   const RouteMap({Key? key, required this.sno}) : super(key: key);
@@ -191,9 +192,40 @@ class _RouteMapState extends State<RouteMap> {
                           return Container(
                             child: Padding(
                               padding: const EdgeInsets.all(2.0),
-                              child: Text('© Mapbox © OpenStreetMap'),
+                              child: GestureDetector(
+                                child: Icon(Icons.info_outline),
+                                onTap: (() => showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return SimpleDialog(
+                                        title: Text("Map credits"),
+                                        children: [
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.mapbox.com/about/maps/")),
+                                              child: Text("© Mapbox"),
+                                            ),
+                                          ),
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.openstreetmap.org/about/")),
+                                              child: Text("© OpenStreetMap"),
+                                            ),
+                                          ),
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.mapbox.com/map-feedback/"), mode: LaunchMode.externalApplication),
+                                              child: Text("Improve this map"),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    })),
+                              ),
                             ),
-                            color: Color.fromARGB(255, 161, 161, 161).withOpacity(0.3),
                           );
                         }))
                       ],
