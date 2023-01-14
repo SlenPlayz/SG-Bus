@@ -225,14 +225,7 @@ class _RootPageState extends State<RootPage> {
         List alerts = response['alerts'];
         try {
           AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
-          if (response['updateRequired'] != null &&
-              response['updateRequired']) {
-            if (updateCheckRes.immediateUpdateAllowed &&
-                updateCheckRes.updateAvailability ==
-                    UpdateAvailability.updateAvailable) {
-              InAppUpdate.performImmediateUpdate();
-            }
-          } else if (updateCheckRes.flexibleUpdateAllowed &&
+         if (updateCheckRes.flexibleUpdateAllowed &&
               updateCheckRes.updateAvailability ==
                   UpdateAvailability.updateAvailable) {
             showDialog(
@@ -241,7 +234,7 @@ class _RootPageState extends State<RootPage> {
                   return AlertDialog(
                     title: Text('App update avaliable'),
                     content: Text(
-                        'A new version of the app has been release and it\'s recomended to update!! You can continue to use the app while the update is downloaded'),
+                        'A new version of the app has been released and it\'s recomended to update!! You can continue to use the app while the update is downloaded'),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
@@ -250,7 +243,15 @@ class _RootPageState extends State<RootPage> {
                       TextButton.icon(
                         onPressed: () {
                           InAppUpdate.startFlexibleUpdate().then(
-                              (value) => InAppUpdate.completeFlexibleUpdate());
+                              (value) => showDialog(context: context, builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: Text("Update ready to install"),
+                                  content: Text("The update has been downloaded and is ready to install. Click install to update now!"),
+                                  actions: [
+                                    TextButton(onPressed: () => InAppUpdate.completeFlexibleUpdate(), child: Text("Update"))
+                                  ],
+                                );
+                              }));
                         },
                         icon: Icon(Icons.download_rounded),
                         label: Text('Update'),
