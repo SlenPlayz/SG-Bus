@@ -215,14 +215,6 @@ class _RootPageState extends State<RootPage> {
         );
       }
 
-      const String endpoint = serverURL;
-
-      final versionEndpoint = Uri.parse('$endpoint/api/launch');
-
-      get(versionEndpoint, headers: {"version": appInfo.buildNumber})
-          .then((data) async {
-        var response = jsonDecode(data.body);
-        List alerts = response['alerts'];
         try {
           AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
          if (updateCheckRes.flexibleUpdateAllowed &&
@@ -261,6 +253,14 @@ class _RootPageState extends State<RootPage> {
                 });
           }
         } catch (e) {}
+      const String endpoint = serverURL;
+
+      final versionEndpoint = Uri.parse('$endpoint/api/launch');
+
+      get(versionEndpoint, headers: {"version": appInfo.buildNumber})
+          .then((data) async {
+        var response = jsonDecode(data.body);
+        List alerts = response['alerts'];
         alerts.forEach((alert) {
           showDialog(
             context: context,
