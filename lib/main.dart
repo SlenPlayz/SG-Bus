@@ -215,44 +215,51 @@ class _RootPageState extends State<RootPage> {
         );
       }
 
-        try {
-          AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
-         if (updateCheckRes.flexibleUpdateAllowed &&
-              updateCheckRes.updateAvailability ==
-                  UpdateAvailability.updateAvailable) {
-            showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text('App update avaliable'),
-                    content: Text(
-                        'A new version of the app has been released and it\'s recomended to update!! You can continue to use the app while the update is downloaded'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text('Dismiss'),
-                      ),
-                      TextButton.icon(
-                        onPressed: () {
-                          InAppUpdate.startFlexibleUpdate().then(
-                              (value) => showDialog(context: context, builder: (BuildContext context) {
-                                return AlertDialog(
-                                  title: Text("Update ready to install"),
-                                  content: Text("The update has been downloaded and is ready to install. Click install to update now!"),
-                                  actions: [
-                                    TextButton(onPressed: () => InAppUpdate.completeFlexibleUpdate(), child: Text("Update"))
-                                  ],
-                                );
-                              }));
-                        },
-                        icon: Icon(Icons.download_rounded),
-                        label: Text('Update'),
-                      )
-                    ],
-                  );
-                });
-          }
-        } catch (e) {}
+      try {
+        AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
+        if (updateCheckRes.flexibleUpdateAllowed &&
+            updateCheckRes.updateAvailability ==
+                UpdateAvailability.updateAvailable) {
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: Text('App update avaliable'),
+                  content: Text(
+                      'A new version of the app has been released and it\'s recomended to update!! You can continue to use the app while the update is downloaded'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text('Dismiss'),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        InAppUpdate.startFlexibleUpdate()
+                            .then((value) => showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    title: Text("Update ready to install"),
+                                    content: Text(
+                                        "The update has been downloaded and is ready to install. Click install to update now!"),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () => InAppUpdate
+                                              .completeFlexibleUpdate(),
+                                          child: Text("Update"))
+                                    ],
+                                  );
+                                }));
+                        Navigator.of(context).pop();
+                      },
+                      icon: Icon(Icons.download_rounded),
+                      label: Text('Update'),
+                    )
+                  ],
+                );
+              });
+        }
+      } catch (e) {}
       const String endpoint = serverURL;
 
       final versionEndpoint = Uri.parse('$endpoint/api/launch');
