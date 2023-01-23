@@ -88,55 +88,49 @@ class _BusRouteState extends State<BusRoute> {
             : Container()
       ]),
       body: ((currRoute != null) && (currRoute['name'] != null))
-          ? ListView.builder(
-              itemCount: shownRoute.length,
-              itemBuilder: (BuildContext ctxt, int index) {
-                return InkWell(
+          ? ListView(children: [
+              for (var stop in shownRoute)
+                InkWell(
                     onTap: () {
                       Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) =>
-                                  Stop(shownRoute[index]["id"])));
+                              builder: (context) => Stop(stop["id"])));
                     },
                     onLongPress: () {
-                      index == 0
+                      shownRoute.indexOf(stop) == 0
                           ? null
                           : showDialog(
                               context: context,
                               builder: (BuildContext context) {
                                 return SimpleDialog(
-                                  title: Text(shownRoute[index]['Name']),
+                                  title: Text(stop['Name']),
                                   children: [
-                                    index != 0
-                                        ? SimpleDialogOption(
-                                            child: TextButton(
-                                              child: Text('Go here'),
-                                              onPressed: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                      builder: (context) =>
-                                                          RouteTracker(
-                                                              serviceNo:
-                                                                  widget.sno,
-                                                              destStopID:
-                                                                  shownRoute[
-                                                                          index]
-                                                                      ["id"],
-                                                              route:
-                                                                  shownRoute))),
+                                    SimpleDialogOption(
+                                      child: TextButton(
+                                        child: Text('Go here'),
+                                        onPressed: () => Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => RouteTracker(
+                                              serviceNo: widget.sno,
+                                              destStopID: stop["id"],
+                                              route: shownRoute,
+                                              isLoopSvc: (routeType != 'PTP'),
                                             ),
-                                          )
-                                        : Container()
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                   ],
                                 );
                               });
                     },
                     child: ListTile(
-                      title: Text(shownRoute[index]['Name']),
-                      subtitle: Text(shownRoute[index]["id"]),
-                    ));
-              })
+                      title: Text(stop['Name']),
+                      subtitle: Text(stop["id"]),
+                    ))
+            ])
           : const Center(
               child: CircularProgressIndicator(),
             ),

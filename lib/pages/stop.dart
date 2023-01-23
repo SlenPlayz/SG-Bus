@@ -49,7 +49,7 @@ class _StopState extends State<Stop> {
   Future<void> getArrTimings() async {
     try {
       final url = Uri.parse('$endpoint/api/${widget.stopid}');
-      Response timings = await get(url);
+      Response timings = await get(url).timeout(Duration(seconds: 45));
       var response = timings.body;
 
       var arrivalData = jsonDecode(response);
@@ -69,9 +69,19 @@ class _StopState extends State<Stop> {
       });
     } catch (e) {
       error = true;
-      errMsg = e.toString();
-      if (errMsg.startsWith('Failed host lookup:')) {
-        errMsg = 'Unable to connect to server';
+      try {
+        errMsg = e.toString();
+      } catch (e) {
+        errMsg = 'Failed to get arrival timings';
+      }
+      if (errMsg.startsWith('Failed host lookup:') ||
+          errMsg.startsWith('Connection failed')) {
+        errMsg =
+            'Unable to connect to server. Make sure that Wifi or Mobile data is enabled.';
+      }
+      if (errMsg.startsWith('TimeoutException after')) {
+        errMsg =
+            'Failed to get timings from server.';
       }
       setState(() {
         isLoading = false;
@@ -86,6 +96,9 @@ class _StopState extends State<Stop> {
               actions: [
                 TextButton(
                   onPressed: () {
+                    setState(() {
+                      isLoading = true;
+                    });
                     getArrTimings();
                     Navigator.of(context).pop();
                   },

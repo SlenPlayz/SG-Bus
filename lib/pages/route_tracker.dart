@@ -1,3 +1,4 @@
+import 'package:wakelock/wakelock.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -6,11 +7,13 @@ class RouteTracker extends StatefulWidget {
       {Key? key,
       required this.serviceNo,
       required this.destStopID,
-      required this.route})
+      required this.route,
+      required this.isLoopSvc})
       : super(key: key);
   final serviceNo;
   final destStopID;
   final route;
+  final isLoopSvc;
 
   @override
   _RouteTrackerState createState() => _RouteTrackerState();
@@ -41,7 +44,11 @@ class _RouteTrackerState extends State<RouteTracker> {
 
   Map getNearest(lat, long) {
     var nearest;
-    widget.route.forEach((s) {
+    List routeToLoop = widget.route;
+    if (route.isNotEmpty && widget.isLoopSvc) {
+      routeToLoop = route;
+    }
+    routeToLoop.forEach((s) {
       var dist =
           Geolocator.distanceBetween(lat, long, s['cords'][1], s['cords'][0]);
       s['dist'] = dist;
@@ -199,11 +206,13 @@ class _RouteTrackerState extends State<RouteTracker> {
   @override
   void dispose() {
     posStream?.cancel();
+    Wakelock.disable();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    Wakelock.enable();
     return isLoading
         ? Center(
             child: CircularProgressIndicator(),
@@ -257,6 +266,8 @@ class _RouteTrackerState extends State<RouteTracker> {
                   )
                 : Column(
                     children: [
+                      Text(
+                          'This feature is still in beta and may not work as intended'),
                       Padding(
                         padding: const EdgeInsets.all(15.0),
                         child: Center(

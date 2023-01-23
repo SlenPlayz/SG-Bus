@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class RouteMap extends StatefulWidget {
   const RouteMap({Key? key, required this.sno}) : super(key: key);
@@ -17,12 +20,14 @@ class RouteMap extends StatefulWidget {
 
 class _RouteMapState extends State<RouteMap> {
   bool isLoaded = false;
+  bool isAdLoaded = false;
   List<LatLng> routeAsLatLng = [];
   List bsids = [];
   List bsnos = [];
   String routeType = '';
   List shownRoute = [];
   List routeStops = [];
+  late AdWidget adWidget;
   var currRoute;
 
   List<Marker> stops = [];
@@ -32,6 +37,13 @@ class _RouteMapState extends State<RouteMap> {
       super.setState(fn);
     }
   }
+
+  final BannerAd Ad = BannerAd(
+    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
+    size: AdSize.banner,
+    request: AdRequest(),
+    listener: BannerAdListener(),
+  );
 
   Future<void> loadRoute() async {
     List bstopsList = getStops();
@@ -62,7 +74,8 @@ class _RouteMapState extends State<RouteMap> {
       stops.add(Marker(
         point: LatLng(stop["cords"][1], stop["cords"][0]),
         builder: (context) => const CircleAvatar(
-          child: Icon(Icons.directions_bus),
+          child: Icon(Icons.directions_bus, color: Colors.white,),
+          backgroundColor: Colors.black,
         ),
       ));
     }
@@ -86,6 +99,18 @@ class _RouteMapState extends State<RouteMap> {
     Navigator.push(context, MaterialPageRoute(builder: (context) => Stop(id)));
   }
 
+  Future<void> loadAd() async {
+    try {
+      adWidget = AdWidget(ad: Ad);
+      await Ad.load();
+      setState(() {
+        isAdLoaded = true;
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
   void initRouteLine() {
     // var routes = getRoutes();
     // List routeArrayRaw = [];
@@ -107,6 +132,7 @@ class _RouteMapState extends State<RouteMap> {
     super.initState();
     initStops();
     initRouteLine();
+    if (adsEnabled) loadAd();
     setState(() {
       stops = stops;
       isLoaded = true;
@@ -125,72 +151,129 @@ class _RouteMapState extends State<RouteMap> {
               appBar: AppBar(
                 title: Text('${'Service ' + widget.sno} route map'),
               ),
-              body: FlutterMap(
-                options: MapOptions(
-                  plugins: [
-                    MarkerClusterPlugin(),
-                    const LocationMarkerPlugin()
-                  ],
-                  center: LatLng(1.420270, 103.811959),
-                  zoom: 10,
-                  maxZoom: 19.4,
-                  minZoom: 2,
-                  maxBounds: LatLngBounds.fromPoints([
-                    LatLng(2.150830, 103.361056),
-                    LatLng(0.667249, 104.368245)
-                  ]),
-                ),
-                nonRotatedChildren: [
-                  Container(
-                    height: height,
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: isDarkMode
-                          ? const Image(
-                              image: AssetImage('assets/mapbox-logo-white.png'),
-                              width: 100,
-                            )
-                          : const Image(
-                              image: AssetImage('assets/mapbox-logo-black.png'),
-                              width: 100,
+              body: Column(
+                children: [
+                  Expanded(
+                    child: FlutterMap(
+                      options: MapOptions(
+                        plugins: [
+                          MarkerClusterPlugin(),
+                          const LocationMarkerPlugin()
+                        ],
+                        center: LatLng(1.420270, 103.811959),
+                        zoom: 10,
+                        maxZoom: 19.4,
+                        minZoom: 2,
+                        maxBounds: LatLngBounds.fromPoints([
+                          LatLng(2.150830, 103.361056),
+                          LatLng(0.667249, 104.368245)
+                        ]),
+                      ),
+                      nonRotatedChildren: [
+                        Container(
+                          height: height,
+                          alignment: Alignment.bottomLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: isDarkMode
+                                ? const Image(
+                                    image: AssetImage(
+                                        'assets/mapbox-logo-white.png'),
+                                    width: 100,
+                                  )
+                                : const Image(
+                                    image: AssetImage(
+                                        'assets/mapbox-logo-black.png'),
+                                    width: 100,
+                                  ),
+                          ),
+                        ),
+                        AttributionWidget(attributionBuilder: ((BuildContext context) {
+                          return Container(
+                            child: Padding(
+                              padding: const EdgeInsets.all(2.0),
+                              child: GestureDetector(
+                                child: Icon(Icons.info_outline),
+                                onTap: (() => showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return SimpleDialog(
+                                        title: Text("Map credits"),
+                                        children: [
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.mapbox.com/about/maps/")),
+                                              child: Text("© Mapbox"),
+                                            ),
+                                          ),
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.openstreetmap.org/about/")),
+                                              child: Text("© OpenStreetMap"),
+                                            ),
+                                          ),
+                                          SimpleDialogOption(
+                                            child: TextButton(
+                                              onPressed: () => launchUrl(Uri.parse(
+                                                  "https://www.mapbox.com/map-feedback/"), mode: LaunchMode.externalApplication),
+                                              child: Text("Improve this map"),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    })),
+                              ),
                             ),
+                          );
+                        }))
+                      ],
+                      layers: [
+                        TileLayerOptions(
+                          maxZoom: 19,
+                          urlTemplate: isDarkMode
+                              ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
+                              : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+                          additionalOptions: {
+                            "access_token": mapboxAccessToken,
+                          },
+                          userAgentPackageName: 'com.slen.sgbus',
+                        ),
+                        LocationMarkerLayerOptions(),
+                        // MarkerLayerOptions(markers: stops, ),
+                        // PolylineLayerOptions(
+                        //   polylines: [
+                        //     Polyline(
+                        //         points: routeAsLatLng,
+                        //         color: Colors.blue,
+                        //         strokeWidth: 2),
+                        //   ],
+                        // ),
+                        MarkerClusterLayerOptions(
+                          markers: stops,
+                          maxClusterRadius: 25,
+                          onMarkerTap: (e) {
+                            openStopByPos(e.point);
+                          },
+                          builder: (context, markers) {
+                            return CircleAvatar(
+                              child: Text(markers.length.toString(), style: TextStyle(color: Colors.white),),
+                              backgroundColor: Colors.black,
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ),
-                ],
-                layers: [
-                  TileLayerOptions(
-                    maxZoom: 19,
-                    urlTemplate: isDarkMode
-                        ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
-                        : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-                    additionalOptions: {
-                      "access_token": mapboxAccessToken,
-                    },
-                    userAgentPackageName: 'com.slen.sgbus',
-                  ),
-                  LocationMarkerLayerOptions(),
-                  // MarkerLayerOptions(markers: stops, ),
-                  // PolylineLayerOptions(
-                  //   polylines: [
-                  //     Polyline(
-                  //         points: routeAsLatLng,
-                  //         color: Colors.blue,
-                  //         strokeWidth: 2),
-                  //   ],
-                  // ),
-                  MarkerClusterLayerOptions(
-                    markers: stops,
-                    maxClusterRadius: 25,
-                    onMarkerTap: (e) {
-                      openStopByPos(e.point);
-                    },
-                    builder: (context, markers) {
-                      return CircleAvatar(
-                        child: Text(markers.length.toString()),
-                      );
-                    },
-                  ),
+                  isAdLoaded
+                      ? Container(
+                          alignment: Alignment.center,
+                          child: adWidget,
+                          width: Ad.size.width.toDouble(),
+                          height: Ad.size.height.toDouble(),
+                        )
+                      : Container()
                 ],
               ),
             )

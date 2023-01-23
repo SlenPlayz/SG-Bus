@@ -18,7 +18,7 @@ class BusTimingEst extends StatelessWidget {
       int currUnixTime = DateTime.now().millisecondsSinceEpoch;
       double diff = (((estArrTimeUnix - currUnixTime) / 1000) / 60);
 
-      if (diff < 0) {
+      if (diff < -0.5) {
         estimatedArrTime = 'Left';
       } else if (diff < 1) {
         estimatedArrTime = 'Arr';
