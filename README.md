@@ -35,3 +35,8 @@ A Flutter based android app (not tested on other platforms) to get arrival timin
   - [flutter_map](https://pub.dev/packages/flutter_map) for maps
   - [flutter_map_marker_cluster](https://pub.dev/packages/flutter_map_marker_cluster) to reduce lag when displaying lots of markers
   - [flutter_map_location_marker](https://pub.dev/packages/flutter_map_location_marker) to display a location marker on the map to indicate where you are
+  - [google_mobile_ads](https://pub.dev/packages/google_mobile_ads) for ads
+  - [package_info_plus](https://pub.dev/packages/package_info_plus) to get version info of the app
+  - [sentry_flutter](https://pub.dev/packages/sentry_flutter) to log errors to sentry
+  - [url_launcher](https://pub.dev/packages/url_launcher) to lauch urls
+  - [wakelock](https://pub.dev/packages/wakelock) to prevent device from turning off while using the route tracker
