@@ -7,6 +7,7 @@ import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
 import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Stop extends StatefulWidget {
@@ -55,14 +56,45 @@ class _StopState extends State<Stop> {
       var arrivalData = jsonDecode(response);
 
       arrivalData['Services'].forEach((x) {
-        arrTimings.forEach((element) {
-          var index = arrTimings.indexOf(element);
-          if (element['ServiceNo'] == x['ServiceNo']) {
-            arrTimings[index] = x;
+        bool multiple = false;
+
+        arrivalData["Services"].forEach((c) {
+          if (x["ServiceNo"] == c["ServiceNo"] &&
+              x["NextBus"]["DestinationCode"] !=
+                  c["NextBus"]["DestinationCode"]) {
+            multiple = true;
+            // Map multipleDat = {
+            //   "ServiceNo": x["ServiceNo"],
+            //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
+            //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
+            // };
+
+            List arrTimingsCopy = List.from(arrTimings);
+
+            arrTimingsCopy.forEach((element) {
+              var index = arrTimings.indexOf(element);
+              if (element['ServiceNo'] == x['ServiceNo'] &&
+                  element["NextBus"] == null) {
+                x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
+                c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
+                arrTimings[index] = x;
+                arrTimings.add(c);
+              }
+            });
           }
         });
+        if (!multiple) {
+          arrTimings.forEach((element) {
+            var index = arrTimings.indexOf(element);
+            if (element['ServiceNo'] == x['ServiceNo']) {
+              arrTimings[index] = x;
+            }
+          });
+        }
       });
-
+      arrTimings.sort((a, b) =>
+          int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
+              int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
       setState(() {
         arrTimings = arrTimings;
         isLoading = false;
@@ -80,8 +112,7 @@ class _StopState extends State<Stop> {
             'Unable to connect to server. Make sure that Wifi or Mobile data is enabled.';
       }
       if (errMsg.startsWith('TimeoutException after')) {
-        errMsg =
-            'Failed to get timings from server.';
+        errMsg = 'Failed to get timings from server.';
       }
       setState(() {
         isLoading = false;

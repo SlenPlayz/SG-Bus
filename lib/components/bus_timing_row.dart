@@ -41,8 +41,13 @@ class _BusTimingState extends State<BusTiming> {
                   children: [
                     SizedBox(
                       width: width * 0.2,
-                      child: Text(widget.data['ServiceNo'],
-                          style: Theme.of(context).textTheme.headline6),
+                      child: Column(
+                        children: [
+                          Text(widget.data['ServiceNo'],
+                              style: Theme.of(context).textTheme.headline6),
+                              Text(widget.data["to"] ?? "", style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis,)
+                        ],
+                      ),
                     ),
                     const Spacer(),
                     Row(children: [
