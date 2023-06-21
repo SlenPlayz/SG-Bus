@@ -301,14 +301,14 @@ class _StopsMapState extends State<StopsMap> {
                                           SimpleDialogOption(
                                             child: TextButton(
                                               onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.mapbox.com/about/maps/")),
+                                                  "https://www.mapbox.com/about/maps/"), mode: LaunchMode.externalApplication),
                                               child: Text("© Mapbox"),
                                             ),
                                           ),
                                           SimpleDialogOption(
                                             child: TextButton(
                                               onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.openstreetmap.org/about/")),
+                                                  "https://www.openstreetmap.org/about/"), mode: LaunchMode.externalApplication),
                                               child: Text("© OpenStreetMap"),
                                             ),
                                           ),
