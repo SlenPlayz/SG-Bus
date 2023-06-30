@@ -182,39 +182,6 @@ class _RootPageState extends State<RootPage> {
         isLoaded = true;
       });
 
-      int daysSinceLastUpdate = DateTime.now()
-          .difference(
-              DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion)))
-          .inDays;
-
-      if (daysSinceLastUpdate > 14 || daysSinceLastUpdate < 0) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Update dataset'),
-              content: const Text(
-                  "It's been a while since the last update. We recomend updating. This should take less than a minute"),
-              actions: [
-                TextButton(
-                  onPressed: (() {
-                    Navigator.of(context).pop();
-                  }),
-                  child: const Text('Later'),
-                ),
-                TextButton(
-                  onPressed: (() {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const DownloadPage()));
-                  }),
-                  child: const Text('Update'),
-                ),
-              ],
-            );
-          },
-        );
-      }
-
       try {
         AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
         if (updateCheckRes.flexibleUpdateAllowed &&
@@ -288,6 +255,37 @@ class _RootPageState extends State<RootPage> {
             },
           );
         });
+
+        int dateDiff = DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
+            .compareTo(DateTime.parse(response["lastUpdated"]));
+
+        if (dateDiff < 0) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Update dataset'),
+                content: const Text(
+                    "A new dataset updated is avaliable. This should take less than a minute"),
+                actions: [
+                  TextButton(
+                    onPressed: (() {
+                      Navigator.of(context).pop();
+                    }),
+                    child: const Text('Later'),
+                  ),
+                  TextButton(
+                    onPressed: (() {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => const DownloadPage()));
+                    }),
+                    child: const Text('Update Now'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
       }).catchError((err) {});
     }
   }
