@@ -44,7 +44,10 @@ class _DownloadPageState extends State<DownloadPage> {
     final stopsEndpoint = Uri.parse('$endpoint/api/data/stops');
     get(stopsEndpoint).then((stopsData) async {
       var stops = stopsData.body;
+
       try {
+        bool validStops = validateStops(stops);
+        if (!validStops) throw "Invalid data";
         await prefs.setString('stops', stops);
 
         setState(() {
@@ -56,6 +59,8 @@ class _DownloadPageState extends State<DownloadPage> {
           var svcs = svcsData.body;
           try {
             var js1 = jsonDecode(svcs);
+            bool validServices = validateServices(svcs);
+            if (!validServices) throw "Invalid data";
             await prefs.setString('svcs', svcs);
             // setState(() {
             //   downloadStatus = 'Downloading routes...';
@@ -73,6 +78,7 @@ class _DownloadPageState extends State<DownloadPage> {
               Restart.restartApp();
             }
           } catch (e) {
+            print(e.toString());
             setState(() {
               error = true;
             });
@@ -94,6 +100,7 @@ class _DownloadPageState extends State<DownloadPage> {
           });
         });
       } catch (e) {
+        print(e.toString());
         setState(() {
           error = true;
         });
@@ -181,4 +188,51 @@ class _DownloadPageState extends State<DownloadPage> {
                 )),
     );
   }
+}
+
+bool validateStops(stopsRaw) {
+  bool valid = true;
+
+  var stops = jsonDecode(stopsRaw);
+
+  for (var stop in stops) {
+    if (stop["Name"] == null) {
+      valid = false;
+      print("stop");
+    }
+    if (stop["Services"] == null) {
+      valid = false;
+      print("svcs");
+    }
+    if (stop["id"] == null) {
+      print("id");
+      valid = false;
+    }
+    if (stop["cords"] == null) {
+      print("cor");
+      valid = false;
+    }
+  }
+
+  return valid;
+}
+
+bool validateServices(servicesRaw) {
+  bool valid = true;
+
+  var services = jsonDecode(servicesRaw);
+
+  services.forEach((k, v) {
+    if (k == null) {
+      valid = false;
+    }
+    if (v["routes"] == null) {
+      valid = false;
+    }
+    if (v["name"] == null) {
+      valid = false;
+    }
+  });
+
+  return valid;
 }
