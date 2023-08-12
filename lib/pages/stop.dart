@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
@@ -99,10 +100,11 @@ class _StopState extends State<Stop> {
         arrTimings = arrTimings;
         isLoading = false;
       });
-    } catch (e) {
+    } catch (err, stackTrace) {
       error = true;
+      bool unknownError = true;
       try {
-        errMsg = e.toString();
+        errMsg = err.toString();
       } catch (e) {
         errMsg = 'Failed to get arrival timings';
       }
@@ -110,9 +112,21 @@ class _StopState extends State<Stop> {
           errMsg.startsWith('Connection failed')) {
         errMsg =
             'Unable to connect to server. Make sure that Wifi or Mobile data is enabled.';
+        unknownError = false;
+      }
+      if (errMsg.startsWith('Software caused connection abort')) {
+        errMsg =
+            'Failed to get arrival timings due to change of network status. Please retry.';
+        unknownError = false;
       }
       if (errMsg.startsWith('TimeoutException after')) {
         errMsg = 'Failed to get timings from server.';
+      }
+      if (unknownError) {
+        await Sentry.captureException(
+            err,
+            stackTrace: stackTrace,
+          );
       }
       setState(() {
         isLoading = false;
@@ -181,8 +195,12 @@ class _StopState extends State<Stop> {
       adWidget = AdWidget(ad: Ad);
       await Ad.load();
       isAdLoaded = true;
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
 import 'package:restart_app/restart_app.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -77,8 +78,12 @@ class _DownloadPageState extends State<DownloadPage> {
             if (kReleaseMode) {
               Restart.restartApp();
             }
-          } catch (e) {
-            print(e.toString());
+          } catch (exception, stackTrace) {
+            await Sentry.captureException(
+              exception,
+              stackTrace: stackTrace,
+            );
+            if (!kReleaseMode) print(exception.toString());
             setState(() {
               error = true;
             });
@@ -94,18 +99,30 @@ class _DownloadPageState extends State<DownloadPage> {
           //     error = true;
           //   });
           // });
-        }).catchError((err) {
+        }).catchError((err, stackTrace) async {
+          await Sentry.captureException(
+            "An error occured while downloading data",
+            stackTrace: stackTrace,
+          );
           setState(() {
             error = true;
           });
         });
-      } catch (e) {
-        print(e.toString());
+      } catch (err, stackTrace) {
+        await Sentry.captureException(
+          err,
+          stackTrace: stackTrace,
+        );
+        if (!kReleaseMode) print(err.toString());
         setState(() {
           error = true;
         });
       }
-    }).catchError((err) {
+    }).catchError((err, stackTrace) async {
+      await Sentry.captureException(
+        "An error occured while downloading data",
+        stackTrace: stackTrace,
+      );
       setState(() {
         error = true;
       });
@@ -117,8 +134,12 @@ class _DownloadPageState extends State<DownloadPage> {
       adWidget = AdWidget(ad: Ad);
       await Ad.load();
       isAdLoaded = true;
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 

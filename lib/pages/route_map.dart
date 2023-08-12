@@ -5,6 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
@@ -106,8 +107,12 @@ class _RouteMapState extends State<RouteMap> {
       setState(() {
         isAdLoaded = true;
       });
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 

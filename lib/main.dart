@@ -226,7 +226,12 @@ class _RootPageState extends State<RootPage> {
                 );
               });
         }
-      } catch (e) {}
+      } catch (exception, stackTrace) {
+        await Sentry.captureException(
+          exception,
+          stackTrace: stackTrace,
+        );
+      }
       const String endpoint = serverURL;
 
       final versionEndpoint = Uri.parse('$endpoint/api/launch');
@@ -256,8 +261,9 @@ class _RootPageState extends State<RootPage> {
           );
         });
 
-        int dateDiff = DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
-            .compareTo(DateTime.parse(response["lastUpdated"]));
+        int dateDiff =
+            DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
+                .compareTo(DateTime.parse(response["lastUpdated"]));
 
         if (dateDiff < 0) {
           showDialog(
@@ -286,7 +292,12 @@ class _RootPageState extends State<RootPage> {
             },
           );
         }
-      }).catchError((err) {});
+      }).catchError((err, stackTrace) async {
+        await Sentry.captureException(
+          "An error occured when checking for or starting downloading data",
+          stackTrace: stackTrace,
+        );
+      });
     }
   }
 
