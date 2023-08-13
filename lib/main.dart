@@ -19,6 +19,7 @@ import 'package:sgbus/pages/stops_map.dart';
 import 'package:sgbus/pages/search.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -201,23 +202,11 @@ class _RootPageState extends State<RootPage> {
                     ),
                     TextButton.icon(
                       onPressed: () {
-                        InAppUpdate.startFlexibleUpdate()
-                            .then((value) => showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Text("Update ready to install"),
-                                    content: Text(
-                                        "The update has been downloaded and is ready to install. Click install to update now!"),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () => InAppUpdate
-                                              .completeFlexibleUpdate(),
-                                          child: Text("Update"))
-                                    ],
-                                  );
-                                }));
-                        Navigator.of(context).pop();
+                        launchUrl(
+                          Uri.parse(
+                              "https://play.google.com/store/apps/details?id=com.slen.sgbus"),
+                          mode: LaunchMode.externalApplication,
+                        );
                       },
                       icon: Icon(Icons.download_rounded),
                       label: Text('Update'),
