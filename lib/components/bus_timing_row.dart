@@ -61,7 +61,7 @@ class _BusTimingState extends State<BusTiming> {
               // height: height,
             ),
           ),
-          const Divider()
+          Divider(color: Theme.of(context).dividerColor)
         ],
       ),
     );
