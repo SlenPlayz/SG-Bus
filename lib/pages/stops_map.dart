@@ -169,8 +169,8 @@ class _StopsMapState extends State<StopsMap> {
 
   @override
   Widget build(BuildContext context) {
-    var brightness = MediaQuery.of(context).platformBrightness;
-    bool isDarkMode = brightness == Brightness.dark;
+    // var brightness = MediaQuery.of(context).platformBrightness;
+    // bool isDarkMode = brightness == Brightness.dark;
     double height = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -277,7 +277,7 @@ class _StopsMapState extends State<StopsMap> {
                           alignment: Alignment.bottomLeft,
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: isDarkMode
+                            child: isDark
                                 ? const Image(
                                     image: AssetImage(
                                         'assets/mapbox-logo-white.png'),
@@ -335,7 +335,7 @@ class _StopsMapState extends State<StopsMap> {
                       layers: [
                         TileLayerOptions(
                           maxZoom: 19,
-                          urlTemplate: isDarkMode
+                          urlTemplate: isDark
                               ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
                               : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
                           additionalOptions: {

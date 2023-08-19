@@ -219,18 +219,14 @@ bool validateStops(stopsRaw) {
   for (var stop in stops) {
     if (stop["Name"] == null) {
       valid = false;
-      print("stop");
     }
     if (stop["Services"] == null) {
       valid = false;
-      print("svcs");
     }
     if (stop["id"] == null) {
-      print("id");
       valid = false;
     }
     if (stop["cords"] == null) {
-      print("cor");
       valid = false;
     }
   }
