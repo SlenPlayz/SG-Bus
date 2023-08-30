@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
 import 'package:restart_app/restart_app.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -44,7 +45,10 @@ class _DownloadPageState extends State<DownloadPage> {
     final stopsEndpoint = Uri.parse('$endpoint/api/data/stops');
     get(stopsEndpoint).then((stopsData) async {
       var stops = stopsData.body;
+
       try {
+        bool validStops = validateStops(stops);
+        if (!validStops) throw "Invalid data";
         await prefs.setString('stops', stops);
 
         setState(() {
@@ -56,6 +60,8 @@ class _DownloadPageState extends State<DownloadPage> {
           var svcs = svcsData.body;
           try {
             var js1 = jsonDecode(svcs);
+            bool validServices = validateServices(svcs);
+            if (!validServices) throw "Invalid data";
             await prefs.setString('svcs', svcs);
             // setState(() {
             //   downloadStatus = 'Downloading routes...';
@@ -72,7 +78,12 @@ class _DownloadPageState extends State<DownloadPage> {
             if (kReleaseMode) {
               Restart.restartApp();
             }
-          } catch (e) {
+          } catch (exception, stackTrace) {
+            await Sentry.captureException(
+              exception,
+              stackTrace: stackTrace,
+            );
+            if (!kReleaseMode) print(exception.toString());
             setState(() {
               error = true;
             });
@@ -88,17 +99,30 @@ class _DownloadPageState extends State<DownloadPage> {
           //     error = true;
           //   });
           // });
-        }).catchError((err) {
+        }).catchError((err, stackTrace) async {
+          await Sentry.captureException(
+            "An error occured while downloading data",
+            stackTrace: stackTrace,
+          );
           setState(() {
             error = true;
           });
         });
-      } catch (e) {
+      } catch (err, stackTrace) {
+        await Sentry.captureException(
+          err,
+          stackTrace: stackTrace,
+        );
+        if (!kReleaseMode) print(err.toString());
         setState(() {
           error = true;
         });
       }
-    }).catchError((err) {
+    }).catchError((err, stackTrace) async {
+      await Sentry.captureException(
+        "An error occured while downloading data",
+        stackTrace: stackTrace,
+      );
       setState(() {
         error = true;
       });
@@ -110,8 +134,12 @@ class _DownloadPageState extends State<DownloadPage> {
       adWidget = AdWidget(ad: Ad);
       await Ad.load();
       isAdLoaded = true;
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 
@@ -181,4 +209,47 @@ class _DownloadPageState extends State<DownloadPage> {
                 )),
     );
   }
+}
+
+bool validateStops(stopsRaw) {
+  bool valid = true;
+
+  var stops = jsonDecode(stopsRaw);
+
+  for (var stop in stops) {
+    if (stop["Name"] == null) {
+      valid = false;
+    }
+    if (stop["Services"] == null) {
+      valid = false;
+    }
+    if (stop["id"] == null) {
+      valid = false;
+    }
+    if (stop["cords"] == null) {
+      valid = false;
+    }
+  }
+
+  return valid;
+}
+
+bool validateServices(servicesRaw) {
+  bool valid = true;
+
+  var services = jsonDecode(servicesRaw);
+
+  services.forEach((k, v) {
+    if (k == null) {
+      valid = false;
+    }
+    if (v["routes"] == null) {
+      valid = false;
+    }
+    if (v["name"] == null) {
+      valid = false;
+    }
+  });
+
+  return valid;
 }

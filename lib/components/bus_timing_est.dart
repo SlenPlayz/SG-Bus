@@ -65,7 +65,8 @@ class BusTimingEst extends StatelessWidget {
                     ),
                   ),
                 ),
-                Text(doubleStat, textAlign: TextAlign.center)
+                Text(doubleStat, textAlign: TextAlign.center),
+                data != null && data["Feature"] != null && data["Feature"] != "" && data["Feature"] != "WAB" ? Icon(Icons.not_accessible, size: 14,): Container()
               ],
             ),
           ],

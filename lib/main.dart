@@ -15,10 +15,13 @@ import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/mrt_map.dart';
 import 'package:sgbus/pages/nearby.dart';
 import 'package:sgbus/pages/favourites.dart';
+import 'package:sgbus/pages/settings.dart';
 import 'package:sgbus/pages/stops_map.dart';
 import 'package:sgbus/pages/search.dart';
 import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,70 +49,99 @@ Future<void> main() async {
   }
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  bool isCustomScheme = false;
+  bool isLoaded = false;
+  Color? customScheme = null;
+  bool overrideSystemTheme = false;
+  String theme = "";
+  
+
+  Future<void> loadThemeSettings() async {
+    var brightness =
+        SchedulerBinding.instance.platformDispatcher.platformBrightness;
+    bool isSysDarkMode = brightness == Brightness.dark;
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    final String? colorSchemeSettings = prefs.getString('color-scheme');
+    final String? themeSettings = prefs.getString('theme');
+
+    if (colorSchemeSettings != null && colorSchemeSettings != "System") {
+      isCustomScheme = true;
+
+      if (colorSchemeSettings == "Blue") {
+        customScheme = Colors.blue;
+      }
+      if (colorSchemeSettings == "Green") {
+        customScheme = Colors.green;
+      }
+      if (colorSchemeSettings == "Purple") {
+        customScheme = Colors.deepPurple;
+      }
+      if (colorSchemeSettings == "Orange") {
+        customScheme = Colors.deepOrange;
+      }
+      if (colorSchemeSettings == "Cyan") {
+        customScheme = Colors.cyan;
+      }
+      if (colorSchemeSettings == "Teal") {
+        customScheme = Colors.teal;
+      }
+    }
+
+    if (themeSettings != null && themeSettings != "System") {
+      overrideSystemTheme = true;
+      theme = themeSettings.toLowerCase();
+    }
+    setTheme(overrideSystemTheme ? theme == "dark" ? true : false : isSysDarkMode);
+
+    setState(() {
+      isLoaded = true;
+    });
+  }
+
+  @override
+  initState() {
+    loadThemeSettings();
+    super.initState();
+  }
+
+  // This widget is the root of your application.
   Widget build(BuildContext context) {
+    if (!isLoaded) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
     return DynamicColorBuilder(builder: (lightColorScheme, darkColorScheme) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        theme: ThemeData.light().copyWith(
-          useMaterial3: true,
-          colorScheme: lightColorScheme ??
-              const ColorScheme.light(
-                primary: Color.fromARGB(255, 191, 205, 255),
-                secondary: Color.fromARGB(255, 191, 205, 255),
-              ),
-          scaffoldBackgroundColor: lightColorScheme != null
-              ? lightColorScheme.background
-              : Colors.white,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: lightColorScheme != null
-                ? lightColorScheme.background
-                : Colors.white,
-          ),
-          dialogBackgroundColor: lightColorScheme?.background,
-          tabBarTheme: TabBarTheme(
-            labelColor: lightColorScheme != null
-                ? lightColorScheme.secondary
-                : Color.fromARGB(255, 191, 205, 255),
-          ),
-          floatingActionButtonTheme: const FloatingActionButtonThemeData(
-            foregroundColor: Colors.black,
-          ),
-          indicatorColor: lightColorScheme != null
-              ? lightColorScheme.secondary
-              : Color.fromARGB(255, 191, 205, 255),
-        ),
-        darkTheme: ThemeData.dark().copyWith(
-          useMaterial3: true,
-          colorScheme: darkColorScheme ??
-              const ColorScheme.dark(
-                primary: Color.fromARGB(255, 216, 225, 255),
-                secondary: Color.fromARGB(255, 216, 225, 255),
-              ),
-          scaffoldBackgroundColor: darkColorScheme != null
-              ? darkColorScheme.background
-              : Colors.black,
-          inputDecorationTheme: InputDecorationTheme(
-            filled: true,
-            fillColor: darkColorScheme != null
-                ? darkColorScheme.background
-                : Colors.black,
-          ),
-          dialogBackgroundColor: darkColorScheme?.background,
-          tabBarTheme: TabBarTheme(
-            labelColor: darkColorScheme != null
-                ? darkColorScheme.secondary
-                : Color.fromARGB(255, 216, 225, 255),
-          ),
-          indicatorColor: darkColorScheme != null
-              ? darkColorScheme.secondary
-              : Color.fromARGB(255, 216, 225, 255),
-        ),
+        theme: getTheme(
+            (overrideSystemTheme && theme != "") ? theme : "light",
+            isCustomScheme,
+            customScheme,
+            (lightColorScheme?.background != null)
+                ? (overrideSystemTheme && theme == "dark")
+                    ? darkColorScheme
+                    : lightColorScheme
+                : null),
+        darkTheme: getTheme(
+            (overrideSystemTheme && theme != "") ? theme : "dark",
+            isCustomScheme,
+            customScheme,
+            (lightColorScheme?.background != null)
+                ? (overrideSystemTheme && theme == "light")
+                    ? lightColorScheme
+                    : darkColorScheme
+                : null),
         title: 'SG Bus',
         home: const RootPage(),
       );
@@ -135,7 +167,7 @@ class _RootPageState extends State<RootPage> {
     const Favourites()
   ];
   List pageName = const [
-    'Nearby stops',
+    'Nearby',
     'Map',
     'Search',
     'MRT Map',
@@ -153,6 +185,11 @@ class _RootPageState extends State<RootPage> {
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
     var localVersion = prefs.getString('version');
+    var startupScreen = prefs.getString('startup-screen');
+
+    if (startupScreen != null) {
+      currPageIndex = pageName.indexOf(startupScreen);
+    }
 
     if (stops == null || svcs == null || localVersion == null) {
       showDialog(
@@ -182,39 +219,6 @@ class _RootPageState extends State<RootPage> {
         isLoaded = true;
       });
 
-      int daysSinceLastUpdate = DateTime.now()
-          .difference(
-              DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion)))
-          .inDays;
-
-      if (daysSinceLastUpdate > 14 || daysSinceLastUpdate < 0) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Update dataset'),
-              content: const Text(
-                  "It's been a while since the last update. We recomend updating. This should take less than a minute"),
-              actions: [
-                TextButton(
-                  onPressed: (() {
-                    Navigator.of(context).pop();
-                  }),
-                  child: const Text('Later'),
-                ),
-                TextButton(
-                  onPressed: (() {
-                    Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => const DownloadPage()));
-                  }),
-                  child: const Text('Update'),
-                ),
-              ],
-            );
-          },
-        );
-      }
-
       try {
         AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
         if (updateCheckRes.flexibleUpdateAllowed &&
@@ -234,23 +238,11 @@ class _RootPageState extends State<RootPage> {
                     ),
                     TextButton.icon(
                       onPressed: () {
-                        InAppUpdate.startFlexibleUpdate()
-                            .then((value) => showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    title: Text("Update ready to install"),
-                                    content: Text(
-                                        "The update has been downloaded and is ready to install. Click install to update now!"),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () => InAppUpdate
-                                              .completeFlexibleUpdate(),
-                                          child: Text("Update"))
-                                    ],
-                                  );
-                                }));
-                        Navigator.of(context).pop();
+                        launchUrl(
+                          Uri.parse(
+                              "https://play.google.com/store/apps/details?id=com.slen.sgbus"),
+                          mode: LaunchMode.externalApplication,
+                        );
                       },
                       icon: Icon(Icons.download_rounded),
                       label: Text('Update'),
@@ -259,7 +251,12 @@ class _RootPageState extends State<RootPage> {
                 );
               });
         }
-      } catch (e) {}
+      } catch (exception, stackTrace) {
+        await Sentry.captureException(
+          exception,
+          stackTrace: stackTrace,
+        );
+      }
       const String endpoint = serverURL;
 
       final versionEndpoint = Uri.parse('$endpoint/api/launch');
@@ -288,7 +285,44 @@ class _RootPageState extends State<RootPage> {
             },
           );
         });
-      }).catchError((err) {});
+
+        int dateDiff =
+            DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
+                .compareTo(DateTime.parse(response["lastUpdated"]));
+
+        if (dateDiff < 0) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Update dataset'),
+                content: const Text(
+                    "A new dataset updated is avaliable. This should take less than a minute"),
+                actions: [
+                  TextButton(
+                    onPressed: (() {
+                      Navigator.of(context).pop();
+                    }),
+                    child: const Text('Later'),
+                  ),
+                  TextButton(
+                    onPressed: (() {
+                      Navigator.of(context).push(MaterialPageRoute(
+                          builder: (context) => const DownloadPage()));
+                    }),
+                    child: const Text('Update Now'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      }).catchError((err, stackTrace) async {
+        await Sentry.captureException(
+          "An error occured when checking for or starting downloading data",
+          stackTrace: stackTrace,
+        );
+      });
     }
   }
 
@@ -300,9 +334,9 @@ class _RootPageState extends State<RootPage> {
 
   @override
   Widget build(BuildContext context) {
-    var brightness =
-        SchedulerBinding.instance.platformDispatcher.platformBrightness;
-    bool isDarkMode = brightness == Brightness.dark;
+    // var brightness =
+    //     SchedulerBinding.instance.platformDispatcher.platformBrightness;
+    // bool isDarkMode = brightness == Brightness.dark;
     return isLoaded
         ? Scaffold(
             extendBodyBehindAppBar: (currPageIndex == 1),
@@ -311,9 +345,17 @@ class _RootPageState extends State<RootPage> {
                     systemOverlayStyle: SystemUiOverlayStyle(
                       statusBarColor: Colors.transparent,
                       statusBarIconBrightness:
-                          isDarkMode ? Brightness.light : Brightness.dark,
+                          isDark ? Brightness.light : Brightness.dark,
                     ),
-                    title: Text(pageName[currPageIndex]))
+                    title: Text(pageName[currPageIndex]),
+                    actions: [
+                      IconButton(
+                          onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (context) => const Settings())),
+                          icon: Icon(Icons.settings))
+                    ],
+                  )
                 : null,
             body: pages[currPageIndex],
             bottomNavigationBar: NavigationBar(

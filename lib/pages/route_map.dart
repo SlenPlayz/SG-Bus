@@ -5,6 +5,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
@@ -106,8 +107,12 @@ class _RouteMapState extends State<RouteMap> {
       setState(() {
         isAdLoaded = true;
       });
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 
@@ -141,8 +146,8 @@ class _RouteMapState extends State<RouteMap> {
 
   @override
   Widget build(BuildContext context) {
-    var brightness = MediaQuery.of(context).platformBrightness;
-    bool isDarkMode = brightness == Brightness.dark;
+    // var brightness = MediaQuery.of(context).platformBrightness;
+    // bool isDarkMode = brightness == Brightness.dark;
     double height = MediaQuery.of(context).size.height;
 
     return Scaffold(
@@ -175,7 +180,7 @@ class _RouteMapState extends State<RouteMap> {
                           alignment: Alignment.bottomLeft,
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: isDarkMode
+                            child: isDark
                                 ? const Image(
                                     image: AssetImage(
                                         'assets/mapbox-logo-white.png'),
@@ -203,14 +208,14 @@ class _RouteMapState extends State<RouteMap> {
                                           SimpleDialogOption(
                                             child: TextButton(
                                               onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.mapbox.com/about/maps/")),
+                                                  "https://www.mapbox.com/about/maps/"), mode: LaunchMode.externalApplication),
                                               child: Text("© Mapbox"),
                                             ),
                                           ),
                                           SimpleDialogOption(
                                             child: TextButton(
                                               onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.openstreetmap.org/about/")),
+                                                  "https://www.openstreetmap.org/about/"), mode: LaunchMode.externalApplication),
                                               child: Text("© OpenStreetMap"),
                                             ),
                                           ),
@@ -232,7 +237,7 @@ class _RouteMapState extends State<RouteMap> {
                       layers: [
                         TileLayerOptions(
                           maxZoom: 19,
-                          urlTemplate: isDarkMode
+                          urlTemplate: isDark
                               ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
                               : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
                           additionalOptions: {

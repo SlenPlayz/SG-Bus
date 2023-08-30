@@ -9,6 +9,12 @@ class MRTMap extends StatelessWidget {
       maxScale: 10,
       child: Center(
         child: Image(
+          loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              else return Center(
+                child: CircularProgressIndicator(),
+              );
+          },
           image: AssetImage('assets/mrt-map.jpg'),
         ),
       ),

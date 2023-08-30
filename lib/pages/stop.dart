@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
 import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Stop extends StatefulWidget {
@@ -55,22 +57,54 @@ class _StopState extends State<Stop> {
       var arrivalData = jsonDecode(response);
 
       arrivalData['Services'].forEach((x) {
-        arrTimings.forEach((element) {
-          var index = arrTimings.indexOf(element);
-          if (element['ServiceNo'] == x['ServiceNo']) {
-            arrTimings[index] = x;
+        bool multiple = false;
+
+        arrivalData["Services"].forEach((c) {
+          if (x["ServiceNo"] == c["ServiceNo"] &&
+              x["NextBus"]["DestinationCode"] !=
+                  c["NextBus"]["DestinationCode"]) {
+            multiple = true;
+            // Map multipleDat = {
+            //   "ServiceNo": x["ServiceNo"],
+            //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
+            //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
+            // };
+
+            List arrTimingsCopy = List.from(arrTimings);
+
+            arrTimingsCopy.forEach((element) {
+              var index = arrTimings.indexOf(element);
+              if (element['ServiceNo'] == x['ServiceNo'] &&
+                  element["NextBus"] == null) {
+                x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
+                c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
+                arrTimings[index] = x;
+                arrTimings.add(c);
+              }
+            });
           }
         });
+        if (!multiple) {
+          arrTimings.forEach((element) {
+            var index = arrTimings.indexOf(element);
+            if (element['ServiceNo'] == x['ServiceNo']) {
+              arrTimings[index] = x;
+            }
+          });
+        }
       });
-
+      arrTimings.sort((a, b) =>
+          int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
+              int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
       setState(() {
         arrTimings = arrTimings;
         isLoading = false;
       });
-    } catch (e) {
+    } catch (err, stackTrace) {
       error = true;
+      bool unknownError = true;
       try {
-        errMsg = e.toString();
+        errMsg = err.toString();
       } catch (e) {
         errMsg = 'Failed to get arrival timings';
       }
@@ -78,10 +112,21 @@ class _StopState extends State<Stop> {
           errMsg.startsWith('Connection failed')) {
         errMsg =
             'Unable to connect to server. Make sure that Wifi or Mobile data is enabled.';
+        unknownError = false;
+      }
+      if (errMsg.startsWith('Software caused connection abort')) {
+        errMsg =
+            'Failed to get arrival timings due to change of network status. Please retry.';
+        unknownError = false;
       }
       if (errMsg.startsWith('TimeoutException after')) {
-        errMsg =
-            'Failed to get timings from server.';
+        errMsg = 'Failed to get timings from server.';
+      }
+      if (unknownError) {
+        await Sentry.captureException(
+            err,
+            stackTrace: stackTrace,
+          );
       }
       setState(() {
         isLoading = false;
@@ -150,8 +195,12 @@ class _StopState extends State<Stop> {
       adWidget = AdWidget(ad: Ad);
       await Ad.load();
       isAdLoaded = true;
-    } catch (e) {
-      print(e);
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        err,
+        stackTrace: stackTrace,
+      );
+      if (!kReleaseMode) print(err);
     }
   }
 

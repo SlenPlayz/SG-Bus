@@ -1,3 +1,4 @@
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:wakelock/wakelock.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -194,7 +195,13 @@ class _RouteTrackerState extends State<RouteTracker> {
           }
         });
       }
-    }).catchError((err) => setState(() => isLoading = false));
+    }).catchError((err, stackTrace) async {
+      await Sentry.captureException(
+        "An error occured in the route tracker",
+        stackTrace: stackTrace,
+      );
+      setState(() => isLoading = false);
+    });
   }
 
   @override
