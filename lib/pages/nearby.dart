@@ -115,7 +115,7 @@ class _NearbyState extends State<Nearby> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: (() => getNearbyStops()),
+        onPressed: isLoaded ? (() => getNearbyStops()) : null,
         child: const Icon(Icons.my_location),
       ),
       body: isLoaded
