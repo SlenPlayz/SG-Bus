@@ -81,6 +81,9 @@ class _MyAppState extends State<MyApp> {
       if (colorSchemeSettings == "Green") {
         customScheme = Colors.green;
       }
+      if (colorSchemeSettings == "Yellow") {
+        customScheme = Colors.yellow;
+      }
       if (colorSchemeSettings == "Purple") {
         customScheme = Colors.deepPurple;
       }
@@ -92,6 +95,9 @@ class _MyAppState extends State<MyApp> {
       }
       if (colorSchemeSettings == "Teal") {
         customScheme = Colors.teal;
+      }
+      if (colorSchemeSettings == "Pink") {
+        customScheme = Colors.pink;
       }
     }
 
