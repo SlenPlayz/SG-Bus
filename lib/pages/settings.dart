@@ -82,6 +82,7 @@ class _SettingsState extends State<Settings> {
             children: [
               CustomSetting(
                 title: 'Download data',
+                leading: Icon(Icons.download),
                 subtitle: 'Re-download stop & bus data from the server',
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => const DownloadPage())),
