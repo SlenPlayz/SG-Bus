@@ -66,9 +66,39 @@ class BusTimingEst extends StatelessWidget {
                   ),
                 ),
                 Text(doubleStat, textAlign: TextAlign.center),
-                data != null && data["Feature"] != null && data["Feature"] != "" && data["Feature"] != "WAB" ? Icon(Icons.not_accessible, size: 14,): Container()
+                data != null &&
+                        data["Feature"] != null &&
+                        data["Feature"] != "" &&
+                        data["Feature"] != "WAB"
+                    ? Icon(
+                        Icons.not_accessible,
+                        size: 14,
+                      )
+                    : Container()
               ],
             ),
+            if (data != null &&
+                data["VisitNumber"] != null &&
+                data["VisitNumber"] == "2")
+              Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(5, 5, 5, 5),
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "2nd Visit",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10),
+                  ),
+                ],
+              )
           ],
         ));
   }
