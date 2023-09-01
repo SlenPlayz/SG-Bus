@@ -194,50 +194,54 @@ class _StopState extends State<Stop> {
   }
 
   void calcTimings() {
-    arrivalData['Services'].forEach((x) {
-      bool multiple = false;
+    if (arrivalData != null && arrivalData["Services"] != null) {
+      arrivalData['Services'].forEach((x) {
+        bool multiple = false;
 
-      arrivalData["Services"].forEach((c) {
-        if (x["ServiceNo"] == c["ServiceNo"] &&
-            x["NextBus"]["DestinationCode"] !=
-                c["NextBus"]["DestinationCode"]) {
-          multiple = true;
-          // Map multipleDat = {
-          //   "ServiceNo": x["ServiceNo"],
-          //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
-          //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
-          // };
+        arrivalData["Services"].forEach((c) {
+          if (x["ServiceNo"] != null &&
+              c["ServiceNo"] != null &&
+              x["ServiceNo"] == c["ServiceNo"] &&
+              x["NextBus"]["DestinationCode"] !=
+                  c["NextBus"]["DestinationCode"]) {
+            multiple = true;
+            // Map multipleDat = {
+            //   "ServiceNo": x["ServiceNo"],
+            //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
+            //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
+            // };
 
-          List arrTimingsCopy = List.from(arrTimings);
+            List arrTimingsCopy = List.from(arrTimings);
 
-          arrTimingsCopy.forEach((element) {
+            arrTimingsCopy.forEach((element) {
+              var index = arrTimings.indexOf(element);
+              if (element['ServiceNo'] == x['ServiceNo'] &&
+                  element["NextBus"] == null) {
+                x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
+                c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
+                arrTimings[index] = x;
+                arrTimings.add(c);
+              }
+            });
+          }
+        });
+        if (!multiple) {
+          arrTimings.forEach((element) {
             var index = arrTimings.indexOf(element);
-            if (element['ServiceNo'] == x['ServiceNo'] &&
-                element["NextBus"] == null) {
-              x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
-              c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
+            if (element['ServiceNo'] == x['ServiceNo']) {
               arrTimings[index] = x;
-              arrTimings.add(c);
             }
           });
         }
       });
-      if (!multiple) {
-        arrTimings.forEach((element) {
-          var index = arrTimings.indexOf(element);
-          if (element['ServiceNo'] == x['ServiceNo']) {
-            arrTimings[index] = x;
-          }
-        });
-      }
-    });
-    arrTimings.sort((a, b) =>
-        int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
-            int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
-    setState(() {
-      arrTimings = arrTimings;
-      isLoading = false;
-    });
+      arrTimings.sort((a, b) =>
+          int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
+              int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
+      setState(() {
+        arrTimings = arrTimings;
+        isLoading = false;
+      });
+    }
   }
 
   @override
