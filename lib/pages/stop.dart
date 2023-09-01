@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -47,6 +48,7 @@ class _StopState extends State<Stop> {
   String errMsg = '';
   static const String endpoint = serverURL;
   late AdWidget adWidget;
+  Map arrivalData = {};
 
   Future<void> getArrTimings() async {
     try {
@@ -54,52 +56,14 @@ class _StopState extends State<Stop> {
       Response timings = await get(url).timeout(Duration(seconds: 45));
       var response = timings.body;
 
-      var arrivalData = jsonDecode(response);
+      arrivalData = jsonDecode(response);
 
-      arrivalData['Services'].forEach((x) {
-        bool multiple = false;
-
-        arrivalData["Services"].forEach((c) {
-          if (x["ServiceNo"] == c["ServiceNo"] &&
-              x["NextBus"]["DestinationCode"] !=
-                  c["NextBus"]["DestinationCode"]) {
-            multiple = true;
-            // Map multipleDat = {
-            //   "ServiceNo": x["ServiceNo"],
-            //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
-            //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
-            // };
-
-            List arrTimingsCopy = List.from(arrTimings);
-
-            arrTimingsCopy.forEach((element) {
-              var index = arrTimings.indexOf(element);
-              if (element['ServiceNo'] == x['ServiceNo'] &&
-                  element["NextBus"] == null) {
-                x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
-                c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
-                arrTimings[index] = x;
-                arrTimings.add(c);
-              }
-            });
-          }
-        });
-        if (!multiple) {
-          arrTimings.forEach((element) {
-            var index = arrTimings.indexOf(element);
-            if (element['ServiceNo'] == x['ServiceNo']) {
-              arrTimings[index] = x;
-            }
-          });
-        }
-      });
-      arrTimings.sort((a, b) =>
-          int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
-              int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
-      setState(() {
-        arrTimings = arrTimings;
-        isLoading = false;
-      });
+      if (arrivalData != null) {
+        calcTimings();
+      } else {
+        throw "Failed to get arrival timings";
+      }
+      ;
     } catch (err, stackTrace) {
       error = true;
       bool unknownError = true;
@@ -124,9 +88,9 @@ class _StopState extends State<Stop> {
       }
       if (unknownError) {
         await Sentry.captureException(
-            err,
-            stackTrace: stackTrace,
-          );
+          err,
+          stackTrace: stackTrace,
+        );
       }
       setState(() {
         isLoading = false;
@@ -229,10 +193,62 @@ class _StopState extends State<Stop> {
     }
   }
 
+  void calcTimings() {
+    arrivalData['Services'].forEach((x) {
+      bool multiple = false;
+
+      arrivalData["Services"].forEach((c) {
+        if (x["ServiceNo"] == c["ServiceNo"] &&
+            x["NextBus"]["DestinationCode"] !=
+                c["NextBus"]["DestinationCode"]) {
+          multiple = true;
+          // Map multipleDat = {
+          //   "ServiceNo": x["ServiceNo"],
+          //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
+          //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
+          // };
+
+          List arrTimingsCopy = List.from(arrTimings);
+
+          arrTimingsCopy.forEach((element) {
+            var index = arrTimings.indexOf(element);
+            if (element['ServiceNo'] == x['ServiceNo'] &&
+                element["NextBus"] == null) {
+              x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
+              c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
+              arrTimings[index] = x;
+              arrTimings.add(c);
+            }
+          });
+        }
+      });
+      if (!multiple) {
+        arrTimings.forEach((element) {
+          var index = arrTimings.indexOf(element);
+          if (element['ServiceNo'] == x['ServiceNo']) {
+            arrTimings[index] = x;
+          }
+        });
+      }
+    });
+    arrTimings.sort((a, b) =>
+        int.parse(a["ServiceNo"].replaceAll(RegExp(r"\D"), '')).compareTo(
+            int.parse(b["ServiceNo"].replaceAll(RegExp(r"\D"), ''))));
+    setState(() {
+      arrTimings = arrTimings;
+      isLoading = false;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     loadStop();
+    var timer = Timer.periodic(Duration(seconds: 2), (Timer t) {
+      if (!isLoading) {
+        calcTimings();
+      }
+    });
   }
 
   @override
@@ -246,18 +262,19 @@ class _StopState extends State<Stop> {
                 icon: stopIsFavourited
                     ? const Icon(Icons.favorite)
                     : const Icon(Icons.favorite_outline)),
-            // IconButton(
-            //     onPressed: () {}, icon: const CircularProgressIndicator()),
-            IconButton(
-                onPressed: () {
-                  setState(() {
-                    isLoading = true;
-                  });
-                  getArrTimings();
-                },
-                icon: const Icon(Icons.refresh))
           ],
         ),
+        floatingActionButton: Padding(
+            padding: const EdgeInsets.only(bottom: 50),
+            child: FloatingActionButton(
+              onPressed: () {
+                setState(() {
+                  isLoading = true;
+                });
+                getArrTimings();
+              },
+              child: Icon(Icons.refresh),
+            )),
         body: Column(
           children: [
             isLoading ? const LinearProgressIndicator() : Container(),
@@ -266,6 +283,7 @@ class _StopState extends State<Stop> {
                 onRefresh: getArrTimings,
                 child: ListView.builder(
                   itemCount: arrTimings.length,
+                  padding: EdgeInsets.only(bottom: 100),
                   itemBuilder: (context, index) {
                     return BusTiming(arrTimings[index]);
                   },
