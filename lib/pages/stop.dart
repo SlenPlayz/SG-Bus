@@ -283,7 +283,7 @@ class _StopState extends State<Stop> {
                 onRefresh: getArrTimings,
                 child: ListView.builder(
                   itemCount: arrTimings.length,
-                  padding: EdgeInsets.only(bottom: 100),
+                  padding: EdgeInsets.only(bottom: 80),
                   itemBuilder: (context, index) {
                     return BusTiming(arrTimings[index]);
                   },
