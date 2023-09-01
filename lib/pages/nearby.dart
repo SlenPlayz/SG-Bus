@@ -61,9 +61,8 @@ class _NearbyState extends State<Nearby> {
   }
 
   Future<void> getNearbyStops() async {
+    List newNearbyStops = [];
     setState(() {
-      isLoaded = false;
-      nearbyStops = [];
       error = false;
       errorCode = 0;
       errorMsg = '';
@@ -77,14 +76,14 @@ class _NearbyState extends State<Nearby> {
             .round();
 
         if (stop['dist'] < 500) {
-          nearbyStops.add(stop);
+          newNearbyStops.add(stop);
         }
       }
-      nearbyStops.sort((a, b) => a['dist'].compareTo(b['dist']));
+      newNearbyStops.sort((a, b) => a['dist'].compareTo(b['dist']));
 
       setState(() {
         isLoaded = true;
-        nearbyStops = nearbyStops;
+        nearbyStops = newNearbyStops;
       });
     }).catchError((err) {
       setState(() {
@@ -115,87 +114,97 @@ class _NearbyState extends State<Nearby> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: isLoaded ? (() => getNearbyStops()) : null,
+        onPressed: isLoaded
+            ? (() {
+                setState(() {
+                  isLoaded = false;
+                });
+                getNearbyStops();
+              })
+            : null,
         child: const Icon(Icons.my_location),
       ),
-      body: isLoaded
-          ? error
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 200.0),
-                  child: Center(
-                      child: Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Icon(
-                          Icons.warning,
-                          size: 50,
-                        ),
-                      ),
-                      Text(errorMsg),
-                      ButtonBar(
-                        alignment: MainAxisAlignment.center,
-                        children: [
-                          (errorCode == 1)
-                              ? Container()
-                              : (errorCode == 2)
-                                  ? TextButton.icon(
-                                      onPressed: () {
-                                        requestGPSPermission();
-                                      },
-                                      icon:
-                                          const Icon(Icons.location_searching),
-                                      label: const Text('Request GPS'))
-                                  : TextButton.icon(
-                                      onPressed: () {
-                                        enableGPSInSettings();
-                                      },
-                                      icon:
-                                          const Icon(Icons.location_searching),
-                                      label: const Text('Request GPS'))
-                        ],
-                      )
-                    ],
-                  )),
-                )
-              : nearbyStops.isNotEmpty
-                  ? ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: nearbyStops.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        var stop = nearbyStops[index];
-                        return ListTile(
-                          title: Text(stop['Name']),
-                          subtitle: Text(stop['id']),
-                          trailing: Text('${stop['dist']}m'),
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => Stop(stop['id'])));
-                          },
-                        );
-                      })
-                  : Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 20.0),
-                            child: Icon(Icons.warning, size: 50),
+      body: RefreshIndicator(
+        onRefresh: getNearbyStops,
+        child: isLoaded
+            ? error
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 200.0),
+                    child: Center(
+                        child: Column(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Icon(
+                            Icons.warning,
+                            size: 50,
                           ),
-                          const Text(
-                              "There doesn't seem to be any stops near you."),
-                        ],
-                      ),
-                    )
-          : const Padding(
-              padding: EdgeInsets.all(15.0),
-              child: Center(
-                child: CircularProgressIndicator(),
+                        ),
+                        Text(errorMsg),
+                        ButtonBar(
+                          alignment: MainAxisAlignment.center,
+                          children: [
+                            (errorCode == 1)
+                                ? Container()
+                                : (errorCode == 2)
+                                    ? TextButton.icon(
+                                        onPressed: () {
+                                          requestGPSPermission();
+                                        },
+                                        icon: const Icon(
+                                            Icons.location_searching),
+                                        label: const Text('Request GPS'))
+                                    : TextButton.icon(
+                                        onPressed: () {
+                                          enableGPSInSettings();
+                                        },
+                                        icon: const Icon(
+                                            Icons.location_searching),
+                                        label: const Text('Request GPS'))
+                          ],
+                        )
+                      ],
+                    )),
+                  )
+                : nearbyStops.isNotEmpty
+                    ? ListView.builder(
+                        padding: EdgeInsets.zero,
+                        itemCount: nearbyStops.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          var stop = nearbyStops[index];
+                          return ListTile(
+                            title: Text(stop['Name']),
+                            subtitle: Text(stop['id']),
+                            trailing: Text('${stop['dist']}m'),
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => Stop(stop['id'])));
+                            },
+                          );
+                        })
+                    : Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(bottom: 20.0),
+                              child: Icon(Icons.warning, size: 50),
+                            ),
+                            const Text(
+                                "There doesn't seem to be any stops near you."),
+                          ],
+                        ),
+                      )
+            : const Padding(
+                padding: EdgeInsets.all(15.0),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
               ),
-            ),
+      ),
     );
 
     // return Column(children: [
