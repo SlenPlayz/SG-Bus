@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'dart:math';
 
 class Nearby extends StatefulWidget {
   const Nearby({Key? key}) : super(key: key);
@@ -25,6 +26,8 @@ class _NearbyState extends State<Nearby> {
   String errorMsg = '';
   List nearbyStops = [];
   var currLocation;
+
+  Random random = new Random();
 
   Future<Position> getLocation() async {
     // Check if GPS is enabled
@@ -118,7 +121,13 @@ class _NearbyState extends State<Nearby> {
     isLoaded
         ? nearbyStopsW = nearbyStops
         : nearbyStopsW = List.generate(10, (index) {
-            return {"Name": "Loading stops....", "id": "00000", "dist": "00"};
+            return {
+              "Name": "Loading" +
+                  List.generate(random.nextInt(15), (index) => ".").join(),
+              "id": "00000",
+              "dist": "0" +
+                  List.generate(random.nextInt(2) + 1, (index) => "0").join()
+            };
           });
 
     return Scaffold(
