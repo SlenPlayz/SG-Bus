@@ -271,12 +271,14 @@ class _StopState extends State<Stop> {
         floatingActionButton: Padding(
             padding: const EdgeInsets.only(bottom: 50),
             child: FloatingActionButton(
-              onPressed: () {
-                setState(() {
-                  isLoading = true;
-                });
-                getArrTimings();
-              },
+              onPressed: isLoading
+                  ? null
+                  : () {
+                      setState(() {
+                        isLoading = true;
+                      });
+                      getArrTimings();
+                    },
               child: Icon(Icons.refresh),
             )),
         body: Column(
