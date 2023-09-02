@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 class Nearby extends StatefulWidget {
   const Nearby({Key? key}) : super(key: key);
@@ -112,6 +113,14 @@ class _NearbyState extends State<Nearby> {
 
   @override
   Widget build(BuildContext context) {
+    List nearbyStopsW;
+
+    isLoaded
+        ? nearbyStopsW = nearbyStops
+        : nearbyStopsW = List.generate(10, (index) {
+            return {"Name": "Loading stops....", "id": "00000", "dist": "00"};
+          });
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         onPressed: isLoaded
@@ -125,86 +134,82 @@ class _NearbyState extends State<Nearby> {
         child: const Icon(Icons.my_location),
       ),
       body: RefreshIndicator(
-        onRefresh: getNearbyStops,
-        child: isLoaded
-            ? error
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 200.0),
-                    child: Center(
-                        child: Column(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Icon(
-                            Icons.warning,
-                            size: 50,
-                          ),
+          onRefresh: getNearbyStops,
+          child: error
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 200.0),
+                  child: Center(
+                      child: Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Icon(
+                          Icons.warning,
+                          size: 50,
                         ),
-                        Text(errorMsg),
-                        ButtonBar(
-                          alignment: MainAxisAlignment.center,
-                          children: [
-                            (errorCode == 1)
-                                ? Container()
-                                : (errorCode == 2)
-                                    ? TextButton.icon(
-                                        onPressed: () {
-                                          requestGPSPermission();
-                                        },
-                                        icon: const Icon(
-                                            Icons.location_searching),
-                                        label: const Text('Request GPS'))
-                                    : TextButton.icon(
-                                        onPressed: () {
-                                          enableGPSInSettings();
-                                        },
-                                        icon: const Icon(
-                                            Icons.location_searching),
-                                        label: const Text('Request GPS'))
-                          ],
-                        )
-                      ],
-                    )),
-                  )
-                : nearbyStops.isNotEmpty
-                    ? ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: nearbyStops.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          var stop = nearbyStops[index];
-                          return ListTile(
-                            title: Text(stop['Name']),
-                            subtitle: Text(stop['id']),
-                            trailing: Text('${stop['dist']}m'),
-                            onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => Stop(stop['id'])));
-                            },
-                          );
-                        })
-                    : Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            const Padding(
-                              padding: EdgeInsets.only(bottom: 20.0),
-                              child: Icon(Icons.warning, size: 50),
-                            ),
-                            const Text(
-                                "There doesn't seem to be any stops near you."),
-                          ],
-                        ),
+                      ),
+                      Text(errorMsg),
+                      ButtonBar(
+                        alignment: MainAxisAlignment.center,
+                        children: [
+                          (errorCode == 1)
+                              ? Container()
+                              : (errorCode == 2)
+                                  ? TextButton.icon(
+                                      onPressed: () {
+                                        requestGPSPermission();
+                                      },
+                                      icon:
+                                          const Icon(Icons.location_searching),
+                                      label: const Text('Request GPS'))
+                                  : TextButton.icon(
+                                      onPressed: () {
+                                        enableGPSInSettings();
+                                      },
+                                      icon:
+                                          const Icon(Icons.location_searching),
+                                      label: const Text('Request GPS'))
+                        ],
                       )
-            : const Padding(
-                padding: EdgeInsets.all(15.0),
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-      ),
+                    ],
+                  )),
+                )
+              : nearbyStopsW.isNotEmpty
+                  ? Skeletonizer(
+                      enabled: !isLoaded,
+                      child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: nearbyStopsW.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            var stop = nearbyStopsW[index];
+                            return ListTile(
+                              title: Text(stop['Name']),
+                              subtitle: Text(stop['id']),
+                              trailing: Text('${stop['dist']}m'),
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            Stop(stop['id'])));
+                              },
+                            );
+                          }),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 20.0),
+                            child: Icon(Icons.warning, size: 50),
+                          ),
+                          const Text(
+                              "There doesn't seem to be any stops near you."),
+                        ],
+                      ),
+                    )),
     );
 
     // return Column(children: [

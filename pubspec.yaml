@@ -38,6 +38,7 @@ dependencies:
   dynamic_color: ^1.4.0
   in_app_update: ^4.0.1
   url_launcher: ^6.1.7
+  skeletonizer: ^0.7.0
   flutter_map: ^2.2.0
   restart_app: ^1.1.1
   flutter_svg: ^2.0.7
