@@ -100,11 +100,13 @@ class _NearbyState extends State<Nearby> {
 
   Future<void> requestGPSPermission() async {
     await Geolocator.requestPermission();
+    setState(() => isLoaded = false);
     getNearbyStops();
   }
 
   Future<void> enableGPSInSettings() async {
     await Geolocator.openLocationSettings();
+    setState(() => isLoaded = false);
     getNearbyStops();
   }
 
