@@ -67,10 +67,12 @@ class _SettingsState extends State<Settings> {
                   ListItem<String>(value: "System", caption: 'System'),
                   ListItem<String>(value: "Blue", caption: 'Blue'),
                   ListItem<String>(value: "Green", caption: 'Green'),
+                  ListItem<String>(value: "Yellow", caption: 'Yellow'),
                   ListItem<String>(value: "Purple", caption: 'Purple'),
                   ListItem<String>(value: "Orange", caption: 'Orange'),
                   ListItem<String>(value: "Cyan", caption: 'Cyan'),
                   ListItem<String>(value: "Teal", caption: 'Teal'),
+                  ListItem<String>(value: "Pink", caption: 'Pink'),
                 ],
               ),
             ],
@@ -80,6 +82,7 @@ class _SettingsState extends State<Settings> {
             children: [
               CustomSetting(
                 title: 'Download data',
+                leading: Icon(Icons.download),
                 subtitle: 'Re-download stop & bus data from the server',
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (context) => const DownloadPage())),

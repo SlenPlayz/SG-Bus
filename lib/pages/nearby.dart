@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+import 'dart:math';
 
 class Nearby extends StatefulWidget {
   const Nearby({Key? key}) : super(key: key);
@@ -24,6 +26,8 @@ class _NearbyState extends State<Nearby> {
   String errorMsg = '';
   List nearbyStops = [];
   var currLocation;
+
+  Random random = new Random();
 
   Future<Position> getLocation() async {
     // Check if GPS is enabled
@@ -61,9 +65,8 @@ class _NearbyState extends State<Nearby> {
   }
 
   Future<void> getNearbyStops() async {
+    List newNearbyStops = [];
     setState(() {
-      isLoaded = false;
-      nearbyStops = [];
       error = false;
       errorCode = 0;
       errorMsg = '';
@@ -77,14 +80,14 @@ class _NearbyState extends State<Nearby> {
             .round();
 
         if (stop['dist'] < 500) {
-          nearbyStops.add(stop);
+          newNearbyStops.add(stop);
         }
       }
-      nearbyStops.sort((a, b) => a['dist'].compareTo(b['dist']));
+      newNearbyStops.sort((a, b) => a['dist'].compareTo(b['dist']));
 
       setState(() {
         isLoaded = true;
-        nearbyStops = nearbyStops;
+        nearbyStops = newNearbyStops;
       });
     }).catchError((err) {
       setState(() {
@@ -113,13 +116,35 @@ class _NearbyState extends State<Nearby> {
 
   @override
   Widget build(BuildContext context) {
+    List nearbyStopsW;
+
+    isLoaded
+        ? nearbyStopsW = nearbyStops
+        : nearbyStopsW = List.generate(10, (index) {
+            return {
+              "Name": "Loading" +
+                  List.generate(random.nextInt(15), (index) => ".").join(),
+              "id": "00000",
+              "dist": "0" +
+                  List.generate(random.nextInt(2) + 1, (index) => "0").join()
+            };
+          });
+
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        onPressed: (() => getNearbyStops()),
+        onPressed: isLoaded
+            ? (() {
+                setState(() {
+                  isLoaded = false;
+                });
+                getNearbyStops();
+              })
+            : null,
         child: const Icon(Icons.my_location),
       ),
-      body: isLoaded
-          ? error
+      body: RefreshIndicator(
+          onRefresh: getNearbyStops,
+          child: error
               ? Padding(
                   padding: const EdgeInsets.only(top: 200.0),
                   child: Center(
@@ -158,24 +183,28 @@ class _NearbyState extends State<Nearby> {
                     ],
                   )),
                 )
-              : nearbyStops.isNotEmpty
-                  ? ListView.builder(
-                      padding: EdgeInsets.zero,
-                      itemCount: nearbyStops.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        var stop = nearbyStops[index];
-                        return ListTile(
-                          title: Text(stop['Name']),
-                          subtitle: Text(stop['id']),
-                          trailing: Text('${stop['dist']}m'),
-                          onTap: () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => Stop(stop['id'])));
-                          },
-                        );
-                      })
+              : nearbyStopsW.isNotEmpty
+                  ? Skeletonizer(
+                      enabled: !isLoaded,
+                      child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: nearbyStopsW.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            var stop = nearbyStopsW[index];
+                            return ListTile(
+                              title: Text(stop['Name']),
+                              subtitle: Text(stop['id']),
+                              trailing: Text('${stop['dist']}m'),
+                              onTap: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            Stop(stop['id'])));
+                              },
+                            );
+                          }),
+                    )
                   : Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -189,13 +218,7 @@ class _NearbyState extends State<Nearby> {
                               "There doesn't seem to be any stops near you."),
                         ],
                       ),
-                    )
-          : const Padding(
-              padding: EdgeInsets.all(15.0),
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            ),
+                    )),
     );
 
     // return Column(children: [

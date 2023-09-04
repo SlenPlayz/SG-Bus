@@ -62,7 +62,6 @@ class _MyAppState extends State<MyApp> {
   Color? customScheme = null;
   bool overrideSystemTheme = false;
   String theme = "";
-  
 
   Future<void> loadThemeSettings() async {
     var brightness =
@@ -82,6 +81,9 @@ class _MyAppState extends State<MyApp> {
       if (colorSchemeSettings == "Green") {
         customScheme = Colors.green;
       }
+      if (colorSchemeSettings == "Yellow") {
+        customScheme = Colors.yellow;
+      }
       if (colorSchemeSettings == "Purple") {
         customScheme = Colors.deepPurple;
       }
@@ -94,13 +96,20 @@ class _MyAppState extends State<MyApp> {
       if (colorSchemeSettings == "Teal") {
         customScheme = Colors.teal;
       }
+      if (colorSchemeSettings == "Pink") {
+        customScheme = Colors.pink;
+      }
     }
 
     if (themeSettings != null && themeSettings != "System") {
       overrideSystemTheme = true;
       theme = themeSettings.toLowerCase();
     }
-    setTheme(overrideSystemTheme ? theme == "dark" ? true : false : isSysDarkMode);
+    setTheme(overrideSystemTheme
+        ? theme == "dark"
+            ? true
+            : false
+        : isSysDarkMode);
 
     setState(() {
       isLoaded = true;
@@ -166,13 +175,7 @@ class _RootPageState extends State<RootPage> {
     const MRTMap(),
     const Favourites()
   ];
-  List pageName = const [
-    'Nearby',
-    'Map',
-    'Search',
-    'MRT Map',
-    'Favourites'
-  ];
+  List pageName = const ['Nearby', 'Map', 'Search', 'MRT Map', 'Favourites'];
   var searchQuery = TextEditingController();
 
   bool isLoaded = false;
@@ -297,7 +300,7 @@ class _RootPageState extends State<RootPage> {
               return AlertDialog(
                 title: const Text('Update dataset'),
                 content: const Text(
-                    "A new dataset updated is avaliable. This should take less than a minute"),
+                    "A new dataset update is avaliable. This should take less than a minute"),
                 actions: [
                   TextButton(
                     onPressed: (() {

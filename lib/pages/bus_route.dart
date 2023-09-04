@@ -24,7 +24,7 @@ class _BusRouteState extends State<BusRoute> {
 
   Future<void> loadRoute() async {
     List bstopsList = getStops();
-    bstopsList.forEach((element) => {bsids.add(element['id'])});
+    bstopsList.forEach((element) => bsids.add(element['id']));
 
     var svcsParsed = getSvcs();
     currRoute = svcsParsed[widget.sno];

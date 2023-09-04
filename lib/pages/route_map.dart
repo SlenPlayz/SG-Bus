@@ -48,7 +48,7 @@ class _RouteMapState extends State<RouteMap> {
 
   Future<void> loadRoute() async {
     List bstopsList = getStops();
-    bstopsList.forEach((element) => {bsids.add(element['id'])});
+    bstopsList.forEach((element) => bsids.add(element['id']));
 
     var svcsParsed = getSvcs();
     currRoute = svcsParsed[widget.sno];
@@ -66,7 +66,7 @@ class _RouteMapState extends State<RouteMap> {
       });
     }
 
-    setState(() => {routeStops = routeStops});
+    setState(() => routeStops = routeStops);
   }
 
   Future<void> initStops() async {
@@ -75,7 +75,10 @@ class _RouteMapState extends State<RouteMap> {
       stops.add(Marker(
         point: LatLng(stop["cords"][1], stop["cords"][0]),
         builder: (context) => const CircleAvatar(
-          child: Icon(Icons.directions_bus, color: Colors.white,),
+          child: Icon(
+            Icons.directions_bus,
+            color: Colors.white,
+          ),
           backgroundColor: Colors.black,
         ),
       ));
@@ -193,7 +196,8 @@ class _RouteMapState extends State<RouteMap> {
                                   ),
                           ),
                         ),
-                        AttributionWidget(attributionBuilder: ((BuildContext context) {
+                        AttributionWidget(
+                            attributionBuilder: ((BuildContext context) {
                           return Container(
                             child: Padding(
                               padding: const EdgeInsets.all(2.0),
@@ -207,22 +211,31 @@ class _RouteMapState extends State<RouteMap> {
                                         children: [
                                           SimpleDialogOption(
                                             child: TextButton(
-                                              onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.mapbox.com/about/maps/"), mode: LaunchMode.externalApplication),
+                                              onPressed: () => launchUrl(
+                                                  Uri.parse(
+                                                      "https://www.mapbox.com/about/maps/"),
+                                                  mode: LaunchMode
+                                                      .externalApplication),
                                               child: Text("© Mapbox"),
                                             ),
                                           ),
                                           SimpleDialogOption(
                                             child: TextButton(
-                                              onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.openstreetmap.org/about/"), mode: LaunchMode.externalApplication),
+                                              onPressed: () => launchUrl(
+                                                  Uri.parse(
+                                                      "https://www.openstreetmap.org/about/"),
+                                                  mode: LaunchMode
+                                                      .externalApplication),
                                               child: Text("© OpenStreetMap"),
                                             ),
                                           ),
                                           SimpleDialogOption(
                                             child: TextButton(
-                                              onPressed: () => launchUrl(Uri.parse(
-                                                  "https://www.mapbox.com/map-feedback/"), mode: LaunchMode.externalApplication),
+                                              onPressed: () => launchUrl(
+                                                  Uri.parse(
+                                                      "https://www.mapbox.com/map-feedback/"),
+                                                  mode: LaunchMode
+                                                      .externalApplication),
                                               child: Text("Improve this map"),
                                             ),
                                           ),
@@ -263,7 +276,10 @@ class _RouteMapState extends State<RouteMap> {
                           },
                           builder: (context, markers) {
                             return CircleAvatar(
-                              child: Text(markers.length.toString(), style: TextStyle(color: Colors.white),),
+                              child: Text(
+                                markers.length.toString(),
+                                style: TextStyle(color: Colors.white),
+                              ),
                               backgroundColor: Colors.black,
                             );
                           },

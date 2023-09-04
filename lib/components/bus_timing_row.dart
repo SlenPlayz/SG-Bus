@@ -45,7 +45,11 @@ class _BusTimingState extends State<BusTiming> {
                         children: [
                           Text(widget.data['ServiceNo'],
                               style: Theme.of(context).textTheme.headline6),
-                              Text(widget.data["to"] ?? "", style: Theme.of(context).textTheme.bodySmall, overflow: TextOverflow.ellipsis,)
+                          Text(
+                            widget.data["to"] ?? "",
+                            style: Theme.of(context).textTheme.bodySmall,
+                            overflow: TextOverflow.ellipsis,
+                          )
                         ],
                       ),
                     ),
