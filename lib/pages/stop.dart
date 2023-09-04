@@ -248,7 +248,7 @@ class _StopState extends State<Stop> {
   void initState() {
     super.initState();
     loadStop();
-    var timer = Timer.periodic(Duration(seconds: 2), (Timer t) {
+    Timer.periodic(Duration(seconds: 30), (Timer t) {
       if (!isLoading) {
         calcTimings();
       }
