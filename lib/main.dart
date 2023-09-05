@@ -351,6 +351,7 @@ class _RootPageState extends State<RootPage> {
                           isDark ? Brightness.light : Brightness.dark,
                     ),
                     title: Text(pageName[currPageIndex]),
+                    scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
                     actions: [
                       IconButton(
                           onPressed: () => Navigator.of(context).push(

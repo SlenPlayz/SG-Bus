@@ -1,7 +1,14 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:sgbus/components/searchBar.dart';
 import 'package:sgbus/pages/bus_route.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:sgbus/scripts/utils.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 
 class Search extends StatefulWidget {
   const Search({Key? key}) : super(key: key);
@@ -11,122 +18,149 @@ class Search extends StatefulWidget {
 }
 
 class _SearchState extends State<Search> {
-  var searchQuery = TextEditingController();
-
-  List stops = getStops();
+  bool isRecentsLoaded = false;
+  bool error = false;
   Map svcs = getSvcs();
+  List recentSearches = [];
+  Random random = new Random();
 
-  List _busSearchRes = [];
+  Future<void> loadRecents() async {
+    recentSearches = List.generate(10, (index) {
+      return {
+        "Type": "stop",
+        "Name": "Loading" +
+            List.generate(random.nextInt(15), (index) => ".").join(),
+        "subtitle": "00000",
+      };
+    });
 
-  String query = '';
+    try {
+      var prefs = await SharedPreferences.getInstance();
+      List newRecentSearches = [];
 
-  void searchBuses() {
-    _busSearchRes = [];
-    if (searchQuery.text == '') {
-      svcs.forEach((key, value) {
-        _busSearchRes.add({"sno": key, "route": value['name']});
-      });
-    } else {
-      svcs.forEach((k, v) {
-        if (k.toLowerCase().contains((searchQuery.text).toLowerCase())) {
-          _busSearchRes.add({"sno": k, "route": v['name']});
+      String recentSearchesJson = (prefs.getString("recentSearches") ?? "[]");
+
+      var recentSearchesRaw = jsonDecode(recentSearchesJson);
+      recentSearchesRaw.forEach((i) {
+        if (i != null && i["type"] != null) {
+          if (i["id"] != null && i["type"] == "stop") {
+            var stop = getStopByID(i["id"]);
+            if (stop["Name"] != null && stop["id"] != null) {
+              newRecentSearches.add({
+                "Name": stop["Name"],
+                "subtitle": stop["id"],
+                "type": "stop",
+              });
+            }
+          } else if (i["svc"] != null && i["type"] == "svc") {
+            var svc = svcs[i["svc"]];
+            if (svc["name"] != null) {
+              newRecentSearches.add({
+                "Name": i["svc"],
+                "subtitle": svc["name"],
+                "type": "svc",
+              });
+            }
+          }
         }
+      });
+
+      setState(() {
+        recentSearches = newRecentSearches;
+        isRecentsLoaded = true;
+      });
+    } catch (e) {
+      setState(() {
+        error = true;
+        isRecentsLoaded = true;
       });
     }
   }
 
-  void onTextChange(text) {
-    searchBuses();
-    setState(() {
-      query = text;
-    });
-  }
-
   @override
   void initState() {
-    searchBuses();
+    loadRecents();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
+    double width = MediaQuery.of(context).size.width;
     return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 75,
-        title: TextField(
-            controller: searchQuery,
-            textInputAction: TextInputAction.search,
-            onChanged: onTextChange,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
-                  borderSide: BorderSide()),
-              hintText: 'Search for Stops or Buses',
-            )),
-      ),
-      // body: SearchRes(query: query),
-      body: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          appBar: AppBar(
-            toolbarHeight: 0,
-            bottom: const TabBar(
-              tabs: [
-                Tab(
-                  text: 'Stops',
-                ),
-                Tab(
-                  text: 'Buses',
-                ),
-              ],
-              indicatorSize: TabBarIndicatorSize.label,
+      body: Column(
+        children: [
+          SearchBarWidget(),
+          Container(
+            child: Text(
+              "Recents",
+              textAlign: TextAlign.left,
+              style: Theme.of(context).textTheme.labelSmall,
             ),
+            width: width,
+            padding: EdgeInsets.only(left: 10, top: 15),
           ),
-          body: TabBarView(children: [
-            ListView(
-              children: [
-                for (var stop in stops)
-                  if (stop['Name']
-                          .toString()
-                          .toLowerCase()
-                          .contains(query.toLowerCase()) ||
-                      stop['id']
-                          .toString()
-                          .toLowerCase()
-                          .contains(query.toLowerCase()))
-                    InkWell(
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => Stop(stop["id"])));
-                      },
-                      child: ListTile(
-                        title: Text(stop['Name']),
-                        subtitle: Text(stop['id']),
-                      ),
-                    )
-              ],
-            ),
-            ListView(
-              children: [
-                for (var bus in _busSearchRes)
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => BusRoute(bus['sno'])));
-                    },
-                    child: ListTile(
-                      title: Text('Bus ' + bus['sno']),
-                      subtitle: Text(bus['route']),
-                    ),
+          Expanded(
+            child: isRecentsLoaded && error
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 200.0),
+                    child: Center(
+                        child: Column(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Icon(
+                            Icons.warning,
+                            size: 50,
+                          ),
+                        ),
+                        Text("An error occured when fetching recent searches"),
+                      ],
+                    )),
+                  )
+                : Skeletonizer(
+                    enabled: !isRecentsLoaded,
+                    child: isRecentsLoaded && recentSearches.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 200.0),
+                            child: Center(
+                                child: Column(
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Icon(
+                                    Icons.search,
+                                    size: 50,
+                                  ),
+                                ),
+                                Text("No Recent searches"),
+                              ],
+                            )),
+                          )
+                        : ListView(
+                            children: [
+                              for (var item in recentSearches.reversed)
+                                ListTile(
+                                  title: Text(item["Name"]),
+                                  subtitle: Text(item["subtitle"]),
+                                  onTap: () {
+                                    if (item["type"] == "stop") {
+                                      Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (builder) =>
+                                                  Stop(item["subtitle"])));
+                                    } else if (item["type"] == "svc") {
+                                      Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (builder) =>
+                                                  BusRoute(item["Name"])));
+                                    }
+                                  },
+                                )
+                            ],
+                          ),
                   ),
-              ],
-            )
-          ]),
-        ),
+          )
+        ],
       ),
     );
   }
