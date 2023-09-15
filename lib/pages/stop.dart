@@ -172,6 +172,7 @@ class _StopState extends State<Stop> {
     if (_favouriteStops == null) {
       await prefs
           .setStringList('favourites', <String>[widget.stopid.toString()]);
+      _favouriteStops = [widget.stopid.toString()];
       setState(() => stopIsFavourited = true);
     } else {
       if (_favouriteStops.contains(widget.stopid.toString())) {
