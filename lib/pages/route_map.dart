@@ -1,10 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
@@ -30,8 +30,6 @@ class _RouteMapState extends State<RouteMap> {
   List routeStops = [];
   late AdWidget adWidget;
   var currRoute;
-
-  List<Marker> stops = [];
   @override
   void setState(fn) {
     if (mounted) {
@@ -69,38 +67,134 @@ class _RouteMapState extends State<RouteMap> {
     setState(() => routeStops = routeStops);
   }
 
+  // Future<void> initStops() async {
+  //   loadRoute();
+  //   for (var stop in routeStops) {
+  //     // stops.add(Marker(
+  //     //   point: LatLng(stop["cords"][1], stop["cords"][0]),
+  //     //   builder: (context) => const CircleAvatar(
+  //     //     child: Icon(
+  //     //       Icons.directions_bus,
+  //     //       color: Colors.white,
+  //     //     ),
+  //     //     backgroundColor: Colors.black,
+  //     //   ),
+  //     // ));
+  //   }
+  //   setState(() {
+  //     stops = stops;
+  //   });
+  // }
+
+  // Future<void> openStopByPos(pos) async {
+  //   List data = getStops();
+
+  //   for (var element in data) {
+  //     if ((element['cords'][1] == pos.latitude) &&
+  //         element['cords'][0] == pos.longitude) {
+  //       openStop(element['id']);
+  //     }
+  //   }
+  // }
+
+  // void openStop(id) {
+  //   Navigator.push(context, MaterialPageRoute(builder: (context) => Stop(id)));
+  // }
+
+  MapboxMap? mapboxMap;
+
+  _onMapCreated(MapboxMap mapboxMap) {
+    this.mapboxMap = mapboxMap;
+    mapboxMap.location.updateSettings(LocationComponentSettings(
+      enabled: true,
+      puckBearingEnabled: true,
+    ));
+    initStops();
+  }
+
   Future<void> initStops() async {
     loadRoute();
+    Map stopsGeoJsonMap = {
+      "type": "FeatureCollection",
+      "features": [],
+    };
+
     for (var stop in routeStops) {
-      stops.add(Marker(
-        point: LatLng(stop["cords"][1], stop["cords"][0]),
-        builder: (context) => const CircleAvatar(
-          child: Icon(
-            Icons.directions_bus,
-            color: Colors.white,
-          ),
-          backgroundColor: Colors.black,
+      stopsGeoJsonMap["features"].add({
+        "type": "Feature",
+        "id": stop["id"],
+        "properties": {
+          "number": stop["id"],
+          "name": stop["Name"],
+          "road": stop["Road"],
+        },
+        "geometry": {"type": "Point", "coordinates": stop["cords"]}
+      });
+      // stops.add(
+      //   Marker(
+      //     // point: LatLng(element["cords"][1], element["cords"][0]),
+      //     builder: (context) => const CircleAvatar(
+      //       child: Icon(Icons.directions_bus, color: Colors.white),
+      //       backgroundColor: Colors.black,
+      //     ),
+      //   ),
+      // );
+    }
+    await mapboxMap?.style.addSource(
+        GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
+    var stopsLayerJSON = {
+      "id": "stops_layer",
+      "type": "symbol",
+      "source": "stops"
+    };
+    await mapboxMap?.style.addStyleLayer(json.encode(stopsLayerJSON), null);
+    var stopsLayerProperties = {
+      'text-field': ['get', 'name'],
+      "icon-image": "bus",
+      "text-size": 10,
+      "text-offset": [0, 2],
+      "text-color": "#fff",
+    };
+    await mapboxMap?.style.setStyleLayerProperties(
+        "stops_layer", json.encode(stopsLayerProperties));
+
+    await mapboxMap?.style.addLayer(CircleLayer(
+      id: "stops_circle_layer",
+      sourceId: "stops",
+      circleRadius: 1.5,
+      maxZoom: 15.0,
+      circleColor: Colors.blue.value.toInt(),
+    ));
+
+    mapboxMap?.setOnMapTapListener(onTapListener);
+  }
+
+  Future<void> onTapListener(ScreenCoordinate coord) async {
+    // need to convert coord to real ScreenCoordinate for querying features.
+    final ScreenCoordinate conv = await mapboxMap!.pixelForCoordinate(
+      Point(
+        coordinates: Position(
+          coord.y,
+          coord.x,
         ),
-      ));
+      ).toJson(),
+    );
+
+    final List<QueriedFeature?> features =
+        await mapboxMap!.queryRenderedFeatures(
+      RenderedQueryGeometry(
+        value: jsonEncode(conv.encode()),
+        type: Type.SCREEN_COORDINATE,
+      ),
+      RenderedQueryOptions(
+        layerIds: ["stops_layer"],
+      ),
+    );
+
+    if (features[0] != null) {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (builder) => Stop(features[0]!.feature["id"].toString())));
     }
-    setState(() {
-      stops = stops;
-    });
-  }
-
-  Future<void> openStopByPos(pos) async {
-    List data = getStops();
-
-    for (var element in data) {
-      if ((element['cords'][1] == pos.latitude) &&
-          element['cords'][0] == pos.longitude) {
-        openStop(element['id']);
-      }
-    }
-  }
-
-  void openStop(id) {
-    Navigator.push(context, MaterialPageRoute(builder: (context) => Stop(id)));
   }
 
   Future<void> loadAd() async {
@@ -162,129 +256,19 @@ class _RouteMapState extends State<RouteMap> {
               body: Column(
                 children: [
                   Expanded(
-                    child: FlutterMap(
-                      options: MapOptions(
-                        plugins: [
-                          MarkerClusterPlugin(),
-                          const LocationMarkerPlugin()
-                        ],
-                        center: LatLng(1.420270, 103.811959),
-                        zoom: 10,
-                        maxZoom: 19.4,
-                        minZoom: 2,
-                        maxBounds: LatLngBounds.fromPoints([
-                          LatLng(2.150830, 103.361056),
-                          LatLng(0.667249, 104.368245)
-                        ]),
+                    child: MapWidget(
+                      resourceOptions: ResourceOptions(
+                        accessToken: mapboxAccessToken,
                       ),
-                      nonRotatedChildren: [
-                        Container(
-                          height: height,
-                          alignment: Alignment.bottomLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: isDark
-                                ? const Image(
-                                    image: AssetImage(
-                                        'assets/mapbox-logo-white.png'),
-                                    width: 100,
-                                  )
-                                : const Image(
-                                    image: AssetImage(
-                                        'assets/mapbox-logo-black.png'),
-                                    width: 100,
-                                  ),
-                          ),
-                        ),
-                        AttributionWidget(
-                            attributionBuilder: ((BuildContext context) {
-                          return Container(
-                            child: Padding(
-                              padding: const EdgeInsets.all(2.0),
-                              child: GestureDetector(
-                                child: Icon(Icons.info_outline),
-                                onTap: (() => showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return SimpleDialog(
-                                        title: Text("Map credits"),
-                                        children: [
-                                          SimpleDialogOption(
-                                            child: TextButton(
-                                              onPressed: () => launchUrl(
-                                                  Uri.parse(
-                                                      "https://www.mapbox.com/about/maps/"),
-                                                  mode: LaunchMode
-                                                      .externalApplication),
-                                              child: Text("© Mapbox"),
-                                            ),
-                                          ),
-                                          SimpleDialogOption(
-                                            child: TextButton(
-                                              onPressed: () => launchUrl(
-                                                  Uri.parse(
-                                                      "https://www.openstreetmap.org/about/"),
-                                                  mode: LaunchMode
-                                                      .externalApplication),
-                                              child: Text("© OpenStreetMap"),
-                                            ),
-                                          ),
-                                          SimpleDialogOption(
-                                            child: TextButton(
-                                              onPressed: () => launchUrl(
-                                                  Uri.parse(
-                                                      "https://www.mapbox.com/map-feedback/"),
-                                                  mode: LaunchMode
-                                                      .externalApplication),
-                                              child: Text("Improve this map"),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    })),
-                              ),
-                            ),
-                          );
-                        }))
-                      ],
-                      layers: [
-                        TileLayerOptions(
-                          maxZoom: 19,
-                          urlTemplate: isDark
-                              ? "https://api.mapbox.com/styles/v1/slen/cl4p0y50c000a15qhcozehloa/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
-                              : "https://api.mapbox.com/styles/v1/slen/clb64djkx000014pcw46b1h9m/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-                          additionalOptions: {
-                            "access_token": mapboxAccessToken,
-                          },
-                          userAgentPackageName: 'com.slen.sgbus',
-                        ),
-                        LocationMarkerLayerOptions(),
-                        // MarkerLayerOptions(markers: stops, ),
-                        // PolylineLayerOptions(
-                        //   polylines: [
-                        //     Polyline(
-                        //         points: routeAsLatLng,
-                        //         color: Colors.blue,
-                        //         strokeWidth: 2),
-                        //   ],
-                        // ),
-                        MarkerClusterLayerOptions(
-                          markers: stops,
-                          maxClusterRadius: 25,
-                          onMarkerTap: (e) {
-                            openStopByPos(e.point);
-                          },
-                          builder: (context, markers) {
-                            return CircleAvatar(
-                              child: Text(
-                                markers.length.toString(),
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              backgroundColor: Colors.black,
-                            );
-                          },
-                        ),
-                      ],
+                      cameraOptions: CameraOptions(
+                        center: Point(coordinates: Position(103.8198, 1.290270))
+                            .toJson(),
+                        zoom: 9,
+                      ),
+                      onMapCreated: _onMapCreated,
+                      styleUri: isDark
+                          ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+                          : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
                     ),
                   ),
                   isAdLoaded

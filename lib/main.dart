@@ -342,25 +342,22 @@ class _RootPageState extends State<RootPage> {
     // bool isDarkMode = brightness == Brightness.dark;
     return isLoaded
         ? Scaffold(
-            extendBodyBehindAppBar: (currPageIndex == 1),
-            appBar: (currPageIndex != 1)
-                ? AppBar(
-                    systemOverlayStyle: SystemUiOverlayStyle(
-                      statusBarColor: Colors.transparent,
-                      statusBarIconBrightness:
-                          isDark ? Brightness.light : Brightness.dark,
-                    ),
-                    title: Text(pageName[currPageIndex]),
-                    scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
-                    actions: [
-                      IconButton(
-                          onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (context) => const Settings())),
-                          icon: Icon(Icons.settings))
-                    ],
-                  )
-                : null,
+            appBar: AppBar(
+              systemOverlayStyle: SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness:
+                    isDark ? Brightness.light : Brightness.dark,
+              ),
+              title: Text(pageName[currPageIndex]),
+              scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
+              actions: [
+                IconButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (context) => const Settings())),
+                    icon: Icon(Icons.settings))
+              ],
+            ),
             body: pages[currPageIndex],
             bottomNavigationBar: NavigationBar(
               onDestinationSelected: (int index) {
