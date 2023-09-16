@@ -77,6 +77,15 @@ class _SearchState extends State<Search> {
     }
   }
 
+  Future<void> clearRecentSearches() async {
+    var prefs = await SharedPreferences.getInstance();
+
+    prefs.remove("recentSearches");
+    setState(() {
+      recentSearches = [];
+    });
+  }
+
   @override
   void initState() {
     loadRecents();
@@ -91,13 +100,26 @@ class _SearchState extends State<Search> {
         children: [
           SearchBarWidget(),
           Container(
-            child: Text(
-              "Recents",
-              textAlign: TextAlign.left,
-              style: Theme.of(context).textTheme.labelSmall,
+            child: Row(
+              children: [
+                Text(
+                  "Recents",
+                  textAlign: TextAlign.left,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
+                Spacer(),
+                TextButton(
+                  child: Text(
+                    "Clear",
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  onPressed: clearRecentSearches,
+                ),
+              ],
             ),
             width: width,
-            padding: EdgeInsets.only(left: 10, top: 15),
+            padding: EdgeInsets.only(left: 10),
           ),
           Expanded(
             child: isRecentsLoaded && error
