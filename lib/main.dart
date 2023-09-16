@@ -10,6 +10,7 @@ import 'package:http/http.dart';
 import 'package:in_app_update/in_app_update.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sgbus/components/searchDelegate.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/mrt_map.dart';
@@ -351,11 +352,17 @@ class _RootPageState extends State<RootPage> {
               title: Text(pageName[currPageIndex]),
               scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
               actions: [
+                if (currPageIndex != 2)
+                  IconButton(
+                    onPressed: () => showSearch(
+                        context: context, delegate: SBSearchDelegate()),
+                    icon: Icon(Icons.search_rounded),
+                  ),
                 IconButton(
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (context) => const Settings())),
-                    icon: Icon(Icons.settings))
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (context) => const Settings())),
+                  icon: Icon(Icons.settings),
+                ),
               ],
             ),
             body: pages[currPageIndex],

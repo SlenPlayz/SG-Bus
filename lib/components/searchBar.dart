@@ -23,7 +23,7 @@ class SearchBarWidget extends StatelessWidget {
           child: InkWell(
             onTap: () async {
               await showSearch(context: context, delegate: SBSearchDelegate());
-              callback();
+              if (callback != null) callback();
             },
             child: Padding(
               padding: const EdgeInsets.only(left: 15, right: 10),
