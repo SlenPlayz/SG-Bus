@@ -119,6 +119,17 @@ class _RouteMapState extends State<RouteMap> {
       "features": [],
     };
 
+    Map busRouteGeoJsonMap = {
+      "type": "FeatureCollection",
+      "features": [
+        {
+          "type": "Feature",
+          "properties": {"number": widget.sno},
+          "geometry": {"type": "LineString", "coordinates": []}
+        }
+      ],
+    };
+
     for (var stop in routeStops) {
       stopsGeoJsonMap["features"].add({
         "type": "Feature",
@@ -130,15 +141,9 @@ class _RouteMapState extends State<RouteMap> {
         },
         "geometry": {"type": "Point", "coordinates": stop["cords"]}
       });
-      // stops.add(
-      //   Marker(
-      //     // point: LatLng(element["cords"][1], element["cords"][0]),
-      //     builder: (context) => const CircleAvatar(
-      //       child: Icon(Icons.directions_bus, color: Colors.white),
-      //       backgroundColor: Colors.black,
-      //     ),
-      //   ),
-      // );
+
+      busRouteGeoJsonMap["features"][0]["geometry"]["coordinates"]
+          .add(stop["cords"]);
     }
     await mapboxMap?.style.addSource(
         GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
@@ -163,7 +168,17 @@ class _RouteMapState extends State<RouteMap> {
       sourceId: "stops",
       circleRadius: 1.5,
       maxZoom: 15.0,
-      circleColor: Colors.blue.value.toInt(),
+      circleColor: Colors.blue.value,
+    ));
+
+    await mapboxMap?.style.addSource(
+        GeoJsonSource(id: "routeLine", data: jsonEncode(busRouteGeoJsonMap)));
+
+    await mapboxMap?.style.addLayer(LineLayer(
+      id: "stops_line_layer",
+      sourceId: "routeLine",
+      lineWidth: 4.0,
+      linePattern: "oneway-small",
     ));
 
     mapboxMap?.setOnMapTapListener(onTapListener);
