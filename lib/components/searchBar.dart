@@ -3,7 +3,9 @@ import 'package:sgbus/components/searchDelegate.dart';
 import 'package:sgbus/pages/settings.dart';
 
 class SearchBarWidget extends StatelessWidget {
-  const SearchBarWidget({Key? key}) : super(key: key);
+  const SearchBarWidget({Key? key, this.callback}) : super(key: key);
+
+  final callback;
 
   @override
   Widget build(BuildContext context) {
@@ -19,8 +21,10 @@ class SearchBarWidget extends StatelessWidget {
             color: Theme.of(context).colorScheme.primaryContainer,
           ),
           child: InkWell(
-            onTap: () =>
-                showSearch(context: context, delegate: SBSearchDelegate()),
+            onTap: () async {
+              await showSearch(context: context, delegate: SBSearchDelegate());
+              callback();
+            },
             child: Padding(
               padding: const EdgeInsets.only(left: 15, right: 10),
               child: Row(

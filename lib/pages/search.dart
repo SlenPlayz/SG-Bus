@@ -98,7 +98,7 @@ class _SearchState extends State<Search> {
     return Scaffold(
       body: Column(
         children: [
-          SearchBarWidget(),
+          SearchBarWidget(callback: loadRecents),
           Container(
             child: Row(
               children: [
