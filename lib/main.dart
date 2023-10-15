@@ -21,6 +21,7 @@ import 'package:sgbus/pages/setup.dart';
 import 'package:sgbus/pages/stops_map.dart';
 import 'package:sgbus/pages/search.dart';
 import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/downloadData.dart';
 import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -181,6 +182,7 @@ class _RootPageState extends State<RootPage> {
   var searchQuery = TextEditingController();
 
   bool isLoaded = false;
+  bool isDataUpdating = false;
   var prefs;
 
   void checkData() async {
@@ -278,31 +280,7 @@ class _RootPageState extends State<RootPage> {
                 .compareTo(DateTime.parse(response["lastUpdated"]));
 
         if (dateDiff < 0) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                title: const Text('Update dataset'),
-                content: const Text(
-                    "A new dataset update is avaliable. This should take less than a minute"),
-                actions: [
-                  TextButton(
-                    onPressed: (() {
-                      Navigator.of(context).pop();
-                    }),
-                    child: const Text('Later'),
-                  ),
-                  TextButton(
-                    onPressed: (() {
-                      Navigator.of(context).push(MaterialPageRoute(
-                          builder: (context) => const DownloadPage()));
-                    }),
-                    child: const Text('Update Now'),
-                  ),
-                ],
-              );
-            },
-          );
+          updateData();
         }
       }).catchError((err, stackTrace) async {
         await Sentry.captureException(
@@ -311,6 +289,52 @@ class _RootPageState extends State<RootPage> {
         );
       });
     }
+  }
+
+  Future<void> updateData() async {
+    void onError() {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("An error occured while trying to update data"),
+            content: Text(
+                "Check that wifi or mobile data is enabled. If problem persists try again later in settings."),
+            actions: [
+              TextButton(
+                onPressed: (() {
+                  Navigator.of(context).pop();
+                }),
+                child: const Text('Dismiss'),
+              ),
+              TextButton(
+                onPressed: (() {
+                  updateData();
+                  Navigator.of(context).pop();
+                }),
+                child: const Text('Retry'),
+              ),
+            ],
+            scrollable: true,
+          );
+        },
+      );
+    }
+
+    setState(() {
+      isDataUpdating = true;
+    });
+    try {
+      bool success = await downloadData();
+      if (!success) {
+        onError();
+      }
+    } catch (e) {
+      onError();
+    }
+    setState(() {
+      isDataUpdating = false;
+    });
   }
 
   @override
@@ -332,7 +356,9 @@ class _RootPageState extends State<RootPage> {
                 statusBarIconBrightness:
                     isDark ? Brightness.light : Brightness.dark,
               ),
-              title: Text(pageName[currPageIndex]),
+              title: isDataUpdating
+                  ? Text("Updating data..")
+                  : Text(pageName[currPageIndex]),
               scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
               actions: [
                 if (currPageIndex != 2)
@@ -348,7 +374,14 @@ class _RootPageState extends State<RootPage> {
                 ),
               ],
             ),
-            body: pages[currPageIndex],
+            body: Column(
+              children: [
+                (isDataUpdating && currPageIndex != 2)
+                    ? LinearProgressIndicator()
+                    : Container(),
+                Expanded(child: pages[currPageIndex]),
+              ],
+            ),
             bottomNavigationBar: NavigationBar(
               onDestinationSelected: (int index) {
                 setState(() {
