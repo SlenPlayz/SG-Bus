@@ -86,6 +86,7 @@ flutter:
     - assets/mrt-map.jpg
     - assets/mapbox-logo-white.png
     - assets/mapbox-logo-black.png
+    - assets/icon.png
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

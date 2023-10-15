@@ -17,6 +17,7 @@ import 'package:sgbus/pages/mrt_map.dart';
 import 'package:sgbus/pages/nearby.dart';
 import 'package:sgbus/pages/favourites.dart';
 import 'package:sgbus/pages/settings.dart';
+import 'package:sgbus/pages/setup.dart';
 import 'package:sgbus/pages/stops_map.dart';
 import 'package:sgbus/pages/search.dart';
 import 'package:sgbus/scripts/data.dart';
@@ -196,26 +197,8 @@ class _RootPageState extends State<RootPage> {
     }
 
     if (stops == null || svcs == null || localVersion == null) {
-      showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return WillPopScope(
-              onWillPop: () async => false,
-              child: AlertDialog(
-                title: const Text('Seems like your first time!'),
-                content: const Text(
-                    'SGBus needs to download some data from the internet to function. This will take less that a minute.'),
-                actions: [
-                  TextButton(
-                      onPressed: (() {
-                        Navigator.of(context).push(MaterialPageRoute(
-                            builder: (context) => const DownloadPage()));
-                      }),
-                      child: const Text('Download now'))
-                ],
-              ),
-            );
-          });
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (builder) => Setup()));
     } else {
       saveStops(stops);
       saveSvcs(svcs);
