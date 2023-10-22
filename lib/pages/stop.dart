@@ -4,10 +4,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbm;
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
+import 'package:sgbus/pages/stop_spec_map.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,6 +40,7 @@ class _StopState extends State<Stop> {
 
   List services = [];
   String name = '';
+  var coords;
   List arrTimings = [];
   var _favouriteStops;
   var prefs;
@@ -146,6 +149,7 @@ class _StopState extends State<Stop> {
         setState(() {
           name = element['Name'];
           arrTimings = arrTimings;
+          coords = element["cords"];
         });
       }
     }
@@ -263,10 +267,21 @@ class _StopState extends State<Stop> {
           title: Text(name),
           actions: [
             IconButton(
-                onPressed: favourite,
-                icon: stopIsFavourited
-                    ? const Icon(Icons.favorite)
-                    : const Icon(Icons.favorite_outline)),
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (BuildContext context) => StopSpecMap(
+                          coords: coords,
+                          name: name,
+                        )));
+              },
+              icon: Icon(Icons.map_rounded),
+            ),
+            IconButton(
+              onPressed: favourite,
+              icon: stopIsFavourited
+                  ? const Icon(Icons.favorite)
+                  : const Icon(Icons.favorite_outline),
+            ),
           ],
         ),
         floatingActionButton: Padding(
