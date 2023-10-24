@@ -1,14 +1,7 @@
-import 'dart:convert';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:http/http.dart';
 import 'package:restart_app/restart_app.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
-import 'package:sgbus/env.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sgbus/scripts/downloadData.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({Key? key}) : super(key: key);
@@ -18,224 +11,182 @@ class DownloadPage extends StatefulWidget {
 }
 
 class _DownloadPageState extends State<DownloadPage> {
-  final BannerAd Ad = BannerAd(
-    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
-    size: AdSize.banner,
-    request: AdRequest(),
-    listener: BannerAdListener(),
-  );
+  int currState = 0;
 
-  bool error = false;
-  String errorMsg = '';
-  bool downloaded = false;
-  String downloadStatus = 'Starting download...';
-  static const String endpoint = serverURL;
-  bool isAdLoaded = false;
-  late AdWidget adWidget;
-
-  void download() async {
+  void goto(int i) {
     setState(() {
-      error = false;
+      currState = i;
     });
-    var prefs = await SharedPreferences.getInstance();
-    setState(() {
-      downloadStatus = 'Downloading stops...';
-    });
-
-    final stopsEndpoint = Uri.parse('$endpoint/api/data/stops');
-    get(stopsEndpoint).then((stopsData) async {
-      var stops = stopsData.body;
-
-      try {
-        bool validStops = validateStops(stops);
-        if (!validStops) throw "Invalid data";
-        await prefs.setString('stops', stops);
-
-        setState(() {
-          downloadStatus = 'Downloading services...';
-        });
-
-        final svcsEndpoint = Uri.parse('$endpoint/api/data/services');
-        get(svcsEndpoint).then((svcsData) async {
-          var svcs = svcsData.body;
-          try {
-            jsonDecode(svcs);
-            bool validServices = validateServices(svcs);
-            if (!validServices) throw "Invalid data";
-            await prefs.setString('svcs', svcs);
-            await prefs.setString(
-                'version', DateTime.now().millisecondsSinceEpoch.toString());
-            setState(() {
-              if (kReleaseMode) {
-                downloadStatus = 'Downloaded!';
-              } else {
-                downloadStatus = 'Please hot restart the app';
-              }
-            });
-            if (kReleaseMode) {
-              Restart.restartApp();
-            }
-          } catch (exception, stackTrace) {
-            await Sentry.captureException(
-              exception,
-              stackTrace: stackTrace,
-            );
-            if (!kReleaseMode) print(exception.toString());
-            setState(() {
-              error = true;
-            });
-          }
-        }).catchError((err, stackTrace) async {
-          await Sentry.captureException(
-            "An error occured while downloading data",
-            stackTrace: stackTrace,
-          );
-          setState(() {
-            error = true;
-          });
-        });
-      } catch (err, stackTrace) {
-        await Sentry.captureException(
-          err,
-          stackTrace: stackTrace,
-        );
-        if (!kReleaseMode) print(err.toString());
-        setState(() {
-          error = true;
-        });
-      }
-    }).catchError((err, stackTrace) async {
-      await Sentry.captureException(
-        "An error occured while downloading data",
-        stackTrace: stackTrace,
-      );
-      setState(() {
-        error = true;
-      });
-    });
-  }
-
-  Future<void> loadAd() async {
-    try {
-      adWidget = AdWidget(ad: Ad);
-      await Ad.load();
-      isAdLoaded = true;
-    } catch (err, stackTrace) {
-      await Sentry.captureException(
-        err,
-        stackTrace: stackTrace,
-      );
-      if (!kReleaseMode) print(err);
-    }
   }
 
   @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: (currState == 0)
+          ? DownloadDataPage(goto: goto)
+          : (currState == 1)
+              ? DownloadCompletePage(goto: goto)
+              : DownloadFailedPage(goto: goto),
+    );
+  }
+}
+
+class DownloadDataPage extends StatefulWidget {
+  const DownloadDataPage({Key? key, required this.goto}) : super(key: key);
+  final goto;
+
+  @override
+  _DownloadDataPageState createState() => _DownloadDataPageState();
+}
+
+class _DownloadDataPageState extends State<DownloadDataPage> {
+  Future<void> download() async {
+    try {
+      bool success = await downloadData();
+      if (success) {
+        widget.goto(1);
+      } else {
+        widget.goto(2);
+      }
+    } catch (e) {
+      widget.goto(3);
+    }
+  }
+
   void initState() {
-    if (adsEnabled) loadAd();
     download();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    double height = MediaQuery.of(context).size.height;
+    double width = MediaQuery.of(context).size.width;
 
-    return WillPopScope(
-      onWillPop: () async => false,
-      child: Scaffold(
-          appBar: AppBar(
-            toolbarHeight: 0,
-            systemOverlayStyle: const SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Spacer(),
+          Icon(
+            Icons.download,
+            size: 75,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+          Text(
+            "Downloading...",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontSize: 24,
             ),
           ),
-          body: error
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 20.0),
-                        child: Icon(Icons.warning, size: 50),
-                      ),
-                      const Text(
-                          "Sorry, we couldnt download the data try again later"),
-                    ],
-                  ),
-                )
-              : Stack(
-                  children: [
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(bottom: 20.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                          Text(downloadStatus),
-                        ],
-                      ),
-                    ),
-                    isAdLoaded
-                        ? Container(
-                            height: height,
-                            alignment: Alignment.bottomCenter,
-                            child: Container(
-                              alignment: Alignment.center,
-                              child: adWidget,
-                              width: Ad.size.width.toDouble(),
-                              height: Ad.size.height.toDouble(),
-                            ),
-                          )
-                        : Container(),
-                  ],
-                )),
+          Spacer(),
+          Container(
+            width: width,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 20.0, bottom: 10.0),
+              child: Text(
+                "Downloading stops and services...",
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          )
+        ],
+      ),
     );
   }
 }
 
-bool validateStops(stopsRaw) {
-  bool valid = true;
+class DownloadCompletePage extends StatelessWidget {
+  const DownloadCompletePage({Key? key, this.goto}) : super(key: key);
+  final goto;
 
-  var stops = jsonDecode(stopsRaw);
-
-  for (var stop in stops) {
-    if (stop["Name"] == null) {
-      valid = false;
-    }
-    if (stop["Services"] == null) {
-      valid = false;
-    }
-    if (stop["id"] == null) {
-      valid = false;
-    }
-    if (stop["cords"] == null) {
-      valid = false;
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.check_rounded,
+            size: 75,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+          Text(
+            "Download completed!",
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontSize: 24,
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              if (kReleaseMode) {
+                Restart.restartApp();
+              }
+            },
+            child: Text(
+              "Enter app",
+            ),
+          )
+        ],
+      ),
+    );
   }
-
-  return valid;
 }
 
-bool validateServices(servicesRaw) {
-  bool valid = true;
+class DownloadFailedPage extends StatelessWidget {
+  const DownloadFailedPage({Key? key, this.goto}) : super(key: key);
+  final goto;
 
-  var services = jsonDecode(servicesRaw);
-
-  services.forEach((k, v) {
-    if (k == null) {
-      valid = false;
-    }
-    if (v["routes"] == null) {
-      valid = false;
-    }
-    if (v["name"] == null) {
-      valid = false;
-    }
-  });
-
-  return valid;
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.error,
+            size: 75,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+          Text(
+            "Download failed",
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontSize: 24,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              "Check that wifi or mobile data is enabled. If problem persists try again later.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onBackground,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              goto(0);
+            },
+            child: Text(
+              "Retry",
+            ),
+          )
+        ],
+      ),
+    );
+  }
 }
