@@ -403,8 +403,8 @@ class _RootPageState extends State<RootPage> {
                   label: 'MRT map',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.star_border_rounded),
-                  selectedIcon: Icon(Icons.star_rounded),
+                  icon: Icon(Icons.favorite_border_rounded),
+                  selectedIcon: Icon(Icons.favorite_rounded),
                   label: 'Favourites',
                 ),
               ],

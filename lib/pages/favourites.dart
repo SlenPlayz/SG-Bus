@@ -56,8 +56,43 @@ class _FavouritesState extends State<Favourites> {
                     )
                 ],
               )
-            : const Center(
-                child: Text('No favourites yet!'),
+            : Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        size: 75,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
+                        'No favourites yet!',
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: 300,
+                      child: Text(
+                        'Add favourites by clicking the heart icon on a stop page',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSecondaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               )
         : const Center(
             child: CircularProgressIndicator(),
