@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restart_app/restart_app.dart';
 import 'package:sgbus/pages/download_page.dart';
