@@ -4,7 +4,9 @@ import 'package:restart_app/restart_app.dart';
 import 'package:sgbus/scripts/downloadData.dart';
 
 class DownloadPage extends StatefulWidget {
-  const DownloadPage({Key? key}) : super(key: key);
+  const DownloadPage({Key? key, required this.restartOnComplete})
+      : super(key: key);
+  final bool restartOnComplete;
 
   @override
   _DownloadPageState createState() => _DownloadPageState();
@@ -25,7 +27,10 @@ class _DownloadPageState extends State<DownloadPage> {
       body: (currState == 0)
           ? DownloadDataPage(goto: goto)
           : (currState == 1)
-              ? DownloadCompletePage(goto: goto)
+              ? DownloadCompletePage(
+                  goto: goto,
+                  restartOnComplete: widget.restartOnComplete,
+                )
               : DownloadFailedPage(goto: goto),
     );
   }
@@ -106,8 +111,11 @@ class _DownloadDataPageState extends State<DownloadDataPage> {
 }
 
 class DownloadCompletePage extends StatelessWidget {
-  const DownloadCompletePage({Key? key, this.goto}) : super(key: key);
+  const DownloadCompletePage(
+      {Key? key, this.goto, required this.restartOnComplete})
+      : super(key: key);
   final goto;
+  final bool restartOnComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -130,8 +138,12 @@ class DownloadCompletePage extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              if (kReleaseMode) {
-                Restart.restartApp();
+              if (restartOnComplete) {
+                if (kReleaseMode) {
+                  Restart.restartApp();
+                }
+              } else {
+                Navigator.of(context).pop();
               }
             },
             child: Text(

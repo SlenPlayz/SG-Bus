@@ -78,7 +78,9 @@ class SetupWelcomeScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (BuildContext context) => DownloadPage())),
+                builder: (BuildContext context) => DownloadPage(
+                      restartOnComplete: true,
+                    ))),
             child: Text(
               "Start Download",
             ),
