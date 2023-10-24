@@ -12,7 +12,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/searchDelegate.dart';
 import 'package:sgbus/env.dart';
-import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/mrt_map.dart';
 import 'package:sgbus/pages/nearby.dart';
 import 'package:sgbus/pages/favourites.dart';
@@ -41,8 +40,6 @@ Future<void> main() async {
       (options) {
         options.dsn =
             'https://7dc195a0ea1742c89c3cf4e9f8f18f83@o4504325797445632.ingest.sentry.io/4504325798559744';
-        // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-        // We recommend adjusting this value in production.
         options.tracesSampleRate = 0.5;
       },
       appRunner: () => runApp(MyApp()),
@@ -125,7 +122,6 @@ class _MyAppState extends State<MyApp> {
     super.initState();
   }
 
-  // This widget is the root of your application.
   Widget build(BuildContext context) {
     if (!isLoaded) {
       return Center(
@@ -345,9 +341,6 @@ class _RootPageState extends State<RootPage> {
 
   @override
   Widget build(BuildContext context) {
-    // var brightness =
-    //     SchedulerBinding.instance.platformDispatcher.platformBrightness;
-    // bool isDarkMode = brightness == Brightness.dark;
     return isLoaded
         ? Scaffold(
             appBar: AppBar(

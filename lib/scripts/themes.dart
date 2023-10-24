@@ -1,7 +1,5 @@
-import 'package:dynamic_color/samples.dart';
 import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:material_color_utilities/material_color_utilities.dart';
 
 var corePalette = DynamicColorPlugin.getCorePalette();
 

@@ -16,26 +16,6 @@ class _FavouritesState extends State<Favourites> {
   bool isLoaded = false;
 
   Future<void> loadFavs() async {
-    // try {
-    //   prefs = await SharedPreferences.getInstance();
-    // } catch (err) {
-    //   showDialog(
-    //       context: context,
-    //       builder: (BuildContext context) {
-    //         return AlertDialog(
-    //           icon: const Icon(Icons.error_outline),
-    //           title: const Text("Failed to get favourites"),
-    //           content: Text(err.toString()),
-    //           actions: [
-    //             TextButton(
-    //                 onPressed: () {
-    //                   Navigator.of(context).pop();
-    //                 },
-    //                 child: const Text('Close'))
-    //           ],
-    //         );
-    //       });
-    // }
     prefs = await SharedPreferences.getInstance();
     var favouriteStopsIDs = (prefs.getStringList('favourites') ?? []);
 

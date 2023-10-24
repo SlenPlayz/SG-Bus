@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mbm;
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
@@ -17,7 +16,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Stop extends StatefulWidget {
   final String stopid;
   const Stop(this.stopid);
-  // const Stop({Key? key}) : super(key: key);
 
   @override
   _StopState createState() => _StopState();
@@ -61,10 +59,10 @@ class _StopState extends State<Stop> {
 
       arrivalData = jsonDecode(response);
 
-      if (arrivalData != null) {
+      try {
         calcTimings();
-      } else {
-        throw "Failed to get arrival timings";
+      } catch (err) {
+        throw err;
       }
       ;
     } catch (err, stackTrace) {
@@ -199,7 +197,7 @@ class _StopState extends State<Stop> {
   }
 
   void calcTimings() {
-    if (arrivalData != null && arrivalData["Services"] != null) {
+    if (arrivalData["Services"] != null) {
       arrivalData['Services'].forEach((x) {
         bool multiple = false;
 
@@ -210,11 +208,6 @@ class _StopState extends State<Stop> {
               x["NextBus"]["DestinationCode"] !=
                   c["NextBus"]["DestinationCode"]) {
             multiple = true;
-            // Map multipleDat = {
-            //   "ServiceNo": x["ServiceNo"],
-            //   "D1Timings": {x["NextBus"], x["NextBus2"], x["NextBus3"]},
-            //   "D2Timings": {c["NextBus"], c["NextBus2"], c["NextBus3"]},
-            // };
 
             List arrTimingsCopy = List.from(arrTimings);
 

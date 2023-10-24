@@ -24,20 +24,17 @@ class SBSearchDelegate extends SearchDelegate {
 
   @override
   List<Widget> buildActions(BuildContext context) {
-    // TODO: implement buildActions
     return [IconButton(onPressed: () => query = "", icon: Icon(Icons.close))];
   }
 
   @override
   Widget buildLeading(BuildContext context) {
-    // TODO: implement buildLeading
     return IconButton(
         onPressed: () => close(context, null), icon: Icon(Icons.arrow_back));
   }
 
   @override
   Widget buildResults(BuildContext context) {
-    // TODO: implement buildResults
     return searchResultsWidget(
       query: query,
       close: close,
@@ -46,7 +43,6 @@ class SBSearchDelegate extends SearchDelegate {
 
   @override
   Widget buildSuggestions(BuildContext context) {
-    // TODO: implement buildSuggestions
     return searchResultsWidget(
       query: query,
       close: close,

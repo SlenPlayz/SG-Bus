@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:sgbus/components/searchDelegate.dart';
-import 'package:sgbus/pages/settings.dart';
 
 class SearchBarWidget extends StatelessWidget {
   const SearchBarWidget({Key? key, this.callback}) : super(key: key);

@@ -9,7 +9,6 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class RouteMap extends StatefulWidget {
   const RouteMap({Key? key, required this.sno}) : super(key: key);
@@ -66,40 +65,6 @@ class _RouteMapState extends State<RouteMap> {
 
     setState(() => routeStops = routeStops);
   }
-
-  // Future<void> initStops() async {
-  //   loadRoute();
-  //   for (var stop in routeStops) {
-  //     // stops.add(Marker(
-  //     //   point: LatLng(stop["cords"][1], stop["cords"][0]),
-  //     //   builder: (context) => const CircleAvatar(
-  //     //     child: Icon(
-  //     //       Icons.directions_bus,
-  //     //       color: Colors.white,
-  //     //     ),
-  //     //     backgroundColor: Colors.black,
-  //     //   ),
-  //     // ));
-  //   }
-  //   setState(() {
-  //     stops = stops;
-  //   });
-  // }
-
-  // Future<void> openStopByPos(pos) async {
-  //   List data = getStops();
-
-  //   for (var element in data) {
-  //     if ((element['cords'][1] == pos.latitude) &&
-  //         element['cords'][0] == pos.longitude) {
-  //       openStop(element['id']);
-  //     }
-  //   }
-  // }
-
-  // void openStop(id) {
-  //   Navigator.push(context, MaterialPageRoute(builder: (context) => Stop(id)));
-  // }
 
   MapboxMap? mapboxMap;
 
@@ -228,27 +193,10 @@ class _RouteMapState extends State<RouteMap> {
     }
   }
 
-  void initRouteLine() {
-    // var routes = getRoutes();
-    // List routeArrayRaw = [];
-
-    // for (var route in routes) {
-    //   if (route['properties']['number'] == widget.sno) {
-    //     routeArrayRaw = route['geometry']['coordinates'];
-    //     break;
-    //   }
-    // }
-
-    // routeArrayRaw.forEach((coordinate) {
-    //   routeAsLatLng.add(LatLng(coordinate[1], coordinate[0]));
-    // });
-  }
-
   @override
   void initState() {
     super.initState();
     initStops();
-    initRouteLine();
     if (adsEnabled) loadAd();
     setState(() {
       stops = stops;
@@ -258,10 +206,6 @@ class _RouteMapState extends State<RouteMap> {
 
   @override
   Widget build(BuildContext context) {
-    // var brightness = MediaQuery.of(context).platformBrightness;
-    // bool isDarkMode = brightness == Brightness.dark;
-    double height = MediaQuery.of(context).size.height;
-
     return Scaffold(
       body: isLoaded
           ? Scaffold(

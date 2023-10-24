@@ -2,21 +2,17 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class StopSpecMap extends StatefulWidget {
   final coords;
   final name;
   const StopSpecMap({Key? key, this.coords, this.name}) : super(key: key);
-  // final updatePos;
 
   @override
   _StopSpecMapState createState() => _StopSpecMapState();
@@ -66,15 +62,6 @@ class _StopSpecMapState extends State<StopSpecMap> {
         },
         "geometry": {"type": "Point", "coordinates": stop["cords"]}
       });
-      // stops.add(
-      //   Marker(
-      //     // point: LatLng(element["cords"][1], element["cords"][0]),
-      //     builder: (context) => const CircleAvatar(
-      //       child: Icon(Icons.directions_bus, color: Colors.white),
-      //       backgroundColor: Colors.black,
-      //     ),
-      //   ),
-      // );
     }
     await mapboxMap?.style.addSource(
         GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
@@ -142,9 +129,11 @@ class _StopSpecMapState extends State<StopSpecMap> {
 
   Future<void> loadAd() async {
     try {
-      adWidget = AdWidget(ad: Ad);
+      adWidget = AdWidget(
+        ad: Ad,
+      );
       await Ad.load();
-      isAdLoaded = true;
+      setState(() => isAdLoaded = true);
     } catch (err, stackTrace) {
       await Sentry.captureException(
         err,
@@ -174,17 +163,13 @@ class _StopSpecMapState extends State<StopSpecMap> {
 
   @override
   void initState() {
-    // initMap();
-    // if (adsEnabled) loadAd();
+    initMap();
+    if (adsEnabled) loadAd();
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    // var brightness = MediaQuery.of(context).platformBrightness;
-    // bool isDarkMode = brightness == Brightness.dark;
-    double height = MediaQuery.of(context).size.height;
-
     return Scaffold(
         body: Column(
       children: [

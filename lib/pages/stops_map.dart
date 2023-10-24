@@ -4,17 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class StopsMap extends StatefulWidget {
   const StopsMap({Key? key}) : super(key: key);
-  // final updatePos;
 
   @override
   _StopsMapState createState() => _StopsMapState();
@@ -65,15 +62,6 @@ class _StopsMapState extends State<StopsMap> {
         },
         "geometry": {"type": "Point", "coordinates": stop["cords"]}
       });
-      // stops.add(
-      //   Marker(
-      //     // point: LatLng(element["cords"][1], element["cords"][0]),
-      //     builder: (context) => const CircleAvatar(
-      //       child: Icon(Icons.directions_bus, color: Colors.white),
-      //       backgroundColor: Colors.black,
-      //     ),
-      //   ),
-      // );
     }
     await mapboxMap?.style.addSource(
         GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
@@ -223,9 +211,6 @@ class _StopsMapState extends State<StopsMap> {
         isLoaded = true;
       });
     });
-    // setState(() {
-    //   isLoaded = true;
-    // });
   }
 
   @override
@@ -237,10 +222,6 @@ class _StopsMapState extends State<StopsMap> {
 
   @override
   Widget build(BuildContext context) {
-    // var brightness = MediaQuery.of(context).platformBrightness;
-    // bool isDarkMode = brightness == Brightness.dark;
-    double height = MediaQuery.of(context).size.height;
-
     return Scaffold(
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 50),
@@ -260,24 +241,6 @@ class _StopsMapState extends State<StopsMap> {
                     duration: 2000,
                     startDelay: 0,
                   ));
-              // } else {
-              //   showDialog(
-              //       context: context,
-              //       builder: (BuildContext context) {
-              //         return AlertDialog(
-              //           icon: Icon(Icons.warning),
-              //           title: Text('Unable to move to current location'),
-              //           content: Text("Seems like you aren't in Singapore"),
-              //           actions: [
-              //             TextButton(
-              //                 onPressed: () {
-              //                   Navigator.of(context).pop();
-              //                 },
-              //                 child: const Text('Dismiss'))
-              //           ],
-              //         );
-              //       });
-              // }
             }).catchError((err) {
               showDialog(
                   context: context,

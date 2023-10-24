@@ -5,7 +5,6 @@ import 'package:sgbus/components/bus_timing_est.dart';
 class BusTiming extends StatefulWidget {
   final data;
   const BusTiming(this.data);
-  // const BusTiming({Key? key}) : super(key: key);
 
   @override
   _BusTimingState createState() => _BusTimingState();
@@ -32,8 +31,6 @@ class _BusTimingState extends State<BusTiming> {
               width: width,
               decoration: BoxDecoration(
                 border: Border.all(color: (Colors.transparent)),
-                // borderRadius: const BorderRadius.all(Radius.circular(20)),
-                // color: Colors.blueAccent[100],
               ),
               child: Padding(
                 padding: const EdgeInsets.all(18.5),
@@ -44,7 +41,7 @@ class _BusTimingState extends State<BusTiming> {
                       child: Column(
                         children: [
                           Text(widget.data['ServiceNo'],
-                              style: Theme.of(context).textTheme.headline6),
+                              style: Theme.of(context).textTheme.titleLarge),
                           Text(
                             widget.data["to"] ?? "",
                             style: Theme.of(context).textTheme.bodySmall,
@@ -62,7 +59,6 @@ class _BusTimingState extends State<BusTiming> {
                   ],
                 ),
               ),
-              // height: height,
             ),
           ),
           Divider(color: Theme.of(context).dividerColor)

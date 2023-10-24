@@ -7,7 +7,6 @@ import 'package:sgbus/pages/stop.dart';
 class BusRoute extends StatefulWidget {
   final String sno;
   const BusRoute(this.sno);
-  // const Route({Key? key}) : super(key: key);
 
   @override
   _BusRouteState createState() => _BusRouteState();
@@ -135,6 +134,5 @@ class _BusRouteState extends State<BusRoute> {
               child: CircularProgressIndicator(),
             ),
     );
-    // ;
   }
 }

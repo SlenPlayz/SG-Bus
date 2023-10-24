@@ -59,13 +59,10 @@ class _DownloadPageState extends State<DownloadPage> {
         get(svcsEndpoint).then((svcsData) async {
           var svcs = svcsData.body;
           try {
-            var js1 = jsonDecode(svcs);
+            jsonDecode(svcs);
             bool validServices = validateServices(svcs);
             if (!validServices) throw "Invalid data";
             await prefs.setString('svcs', svcs);
-            // setState(() {
-            //   downloadStatus = 'Downloading routes...';
-            // });
             await prefs.setString(
                 'version', DateTime.now().millisecondsSinceEpoch.toString());
             setState(() {
@@ -88,17 +85,6 @@ class _DownloadPageState extends State<DownloadPage> {
               error = true;
             });
           }
-
-          // final routesEndpoint = Uri.parse('$endpoint/api/data/routes');
-          // get(routesEndpoint).then((data) async {
-          //   var routes = data.body;
-          //   await prefs.setString('routes', routes);
-
-          // }).catchError((err) {
-          //   setState(() {
-          //     error = true;
-          //   });
-          // });
         }).catchError((err, stackTrace) async {
           await Sentry.captureException(
             "An error occured while downloading data",
