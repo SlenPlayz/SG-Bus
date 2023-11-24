@@ -13,6 +13,7 @@ class SBSearchDelegate extends SearchDelegate {
       textTheme: TextTheme(
         titleLarge: TextStyle(
           fontSize: 15,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
