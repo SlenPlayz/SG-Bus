@@ -103,73 +103,41 @@ class _searchResultsWidgetState extends State<searchResultsWidget> {
               ),
             ],
             indicatorSize: TabBarIndicatorSize.label,
+            dividerColor: Colors.transparent,
           ),
         ),
         body: TabBarView(
           children: [
-            ListView(
-              children: [
-                for (var stop in stops)
-                  if (stop["Name"] != null &&
-                      stop["id"] != null &&
-                      stop["Road"] != null &&
-                      (stop['Name']
-                              .toString()
-                              .toLowerCase()
-                              .contains(widget.query.toLowerCase()) ||
-                          stop['id']
-                              .toString()
-                              .toLowerCase()
-                              .contains(widget.query.toLowerCase()) ||
-                          stop["Road"]
-                              .toString()
-                              .toLowerCase()
-                              .contains(widget.query.toLowerCase())))
-                    ListTile(
-                      title: Text(stop["Name"]),
-                      subtitle: Text(stop["id"]),
-                      onTap: (() async {
-                        if (recentSearches != null && prefs != null) {
-                          recentSearches.add(
-                            {
-                              "type": "stop",
-                              "id": stop["id"],
-                            },
-                          );
-
-                          await prefs.setString(
-                              'recentSearches', jsonEncode(recentSearches));
-                        }
-                        widget.close(context, null);
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => Stop(stop["id"])));
-                      }),
-                    )
-              ],
-            ),
-            ListView(
-              children: [
-                for (var svc in svcs)
-                  if (svc["svc"] != null &&
-                      svc["route"] != null &&
-                      svc["svc"]
-                          .toString()
-                          .toLowerCase()
-                          .contains(widget.query.toLowerCase()))
-                    ListTile(
-                        title: Text(svc["svc"]),
-                        subtitle: Text(svc["route"]),
+            Card(
+              child: ListView(
+                children: [
+                  for (var stop in stops)
+                    if (stop["Name"] != null &&
+                        stop["id"] != null &&
+                        stop["Road"] != null &&
+                        (stop['Name']
+                                .toString()
+                                .toLowerCase()
+                                .contains(widget.query.toLowerCase()) ||
+                            stop['id']
+                                .toString()
+                                .toLowerCase()
+                                .contains(widget.query.toLowerCase()) ||
+                            stop["Road"]
+                                .toString()
+                                .toLowerCase()
+                                .contains(widget.query.toLowerCase())))
+                      ListTile(
+                        title: Text(stop["Name"]),
+                        subtitle: Text(stop["id"]),
                         onTap: (() async {
                           if (recentSearches != null && prefs != null) {
-                            var dataToAdd = {
-                              "type": "svc",
-                              "svc": svc["svc"],
-                            };
-                            if (!recentSearches.contains(dataToAdd)) {
-                              recentSearches.add(dataToAdd);
-                            }
+                            recentSearches.add(
+                              {
+                                "type": "stop",
+                                "id": stop["id"],
+                              },
+                            );
 
                             await prefs.setString(
                                 'recentSearches', jsonEncode(recentSearches));
@@ -178,9 +146,47 @@ class _searchResultsWidgetState extends State<searchResultsWidget> {
                           Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => BusRoute(svc["svc"])));
-                        }))
-              ],
+                                  builder: (context) => Stop(stop["id"])));
+                        }),
+                      )
+                ],
+              ),
+            ),
+            Card(
+              child: ListView(
+                children: [
+                  for (var svc in svcs)
+                    if (svc["svc"] != null &&
+                        svc["route"] != null &&
+                        svc["svc"]
+                            .toString()
+                            .toLowerCase()
+                            .contains(widget.query.toLowerCase()))
+                      ListTile(
+                          title: Text(svc["svc"]),
+                          subtitle: Text(svc["route"]),
+                          onTap: (() async {
+                            if (recentSearches != null && prefs != null) {
+                              var dataToAdd = {
+                                "type": "svc",
+                                "svc": svc["svc"],
+                              };
+                              if (!recentSearches.contains(dataToAdd)) {
+                                recentSearches.add(dataToAdd);
+                              }
+
+                              await prefs.setString(
+                                  'recentSearches', jsonEncode(recentSearches));
+                            }
+                            widget.close(context, null);
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) =>
+                                        BusRoute(svc["svc"])));
+                          }))
+                ],
+              ),
             )
           ],
         ),
