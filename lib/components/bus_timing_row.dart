@@ -61,7 +61,7 @@ class _BusTimingState extends State<BusTiming> {
               ),
             ),
           ),
-          Divider(color: Theme.of(context).dividerColor)
+          Divider()
         ],
       ),
     );
