@@ -41,7 +41,7 @@ class _SettingsState extends State<Settings> {
                 leading: Icon(Icons.first_page),
                 items: [
                   ListItem<String>(value: "Nearby", caption: 'Nearby'),
-                  ListItem<String>(value: "Map", caption: 'Map'),
+                  ListItem<String>(value: "Directions", caption: 'Directions'),
                   ListItem<String>(value: "Search", caption: 'Search'),
                   ListItem<String>(value: "MRT Map", caption: 'MRT Map'),
                   ListItem<String>(value: "Favourites", caption: 'Favourites'),

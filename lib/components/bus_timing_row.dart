@@ -4,7 +4,8 @@ import 'package:sgbus/components/bus_timing_est.dart';
 
 class BusTiming extends StatefulWidget {
   final data;
-  const BusTiming(this.data);
+  final bool showDivider;
+  const BusTiming(this.data, this.showDivider);
 
   @override
   _BusTimingState createState() => _BusTimingState();
@@ -42,11 +43,13 @@ class _BusTimingState extends State<BusTiming> {
                         children: [
                           Text(widget.data['ServiceNo'],
                               style: Theme.of(context).textTheme.titleLarge),
-                          Text(
-                            widget.data["to"] ?? "",
-                            style: Theme.of(context).textTheme.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          )
+                          widget.data["to"] != null
+                              ? Text(
+                                  widget.data["to"] ?? "",
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              : Container()
                         ],
                       ),
                     ),
@@ -61,7 +64,7 @@ class _BusTimingState extends State<BusTiming> {
               ),
             ),
           ),
-          Divider()
+          widget.showDivider ? Divider() : Container()
         ],
       ),
     );

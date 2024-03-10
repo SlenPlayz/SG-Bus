@@ -174,7 +174,13 @@ class _RootPageState extends State<RootPage> {
     const MRTMap(),
     const Favourites()
   ];
-  List pageName = const ['Nearby', 'Map', 'Search', 'MRT Map', 'Favourites'];
+  List pageName = const [
+    'Nearby',
+    'Directions',
+    'Search',
+    'MRT Map',
+    'Favourites'
+  ];
   var searchQuery = TextEditingController();
 
   bool isLoaded = false;
@@ -191,7 +197,11 @@ class _RootPageState extends State<RootPage> {
     var startupScreen = prefs.getString('startup-screen');
 
     if (startupScreen != null) {
-      currPageIndex = pageName.indexOf(startupScreen);
+      if (startupScreen == "Map") {
+        currPageIndex = 1;
+      } else {
+        currPageIndex = pageName.indexOf(startupScreen);
+      }
     }
 
     if (stops == null || svcs == null || localVersion == null) {
@@ -343,30 +353,33 @@ class _RootPageState extends State<RootPage> {
   Widget build(BuildContext context) {
     return isLoaded
         ? Scaffold(
-            appBar: AppBar(
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness:
-                    isDark ? Brightness.light : Brightness.dark,
-              ),
-              title: isDataUpdating
-                  ? Text("Updating data..")
-                  : Text(pageName[currPageIndex]),
-              scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
-              actions: [
-                if (currPageIndex != 2)
-                  IconButton(
-                    onPressed: () => showSearch(
-                        context: context, delegate: SBSearchDelegate()),
-                    icon: Icon(Icons.search_rounded),
-                  ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const Settings())),
-                  icon: Icon(Icons.settings),
-                ),
-              ],
-            ),
+            appBar: currPageIndex != 1
+                ? AppBar(
+                    systemOverlayStyle: SystemUiOverlayStyle(
+                      statusBarColor: Colors.transparent,
+                      statusBarIconBrightness:
+                          isDark ? Brightness.light : Brightness.dark,
+                    ),
+                    title: isDataUpdating
+                        ? Text("Updating data..")
+                        : Text(pageName[currPageIndex]),
+                    scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
+                    actions: [
+                      if (currPageIndex != 2)
+                        IconButton(
+                          onPressed: () => showSearch(
+                              context: context, delegate: SBSearchDelegate()),
+                          icon: Icon(Icons.search_rounded),
+                        ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (context) => const Settings())),
+                        icon: Icon(Icons.settings),
+                      ),
+                    ],
+                  )
+                : null,
             body: Column(
               children: [
                 (isDataUpdating && currPageIndex != 2)
@@ -389,9 +402,9 @@ class _RootPageState extends State<RootPage> {
                   label: 'Nearby',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.map_outlined),
-                  selectedIcon: Icon(Icons.map_rounded),
-                  label: 'Map',
+                  icon: Icon(Icons.route_outlined),
+                  selectedIcon: Icon(Icons.route_rounded),
+                  label: 'Directions',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.search),

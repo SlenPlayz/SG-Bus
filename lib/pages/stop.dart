@@ -300,7 +300,7 @@ class _StopState extends State<Stop> {
                   itemCount: arrTimings.length,
                   padding: EdgeInsets.only(bottom: 80),
                   itemBuilder: (context, index) {
-                    return BusTiming(arrTimings[index]);
+                    return BusTiming(arrTimings[index], true);
                   },
                 ),
               ),

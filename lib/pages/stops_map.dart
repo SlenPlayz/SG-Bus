@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sgbus/components/directionSearchBar.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
@@ -34,11 +35,17 @@ class _StopsMapState extends State<StopsMap> {
 
   MapboxMap? mapboxMap;
 
-  _onMapCreated(MapboxMap mapboxMap) {
+  _onMapCreated(MapboxMap mapboxMap) async {
     this.mapboxMap = mapboxMap;
     mapboxMap.location.updateSettings(LocationComponentSettings(
       enabled: true,
       puckBearingEnabled: true,
+    ));
+    await mapboxMap.scaleBar.updateSettings(ScaleBarSettings(
+      enabled: false,
+      // marginTop:
+      //     WidgetsBinding.instance.platformDispatcher.implicitView!.padding.top +
+      //         20,
     ));
     initMap();
     initStops();
@@ -288,21 +295,29 @@ class _StopsMapState extends State<StopsMap> {
           ? Column(
               children: [
                 Expanded(
-                  child: Scaffold(
-                    body: MapWidget(
-                      resourceOptions: ResourceOptions(
-                        accessToken: mapboxAccessToken,
+                  child: Stack(
+                    children: [
+                      MapWidget(
+                        resourceOptions: ResourceOptions(
+                          accessToken: mapboxAccessToken,
+                        ),
+                        cameraOptions: CameraOptions(
+                          center:
+                              Point(coordinates: Position(103.8198, 1.290270))
+                                  .toJson(),
+                          zoom: 9,
+                        ),
+                        onMapCreated: _onMapCreated,
+                        styleUri: isDark
+                            ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+                            : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
                       ),
-                      cameraOptions: CameraOptions(
-                        center: Point(coordinates: Position(103.8198, 1.290270))
-                            .toJson(),
-                        zoom: 9,
+                      Padding(
+                        padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).padding.top + 10),
+                        child: DirectionsSearchBarWidget(),
                       ),
-                      onMapCreated: _onMapCreated,
-                      styleUri: isDark
-                          ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
-                          : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
-                    ),
+                    ],
                   ),
                 ),
                 isAdLoaded

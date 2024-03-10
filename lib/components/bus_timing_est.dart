@@ -40,9 +40,16 @@ class BusTimingEst extends StatelessWidget {
         width: width * 0.2,
         child: Column(
           children: [
-            Text(estimatedArrTime,
-                style: Theme.of(context).textTheme.titleLarge,
-                textAlign: TextAlign.center),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  estimatedArrTime,
+                  style: Theme.of(context).textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
