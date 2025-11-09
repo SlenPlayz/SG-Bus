@@ -391,9 +391,12 @@ class _RootPageState extends State<RootPage> {
                 statusBarIconBrightness:
                     isDark ? Brightness.light : Brightness.dark,
               ),
-              title: isDataUpdating
-                  ? Text("Updating data..")
-                  : Text(pageName[currPageIndex]),
+              // title: isDataUpdating
+              //     ? Text("Updating data..")
+              //     : Text(pageName[currPageIndex]),
+              title: Text(isDataUpdating
+                  ? "Updating data.."
+                  : pageName[currPageIndex], style: TextStyle(fontWeight: FontWeight.bold),),
               scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
               actions: [
                 if (currPageIndex != 2)
