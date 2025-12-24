@@ -1,20 +1,19 @@
-buildscript {
-    ext.kotlin_version = '1.9.0'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.4.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
-
 allprojects {
     repositories {
         google()
         mavenCentral()
+    }
+
+    configurations.all {
+        resolutionStrategy {
+            // Force ALL plugins to use Kotlin 1.9.0 to match your compiler
+            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.0'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0'
+            force 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0'
+
+            // Force Google Ads SDK back to v23 to avoid Kotlin 2.1 requirement
+            force 'com.google.android.gms:play-services-ads:23.3.0'
+        }
     }
 }
 
@@ -24,6 +23,43 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(':app')
+
+    //TODO: Remove this once all packages are upgraded. THis is a temporary workaround.
+   // 1. SKIP the 'app' module. It must be configured manually.
+    if (project.name == 'app') {
+        return
+    }
+
+    def configureSubproject = { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                // 2. Fix Namespace for plugins
+                if (namespace == null) {
+                    namespace project.group.toString()
+                }
+                // 3. Fix Java Version for plugins (Forces Java 17)
+                compileOptions {
+                    sourceCompatibility JavaVersion.VERSION_17
+                    targetCompatibility JavaVersion.VERSION_17
+                }
+            }
+        }
+        
+        // 4. Fix Kotlin Version Mismatch (Forces Kotlin to match Java 17)
+        // We use "findByName" to avoid errors if a plugin doesn't use Kotlin
+        project.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+
+    if (project.state.executed) {
+        configureSubproject(project)
+    } else {
+        project.afterEvaluate(configureSubproject)
+    }
+    // End TODO
 }
 
 tasks.register("clean", Delete) {

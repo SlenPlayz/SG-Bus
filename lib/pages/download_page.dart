@@ -74,7 +74,7 @@ class _DownloadDataPageState extends State<DownloadDataPage> {
         children: [
           Spacer(),
           Icon(
-            Icons.download,
+            Icons.download_rounded,
             size: 75,
             color: Theme.of(context).colorScheme.onPrimaryContainer,
           ),
@@ -83,6 +83,7 @@ class _DownloadDataPageState extends State<DownloadDataPage> {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.w900,
               fontSize: 24,
             ),
           ),
@@ -94,6 +95,9 @@ class _DownloadDataPageState extends State<DownloadDataPage> {
               child: Text(
                 "Downloading stops and services...",
                 textAlign: TextAlign.left,
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
           ),
@@ -134,9 +138,13 @@ class DownloadCompletePage extends StatelessWidget {
             style: TextStyle(
               color: Theme.of(context).colorScheme.onPrimaryContainer,
               fontSize: 24,
+              fontWeight: FontWeight.w900,
             ),
           ),
-          TextButton(
+          SizedBox(
+            height: 6,
+          ),
+          FilledButton.icon(
             onPressed: () {
               if (restartOnComplete) {
                 if (kReleaseMode) {
@@ -146,8 +154,11 @@ class DownloadCompletePage extends StatelessWidget {
                 Navigator.of(context).pop();
               }
             },
-            child: Text(
+            label: Text(
               "Enter app",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+              ),
             ),
           )
         ],
@@ -168,7 +179,7 @@ class DownloadFailedPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
-            Icons.error,
+            Icons.error_rounded,
             size: 75,
             color: Theme.of(context).colorScheme.onPrimaryContainer,
           ),
@@ -177,6 +188,7 @@ class DownloadFailedPage extends StatelessWidget {
             style: TextStyle(
               color: Theme.of(context).colorScheme.onPrimaryContainer,
               fontSize: 24,
+              fontWeight: FontWeight.w700,
             ),
           ),
           Padding(
@@ -186,14 +198,16 @@ class DownloadFailedPage extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onBackground,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          TextButton(
+          FilledButton.icon(
             onPressed: () {
               goto(0);
             },
-            child: Text(
+            icon: Icon(Icons.refresh_rounded),
+            label: Text(
               "Retry",
             ),
           )

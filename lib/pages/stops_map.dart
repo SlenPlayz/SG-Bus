@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
@@ -15,6 +18,11 @@ class StopsMap extends StatefulWidget {
 
   @override
   _StopsMapState createState() => _StopsMapState();
+}
+
+ViewPadding getSafeAreaPadding() {
+  final FlutterView view = PlatformDispatcher.instance.views.first;
+  return view.viewPadding;
 }
 
 class _StopsMapState extends State<StopsMap> {
@@ -40,6 +48,18 @@ class _StopsMapState extends State<StopsMap> {
       enabled: true,
       puckBearingEnabled: true,
     ));
+    mapboxMap.scaleBar.updateSettings(ScaleBarSettings(
+      enabled: true,
+      marginTop: getSafeAreaPadding().top - 45,
+      marginLeft: 20,
+      isMetricUnits: true,
+    ));
+    mapboxMap.compass.updateSettings(CompassSettings(
+      enabled: true,
+      marginTop: getSafeAreaPadding().top - 45,
+      marginRight: 10,
+    ));
+
     initMap();
     initStops();
   }
@@ -76,7 +96,7 @@ class _StopsMapState extends State<StopsMap> {
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": "#fff",
+      "text-color": isDark ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -289,19 +309,25 @@ class _StopsMapState extends State<StopsMap> {
               children: [
                 Expanded(
                   child: Scaffold(
-                    body: MapWidget(
-                      resourceOptions: ResourceOptions(
-                        accessToken: mapboxAccessToken,
+                    body: ClipRRect(
+                      borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(18),
+                          bottomRight: Radius.circular(18)),
+                      child: MapWidget(
+                        resourceOptions: ResourceOptions(
+                          accessToken: mapboxAccessToken,
+                        ),
+                        cameraOptions: CameraOptions(
+                          center:
+                              Point(coordinates: Position(103.8198, 1.290270))
+                                  .toJson(),
+                          zoom: 9,
+                        ),
+                        onMapCreated: _onMapCreated,
+                        styleUri: isDark
+                            ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+                            : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
                       ),
-                      cameraOptions: CameraOptions(
-                        center: Point(coordinates: Position(103.8198, 1.290270))
-                            .toJson(),
-                        zoom: 9,
-                      ),
-                      onMapCreated: _onMapCreated,
-                      styleUri: isDark
-                          ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
-                          : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
                     ),
                   ),
                 ),
@@ -315,7 +341,7 @@ class _StopsMapState extends State<StopsMap> {
                     : Container()
               ],
             )
-          : const Center(child: CircularProgressIndicator()),
+          : const Center(child: ExpressiveLoadingIndicator()),
     );
   }
 }

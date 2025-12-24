@@ -63,6 +63,7 @@ class SetupWelcomeScreen extends StatelessWidget {
             style: TextStyle(
               color: Theme.of(context).colorScheme.onPrimaryContainer,
               fontSize: 26,
+              fontWeight: FontWeight.w900,
             ),
           ),
           Padding(
@@ -72,16 +73,21 @@ class SetupWelcomeScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.onBackground,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          TextButton(
+          FilledButton.icon(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (BuildContext context) => DownloadPage(
                       restartOnComplete: true,
                     ))),
-            child: Text(
+            icon: Icon(Icons.download_rounded),
+            label: Text(
               "Start Download",
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+              ),
             ),
           )
         ],

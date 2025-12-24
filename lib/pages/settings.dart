@@ -34,19 +34,17 @@ class _SettingsState extends State<Settings> {
           SettingsGroup(
             title: 'General',
             children: [
-              RadioModalSetting<String>(
-                settingsKey: 'startup-screen',
-                title: 'Startup Screen',
-                defaultValue: "Nearby",
-                leading: Icon(Icons.first_page),
-                items: [
-                  ListItem<String>(value: "Nearby", caption: 'Nearby'),
-                  ListItem<String>(value: "Map", caption: 'Map'),
-                  ListItem<String>(value: "Search", caption: 'Search'),
-                  ListItem<String>(value: "MRT Map", caption: 'MRT Map'),
-                  ListItem<String>(value: "Favourites", caption: 'Favourites'),
-                ],
-              ),
+              // RadioModalSetting<String>(
+              //   settingsKey: 'startup-screen',
+              //   title: 'Startup Screen',
+              //   defaultValue: "Nearby",
+              //   leading: Icon(Icons.first_page),
+              //   items: [
+              //     ListItem<String>(value: "Map", caption: 'Map'),
+              //     ListItem<String>(value: "Home", caption: 'Home'),
+              //     ListItem<String>(value: "MRT Map", caption: 'MRT Map'),
+              //   ],
+              // ),
               RadioModalSetting<String>(
                 settingsKey: 'theme',
                 title: 'Theme',

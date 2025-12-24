@@ -55,6 +55,7 @@ class SettingsGroup extends StatelessWidget {
             textAlign: TextAlign.left,
             overflow: TextOverflow.fade,
             style: style ?? TextStyle(
+              fontWeight: FontWeight.w900,
               color: Theme.of(context).colorScheme.secondary,
             ),
           ),

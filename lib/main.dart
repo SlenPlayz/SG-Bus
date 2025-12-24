@@ -6,16 +6,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/searchDelegate.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/alert_webview_page.dart';
+import 'package:sgbus/pages/cepas_reader.dart';
+import 'package:sgbus/pages/home.dart';
 import 'package:sgbus/pages/mrt_map.dart';
-import 'package:sgbus/pages/nearby.dart';
-import 'package:sgbus/pages/favourites.dart';
+import 'package:sgbus/components/nearbyWidget.dart';
+import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/pages/settings.dart';
 import 'package:sgbus/pages/setup.dart';
 import 'package:sgbus/pages/stops_map.dart';
@@ -24,11 +28,15 @@ import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/scripts/downloadData.dart';
 import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:url_launcher/url_launcher.dart';
 // import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
+
+  timeDilation = 0.5;
 
   RequestConfiguration adConfig = RequestConfiguration(
       testDeviceIds:
@@ -134,6 +142,7 @@ class _MyAppState extends State<MyApp> {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
         theme: getTheme(
+            context,
             (overrideSystemTheme && theme != "") ? theme : "light",
             isCustomScheme,
             customScheme,
@@ -143,6 +152,7 @@ class _MyAppState extends State<MyApp> {
                     : lightColorScheme
                 : null),
         darkTheme: getTheme(
+            context,
             (overrideSystemTheme && theme != "") ? theme : "dark",
             isCustomScheme,
             customScheme,
@@ -166,36 +176,46 @@ class RootPage extends StatefulWidget {
 }
 
 class _RootPageState extends State<RootPage> {
-  int currPageIndex = 0;
+  int currPageIndex = 1;
+
+  var alerts = [];
 
   List<Widget> pages = [
-    const Nearby(),
     const StopsMap(),
-    const Search(),
+    const Home(),
     const MRTMap(),
-    const Favourites()
   ];
-  List pageName = const ['Nearby', 'Map', 'Search', 'MRT Map', 'Favourites'];
+  List pageName = const ['Map', 'Home', 'MRT Map'];
   var searchQuery = TextEditingController();
 
   bool isLoaded = false;
   bool isDataUpdating = false;
   var prefs;
 
-  List alerts = [];
-
   void checkData() async {
+    NFCAvailability NFCStatus = await FlutterNfcKit.nfcAvailability;
+
+    if (NFCStatus != NFCAvailability.not_supported) {
+      isNFCSupported = true;
+    }
+
     prefs = await SharedPreferences.getInstance();
     PackageInfo appInfo = await PackageInfo.fromPlatform();
 
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
     var localVersion = prefs.getString('version');
-    var startupScreen = prefs.getString('startup-screen');
+    // var startupScreen = prefs.getString('startup-screen');
 
-    if (startupScreen != null) {
-      currPageIndex = pageName.indexOf(startupScreen);
-    }
+    // if (startupScreen != null) {
+    //   if (startupScreen != "Map" &&
+    //       startupScreen != "Home" &&
+    //       startupScreen != "MRT Map") {
+    //     startupScreen = "Home";
+    //     prefs.setString('startup-screen', startupScreen);
+    //   }
+    //   currPageIndex = pageName.indexOf(startupScreen); //TODO: Fix this
+    // }
 
     if (stops == null || svcs == null || localVersion == null) {
       Navigator.of(context)
@@ -287,7 +307,8 @@ class _RootPageState extends State<RootPage> {
           }
         }
         setState(() {
-          alerts = alerts;
+          print("Alerts updated");
+          globalAlerts.value = alerts;
         });
 
         // alerts.forEach((alert) {
@@ -385,6 +406,7 @@ class _RootPageState extends State<RootPage> {
 
     return isLoaded
         ? Scaffold(
+            extendBodyBehindAppBar: (currPageIndex == 0),
             appBar: AppBar(
               systemOverlayStyle: SystemUiOverlayStyle(
                 statusBarColor: Colors.transparent,
@@ -394,92 +416,54 @@ class _RootPageState extends State<RootPage> {
               // title: isDataUpdating
               //     ? Text("Updating data..")
               //     : Text(pageName[currPageIndex]),
-              title: Text(isDataUpdating
-                  ? "Updating data.."
-                  : pageName[currPageIndex], style: TextStyle(fontWeight: FontWeight.bold),),
-              scrolledUnderElevation: currPageIndex == 2 ? 0 : null,
+              title: Container(
+                decoration: (currPageIndex == 0)
+                    ? BoxDecoration(
+                        borderRadius: BorderRadius.circular(50.0),
+                        color: Theme.of(context).colorScheme.surface,
+                      )
+                    : null,
+                padding: (currPageIndex == 0)
+                    ? EdgeInsets.fromLTRB(15, 8, 15, 8)
+                    : null,
+                child: Text(
+                  isDataUpdating
+                      ? "Updating data.."
+                      : currPageIndex != 1
+                          ? pageName[currPageIndex]
+                          : "SG Bus",
+                ),
+              ),
+              scrolledUnderElevation: 0,
+              elevation: 0,
+              surfaceTintColor: Colors.transparent,
+              backgroundColor: currPageIndex == 0
+                  ? Colors.transparent
+                  : Theme.of(context).colorScheme.surface,
               actions: [
-                if (currPageIndex != 2)
-                  IconButton(
-                    onPressed: () => showSearch(
-                        context: context, delegate: SBSearchDelegate()),
-                    icon: Icon(Icons.search_rounded),
+                Container(
+                  decoration: (currPageIndex == 0)
+                      ? BoxDecoration(
+                          borderRadius: BorderRadius.circular(50.0),
+                          color: Theme.of(context).colorScheme.surface,
+                        )
+                      : null,
+                  margin:
+                      (currPageIndex == 0) ? EdgeInsets.only(right: 10) : null,
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (context) => const Settings())),
+                    icon: Icon(Icons.settings),
                   ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (context) => const Settings())),
-                  icon: Icon(Icons.settings),
                 ),
               ],
             ),
             body: Column(
               children: [
-                (isDataUpdating && currPageIndex != 2)
-                    ? LinearProgressIndicator()
+                (isDataUpdating && currPageIndex != 0)
+                    ? LinearProgressIndicatorM3E()
                     : Container(),
-                    (currPageIndex != 2) ?
-                Column(
-                  children: [
-                    for (var alert in alerts)
-                      InkWell(
-                        onTap: () {
-                          if (alert["type"] == "webview") {
-                            Navigator.of(context).push(MaterialPageRoute(
-                                builder: (context) => AlertWebviewPage(
-                                    header: alert["header"],
-                                    message: alert["message"],
-                                    link: alert["link"],
-                                    linkDesc: alert["linkDesc"])));
-                          }
-                          if (alert["type"] == "text") {
-                            showModalBottomSheet(
-                              context: context,
-                              builder: (BuildContext context) {
-                                return BottomSheet(
-                                  onClosing: () {},
-                                  showDragHandle: true,
-                                  builder: (BuildContext context) {
-                                    return Column(
-                                      children: [
-                                        Text(
-                                          alert["header"],
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
-                                        ),
-                                        MarkdownBody(data: alert["message"])
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            );
-                          }
-                        },
-                        child: Container(
-                          width: width,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                alert["header"],
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              Container(),
-                              Icon(
-                                Icons.arrow_forward_ios_rounded,
-                                size: 14,
-                              )
-                            ],
-                          ),
-                          padding: EdgeInsets.fromLTRB(15, 4, 10, 4),
-                          color: Theme.of(context).colorScheme.primaryContainer,
-                        ),
-                      )
-                  ],
-                ) : Container(),
                 Expanded(child: pages[currPageIndex]),
               ],
             ),
@@ -492,28 +476,19 @@ class _RootPageState extends State<RootPage> {
               selectedIndex: currPageIndex,
               destinations: const [
                 NavigationDestination(
-                  icon: Icon(Icons.location_on_outlined),
-                  selectedIcon: Icon(Icons.location_on),
-                  label: 'Nearby',
-                ),
-                NavigationDestination(
                   icon: Icon(Icons.map_outlined),
                   selectedIcon: Icon(Icons.map_rounded),
                   label: 'Map',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
+                  icon: Icon(Icons.circle_outlined),
+                  selectedIcon: Icon(Icons.circle),
+                  label: 'Home',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.directions_transit_filled_outlined),
                   selectedIcon: Icon(Icons.directions_transit_filled_rounded),
                   label: 'MRT map',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.favorite_border_rounded),
-                  selectedIcon: Icon(Icons.favorite_rounded),
-                  label: 'Favourites',
                 ),
               ],
             ),

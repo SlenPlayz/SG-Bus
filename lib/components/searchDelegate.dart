@@ -23,6 +23,8 @@ class SBSearchDelegate extends SearchDelegate {
     );
   }
 
+  String get searchFieldLabel => 'Search for stops, roads or buses';
+
   @override
   List<Widget> buildActions(BuildContext context) {
     return [IconButton(onPressed: () => query = "", icon: Icon(Icons.close))];

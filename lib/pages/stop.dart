@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
@@ -100,11 +101,27 @@ class _StopState extends State<Stop> {
           context: context,
           builder: (BuildContext context) {
             return AlertDialog(
-              icon: Icon(Icons.warning_amber_rounded),
-              title: Text('Failed to get arrival timings'),
-              content: Text(errMsg),
+              icon: Icon(
+                Icons.warning_amber_rounded,
+                size: 48,
+              ),
+              title: Text(
+                'Failed to get arrival timings',
+                style: TextStyle(fontWeight: FontWeight.w900),
+              ),
+              content: Text(
+                errMsg,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 15,
+                ),
+              ),
               actions: [
                 TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('Dismiss'),
+                ),
+                FilledButton.icon(
                   onPressed: () {
                     setState(() {
                       isLoading = true;
@@ -112,11 +129,8 @@ class _StopState extends State<Stop> {
                     getArrTimings();
                     Navigator.of(context).pop();
                   },
-                  child: Text('Retry'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('Dismiss'),
+                  icon: Icon(Icons.refresh_rounded),
+                  label: Text('Retry'),
                 ),
               ],
             );
@@ -258,6 +272,9 @@ class _StopState extends State<Stop> {
     return Scaffold(
         appBar: AppBar(
           title: Text(name),
+          scrolledUnderElevation: 0,
+          elevation: 0,
+          backgroundColor: Theme.of(context).colorScheme.surface,
           actions: [
             IconButton(
               onPressed: () {
@@ -272,8 +289,8 @@ class _StopState extends State<Stop> {
             IconButton(
               onPressed: favourite,
               icon: stopIsFavourited
-                  ? const Icon(Icons.favorite)
-                  : const Icon(Icons.favorite_outline),
+                  ? const Icon(Icons.favorite_rounded)
+                  : const Icon(Icons.favorite_outline_rounded),
             ),
           ],
         ),
@@ -292,19 +309,57 @@ class _StopState extends State<Stop> {
             )),
         body: Column(
           children: [
-            isLoading ? const LinearProgressIndicator() : Container(),
+            AnimatedOpacity(
+              opacity: isLoading ? 1.0 : 0.0,
+              duration:
+                  const Duration(milliseconds: 500), // Adjust speed as needed
+              curve: Curves
+                  .easeInOut, // Optional: Makes the transition feel smoother
+              child: LinearProgressIndicatorM3E(),
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: getArrTimings,
-                child: ListView.builder(
-                  itemCount: arrTimings.length,
-                  padding: EdgeInsets.only(bottom: 80),
-                  itemBuilder: (context, index) {
-                    return BusTiming(arrTimings[index]);
-                  },
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(8, 0, 8, 1),
+                  // padding: EdgeInsetsGeometry.all(0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.all(Radius.circular(28.0)),
+                    child: ListView.builder(
+                      itemCount: arrTimings.length,
+                      padding: EdgeInsets.only(bottom: 80),
+                      itemBuilder: (context, index) {
+                        return Container(
+                          margin: EdgeInsets.only(bottom: 2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              topLeft: index == 0
+                                  ? Radius.circular(28.0)
+                                  : Radius.circular(5),
+                              topRight: index == 0
+                                  ? Radius.circular(28.0)
+                                  : Radius.circular(5),
+                              bottomLeft: index == arrTimings.length - 1
+                                  ? Radius.circular(28.0)
+                                  : Radius.circular(5),
+                              bottomRight: index == arrTimings.length - 1
+                                  ? Radius.circular(28.0)
+                                  : Radius.circular(5),
+                            ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceVariant
+                                .withOpacity(0.3),
+                          ),
+                          child: BusTiming(arrTimings[index]),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
             ),
+            SizedBox(height: 3),
             isAdLoaded
                 ? Container(
                     alignment: Alignment.center,

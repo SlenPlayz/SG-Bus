@@ -76,7 +76,7 @@ class _StopSpecMapState extends State<StopSpecMap> {
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": "#fff",
+      "text-color": isDark ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));

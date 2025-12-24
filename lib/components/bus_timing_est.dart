@@ -38,45 +38,61 @@ class BusTimingEst extends StatelessWidget {
 
     return SizedBox(
         width: width * 0.2,
+        height: (data != null &&
+                data["VisitNumber"] != null &&
+                data["VisitNumber"] == "2")
+            ? 65
+            : 50,
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(estimatedArrTime,
-                style: Theme.of(context).textTheme.titleLarge,
-                textAlign: TextAlign.center),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(5),
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: (data != null)
-                          ? (data['Load'] != '')
-                              ? (data['Load'] == 'SEA')
-                                  ? Colors.green[200]
-                                  : (data['Load'] == 'SDA')
-                                      ? Colors.amber[200]
-                                      : Colors.red[200]
-                              : Colors.transparent
-                          : Colors.transparent,
-                      shape: BoxShape.circle,
+            Text(
+              estimatedArrTime,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (doubleStat != "")
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: (data != null)
+                            ? (data['Load'] != '')
+                                ? (data['Load'] == 'SEA')
+                                    ? Colors.green[200]
+                                    : (data['Load'] == 'SDA')
+                                        ? Colors.amber[200]
+                                        : Colors.red[200]
+                                : Colors.transparent
+                            : Colors.transparent,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
-                ),
-                Text(doubleStat, textAlign: TextAlign.center),
-                data != null &&
-                        data["Feature"] != null &&
-                        data["Feature"] != "" &&
-                        data["Feature"] != "WAB"
-                    ? Icon(
-                        Icons.not_accessible,
-                        size: 14,
-                      )
-                    : Container()
-              ],
-            ),
+                  Text(
+                    doubleStat,
+                    textAlign: TextAlign.center,
+                  ),
+                  data != null &&
+                          data["Feature"] != null &&
+                          data["Feature"] != "" &&
+                          data["Feature"] != "WAB"
+                      ? Icon(
+                          Icons.not_accessible,
+                          size: 14,
+                        )
+                      : Container()
+                ],
+              ),
             if (data != null &&
                 data["VisitNumber"] != null &&
                 data["VisitNumber"] == "2")

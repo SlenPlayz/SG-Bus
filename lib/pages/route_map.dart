@@ -123,7 +123,7 @@ class _RouteMapState extends State<RouteMap> {
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": "#fff",
+      "text-color": isDark ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -145,6 +145,36 @@ class _RouteMapState extends State<RouteMap> {
       lineWidth: 4.0,
       linePattern: "oneway-small",
     ));
+
+    if (routeStops.isNotEmpty) {
+      double minLat = 90.0;
+      double maxLat = -90.0;
+      double minLng = 180.0;
+      double maxLng = -180.0;
+
+      for (var stop in routeStops) {
+        // Ensure coordinates are [lng, lat]
+        double lng = stop["cords"][0];
+        double lat = stop["cords"][1];
+
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+      }
+
+      CameraOptions cameraOptions = await mapboxMap!.cameraForCoordinateBounds(
+        CoordinateBounds(
+            southwest: Point(coordinates: Position(minLng, minLat)).toJson(),
+            northeast: Point(coordinates: Position(maxLng, maxLat)).toJson(),
+            infiniteBounds: false),
+        MbxEdgeInsets(top: 70.0, left: 25.0, bottom: 70.0, right: 25.0),
+        null,
+        null,
+      );
+
+      mapboxMap?.flyTo(cameraOptions, MapAnimationOptions(duration: 1000));
+    }
 
     mapboxMap?.setOnMapTapListener(onTapListener);
   }
@@ -172,8 +202,11 @@ class _RouteMapState extends State<RouteMap> {
     );
 
     if (features[0] != null) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (builder) => Stop(features[0]!.feature["id"].toString())));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (builder) => Stop(features[0]!.feature["id"].toString()),
+        ),
+      );
     }
   }
 

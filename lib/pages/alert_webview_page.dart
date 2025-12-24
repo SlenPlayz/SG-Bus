@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -58,16 +59,10 @@ class _AlertWebviewPageState extends State<AlertWebviewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        bottom: PreferredSize(
-            preferredSize: Size.fromHeight(20),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                widget.header,
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.left,
-              ),
-            )),
+        // bottom: PreferredSize(
+        //   preferredSize: Size.fromHeight(20),
+        //   child:
+        // ),
         actions: [
           IconButton(
               onPressed: () {
@@ -84,14 +79,33 @@ class _AlertWebviewPageState extends State<AlertWebviewPage> {
       body: (controller != null && loaded)
           ? Column(
               children: [
-                Expanded(child: WebViewWidget(controller: controller)),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    widget.header,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                Expanded(
+                  child: WebViewWidget(controller: controller),
+                ),
                 Padding(
                   padding: EdgeInsets.all(10),
                   child: Container(
                     height: 130,
                     child: Scrollbar(
                       child: SingleChildScrollView(
-                          child: MarkdownBody(data: widget.message)),
+                        child: MarkdownBody(
+                          data: widget.message,
+                          onTapLink: (text, href, title) {
+                            if (href != null) {
+                              launchUrl(Uri.parse(href),
+                                  mode: LaunchMode.externalApplication);
+                            }
+                          },
+                        ),
+                      ),
                       thumbVisibility: true,
                     ),
                   ),
@@ -105,7 +119,7 @@ class _AlertWebviewPageState extends State<AlertWebviewPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
+                  LoadingIndicatorM3E(),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(widget.linkDesc),

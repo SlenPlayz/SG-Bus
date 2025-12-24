@@ -1,8 +1,16 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
 var stops;
 var svcs;
 var routes;
+
+// List alerts = [];
+final ValueNotifier<List> globalAlerts = ValueNotifier<List>([]);
+
+bool isNFCSupported = false;
+
 bool isDark = true;
 
 void saveStops(String data) {

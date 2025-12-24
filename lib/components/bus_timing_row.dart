@@ -33,15 +33,24 @@ class _BusTimingState extends State<BusTiming> {
                 border: Border.all(color: (Colors.transparent)),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(18.5),
+                padding: const EdgeInsets.fromLTRB(10, 15, 10, 15),
                 child: Row(
                   children: [
                     SizedBox(
                       width: width * 0.2,
                       child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(widget.data['ServiceNo'],
-                              style: Theme.of(context).textTheme.titleLarge),
+                          Text(
+                            widget.data['ServiceNo'],
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 26,
+                              color: Theme.of(context).colorScheme.onSurface
+                            ),
+                          ),
+                          if (widget.data["to"] != null)
                           Text(
                             widget.data["to"] ?? "",
                             style: Theme.of(context).textTheme.bodySmall,
@@ -61,7 +70,6 @@ class _BusTimingState extends State<BusTiming> {
               ),
             ),
           ),
-          Divider()
         ],
       ),
     );
