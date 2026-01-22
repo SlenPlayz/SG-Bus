@@ -165,10 +165,12 @@ class _RouteMapState extends State<RouteMap> {
 
       CameraOptions cameraOptions = await mapboxMap!.cameraForCoordinateBounds(
         CoordinateBounds(
-            southwest: Point(coordinates: Position(minLng, minLat)).toJson(),
-            northeast: Point(coordinates: Position(maxLng, maxLat)).toJson(),
+            southwest: Point(coordinates: Position(minLng, minLat)),
+            northeast: Point(coordinates: Position(maxLng, maxLat)),
             infiniteBounds: false),
         MbxEdgeInsets(top: 70.0, left: 25.0, bottom: 70.0, right: 25.0),
+        null,
+        null,
         null,
         null,
       );
@@ -179,34 +181,34 @@ class _RouteMapState extends State<RouteMap> {
     mapboxMap?.setOnMapTapListener(onTapListener);
   }
 
-  Future<void> onTapListener(ScreenCoordinate coord) async {
-    // need to convert coord to real ScreenCoordinate for querying features.
-    final ScreenCoordinate conv = await mapboxMap!.pixelForCoordinate(
-      Point(
-        coordinates: Position(
-          coord.y,
-          coord.x,
+  Future<void> onTapListener(MapContentGestureContext gestureContext) async {
+    if (mapboxMap == null) return;
+
+    final ScreenCoordinate conv = gestureContext.touchPosition;
+
+    try {
+      final List<QueriedRenderedFeature?> features =
+          await mapboxMap!.queryRenderedFeatures(
+        RenderedQueryGeometry(
+          value: jsonEncode({
+            "x": conv.x,
+            "y": conv.y,
+          }),
+          type: Type.SCREEN_COORDINATE,
         ),
-      ).toJson(),
-    );
-
-    final List<QueriedFeature?> features =
-        await mapboxMap!.queryRenderedFeatures(
-      RenderedQueryGeometry(
-        value: jsonEncode(conv.encode()),
-        type: Type.SCREEN_COORDINATE,
-      ),
-      RenderedQueryOptions(
-        layerIds: ["stops_layer"],
-      ),
-    );
-
-    if (features[0] != null) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (builder) => Stop(features[0]!.feature["id"].toString()),
+        RenderedQueryOptions(
+          layerIds: ["stops_layer"],
         ),
       );
+
+      if (features.isNotEmpty &&
+          features[0]?.queriedFeature.feature["id"] != null) {
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (builder) =>
+                Stop(features[0]!.queriedFeature.feature["id"].toString())));
+      }
+    } catch (e) {
+      print("Error querying map: $e");
     }
   }
 
@@ -249,12 +251,9 @@ class _RouteMapState extends State<RouteMap> {
                 children: [
                   Expanded(
                     child: MapWidget(
-                      resourceOptions: ResourceOptions(
-                        accessToken: mapboxAccessToken,
-                      ),
                       cameraOptions: CameraOptions(
-                        center: Point(coordinates: Position(103.8198, 1.290270))
-                            .toJson(),
+                        center:
+                            Point(coordinates: Position(103.8198, 1.290270)),
                         zoom: 9,
                       ),
                       onMapCreated: _onMapCreated,

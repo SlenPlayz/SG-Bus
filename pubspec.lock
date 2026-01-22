@@ -153,14 +153,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.8.1"
-  enum_to_string:
-    dependency: transitive
-    description:
-      name: enum_to_string
-      sha256: "93b75963d3b0c9f6a90c095b3af153e1feccb79f6f08282d3274ff8d9eea52bc"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.2.1"
   fake_async:
     dependency: transitive
     description:
@@ -556,10 +548,10 @@ packages:
     dependency: "direct main"
     description:
       name: mapbox_maps_flutter
-      sha256: "7da3c32a29c13258992d92997e5af634f81502965ac247cbd6b88b67b6f4f435"
+      sha256: "9da440e44be8eb8baad5dcc4d7dac8865cc0451f0d491d70f3b658bf25ba97fc"
       url: "https://pub.dev"
     source: hosted
-    version: "0.7.0"
+    version: "2.17.0"
   markdown:
     dependency: transitive
     description:

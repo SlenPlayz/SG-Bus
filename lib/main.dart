@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -35,6 +36,8 @@ import 'package:url_launcher/url_launcher.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MobileAds.instance.initialize();
+
+  mb.MapboxOptions.setAccessToken(mapboxAccessToken);
 
   timeDilation = 0.5;
 

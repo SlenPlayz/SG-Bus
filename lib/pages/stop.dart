@@ -58,6 +58,10 @@ class _StopState extends State<Stop> {
       Response timings = await get(url).timeout(Duration(seconds: 45));
       var response = timings.body;
 
+      if (timings.statusCode == 500) {
+        throw response;
+      }
+
       arrivalData = jsonDecode(response);
 
       try {

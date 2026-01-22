@@ -7,7 +7,6 @@ import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data.dart';
@@ -112,31 +111,34 @@ class _StopsMapState extends State<StopsMap> {
     mapboxMap?.setOnMapTapListener(onTapListener);
   }
 
-  Future<void> onTapListener(ScreenCoordinate coord) async {
-    // need to convert coord to real ScreenCoordinate for querying features.
-    final ScreenCoordinate conv = await mapboxMap!.pixelForCoordinate(
-      Point(
-        coordinates: Position(
-          coord.y,
-          coord.x,
+  Future<void> onTapListener(MapContentGestureContext gestureContext) async {
+    if (mapboxMap == null) return;
+
+    final ScreenCoordinate conv = gestureContext.touchPosition;
+
+    try {
+      final List<QueriedRenderedFeature?> features =
+          await mapboxMap!.queryRenderedFeatures(
+        RenderedQueryGeometry(
+          value: jsonEncode({
+            "x": conv.x,
+            "y": conv.y,
+          }),
+          type: Type.SCREEN_COORDINATE,
         ),
-      ).toJson(),
-    );
+        RenderedQueryOptions(
+          layerIds: ["stops_layer"],
+        ),
+      );
 
-    final List<QueriedFeature?> features =
-        await mapboxMap!.queryRenderedFeatures(
-      RenderedQueryGeometry(
-        value: jsonEncode(conv.encode()),
-        type: Type.SCREEN_COORDINATE,
-      ),
-      RenderedQueryOptions(
-        layerIds: ["stops_layer"],
-      ),
-    );
-
-    if (features[0] != null) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (builder) => Stop(features[0]!.feature["id"].toString())));
+      if (features.isNotEmpty &&
+          features[0]?.queriedFeature.feature["id"] != null) {
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (builder) =>
+                Stop(features[0]!.queriedFeature.feature["id"].toString())));
+      }
+    } catch (e) {
+      print("Error querying map: $e");
     }
   }
 
@@ -219,7 +221,7 @@ class _StopsMapState extends State<StopsMap> {
               zoom: 17,
               center: Point(
                 coordinates: Position(postion.longitude, postion.latitude),
-              ).toJson(),
+              ),
             ),
             MapAnimationOptions(
               duration: 2000,
@@ -255,7 +257,7 @@ class _StopsMapState extends State<StopsMap> {
                     center: Point(
                       coordinates:
                           Position(position.longitude, position.latitude),
-                    ).toJson(),
+                    ),
                   ),
                   MapAnimationOptions(
                     duration: 2000,
@@ -314,13 +316,9 @@ class _StopsMapState extends State<StopsMap> {
                           bottomLeft: Radius.circular(18),
                           bottomRight: Radius.circular(18)),
                       child: MapWidget(
-                        resourceOptions: ResourceOptions(
-                          accessToken: mapboxAccessToken,
-                        ),
                         cameraOptions: CameraOptions(
                           center:
-                              Point(coordinates: Position(103.8198, 1.290270))
-                                  .toJson(),
+                              Point(coordinates: Position(103.8198, 1.290270)),
                           zoom: 9,
                         ),
                         onMapCreated: _onMapCreated,
