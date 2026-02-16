@@ -28,7 +28,10 @@ class CepasReader extends StatefulWidget {
 }
 
 class _CepasReaderState extends State<CepasReader> {
-  bool isCardRead = false;
+  bool isTransactionRead = false;
+  bool isBalanceRead = false;
+  bool hasNFCExchangeFinished = false;
+
   bool timeoutOccurred = false;
   String? CAN;
   double? balance;
@@ -42,7 +45,7 @@ class _CepasReaderState extends State<CepasReader> {
 
   Future<void> readCepasCard() async {
     setState(() {
-      isCardRead = false;
+      isTransactionRead = false;
       timeoutOccurred = false;
       errorOccured = false;
       errorMSG = null;
@@ -94,6 +97,13 @@ class _CepasReaderState extends State<CepasReader> {
         balance = purse.balance;
         expiryDate = purse.expiryDate;
 
+        setState(() {
+          isBalanceRead = true;
+          CAN = purse.can;
+          balance = purse.balance;
+          expiryDate = purse.expiryDate;
+        });
+
         // 3. Get the record count from Offset 40
         int recordCount = pData[40] & 0xFF;
         print("Fetching $recordCount recent trips...");
@@ -144,7 +154,7 @@ class _CepasReaderState extends State<CepasReader> {
         }
 
         setState(() {
-          isCardRead = true;
+          isTransactionRead = true;
           CAN = purse.can;
           balance = purse.balance;
           expiryDate = purse.expiryDate;
@@ -158,6 +168,9 @@ class _CepasReaderState extends State<CepasReader> {
         });
       }
     } finally {
+      setState(() {
+        hasNFCExchangeFinished = true;
+      });
       await FlutterNfcKit.finish();
     }
   }
@@ -187,6 +200,54 @@ class _CepasReaderState extends State<CepasReader> {
         scrolledUnderElevation: 0,
         elevation: 0,
         backgroundColor: Theme.of(context).colorScheme.surface,
+        actions: [
+          IconButton(
+            onPressed: () {
+              showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text(
+                        "Beta feature",
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      icon: Icon(Icons.science_rounded),
+                      content: Text(
+                        "This feature is currently still under developement and may not always work as intended. Displayed values should be correct but the app may be unable to read transaction history sometimes.",
+                        textAlign: TextAlign.center,
+                      ),
+                      actionsAlignment: MainAxisAlignment.center,
+                      actions: [
+                        FilledButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          label: Text("Dismiss"),
+                          icon: Icon(Icons.exit_to_app_rounded),
+                        )
+                      ],
+                    );
+                  });
+            },
+            icon: Row(children: [
+              Icon(
+                Icons.science_rounded,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              Container(
+                width: 5,
+              ),
+              Text(
+                "BETA",
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              )
+            ]),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -228,19 +289,21 @@ class _CepasReaderState extends State<CepasReader> {
               : AnimatedAlign(
                   duration: const Duration(milliseconds: 500),
                   curve: Curves.easeInOut,
-                  alignment:
-                      isCardRead ? Alignment.topCenter : Alignment.center,
+                  alignment: isTransactionRead
+                      ? Alignment.topCenter
+                      : Alignment.center,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       CardUI(
-                        isCardRead: isCardRead,
+                        isTransactionRead: isTransactionRead,
                         CAN: CAN,
                         balance: balance,
                         expiryDate: expiryDate,
                         isTimeoutOccurred: timeoutOccurred,
+                        isBalanceRead: isBalanceRead,
                       ),
-                      if (timeoutOccurred && !isCardRead)
+                      if (timeoutOccurred && !isTransactionRead)
                         Padding(
                             padding: const EdgeInsets.only(top: 16.0),
                             child: FilledButton.icon(
@@ -250,13 +313,67 @@ class _CepasReaderState extends State<CepasReader> {
                             )),
                       Container(),
                       Expanded(
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 500),
-                          opacity: isCardRead ? 1.0 : 0.0,
-                          child: isCardRead
-                              ? TransactionHistoryUI(transactions: transactions)
-                              : const SizedBox.shrink(),
-                        ),
+                        child: isBalanceRead &&
+                                !isTransactionRead &&
+                                hasNFCExchangeFinished
+                            ? Expanded(
+                                child: AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 500),
+                                  opacity: isBalanceRead &&
+                                          !isTransactionRead &&
+                                          hasNFCExchangeFinished
+                                      ? 1.0
+                                      : 0.0,
+                                  child: Container(
+                                    margin: EdgeInsets.only(top: 10),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(28.0)),
+                                      child: Container(
+                                        constraints: BoxConstraints.expand(),
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceVariant
+                                            .withOpacity(0.3),
+                                        child: Column(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.warning_rounded,
+                                              size: 64,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                            ),
+                                            Container(
+                                              height: 10,
+                                            ),
+                                            Text(
+                                              "Transaction history not avaliable",
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .error,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : AnimatedOpacity(
+                                duration: const Duration(milliseconds: 500),
+                                opacity: isTransactionRead ? 1.0 : 0.0,
+                                child: isTransactionRead
+                                    ? TransactionHistoryUI(
+                                        transactions: transactions)
+                                    : const SizedBox.shrink(),
+                              ),
                       ),
                     ],
                   ),
@@ -268,19 +385,21 @@ class _CepasReaderState extends State<CepasReader> {
 }
 
 class CardUI extends StatelessWidget {
-  const CardUI({
-    Key? key,
-    this.CAN,
-    this.balance,
-    this.expiryDate,
-    required this.isCardRead,
-    required this.isTimeoutOccurred,
-  }) : super(key: key);
+  const CardUI(
+      {Key? key,
+      this.CAN,
+      this.balance,
+      this.expiryDate,
+      required this.isTransactionRead,
+      required this.isTimeoutOccurred,
+      required this.isBalanceRead})
+      : super(key: key);
   final String? CAN;
   final double? balance;
   final DateTime? expiryDate;
-  final bool isCardRead;
+  final bool isTransactionRead;
   final bool isTimeoutOccurred;
+  final bool isBalanceRead;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +408,7 @@ class CardUI extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Skeletonizer(
-          enabled: !isCardRead,
+          enabled: !isBalanceRead,
           enableSwitchAnimation: true,
           child: Card(
             color:
@@ -414,7 +533,7 @@ class CardUI extends StatelessWidget {
             ),
           ),
         ),
-        if (!isCardRead)
+        if (!isBalanceRead)
           Text("Tap your EZ-Link Card to the back of your phone"),
       ],
     );
