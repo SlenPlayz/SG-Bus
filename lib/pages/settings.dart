@@ -63,6 +63,7 @@ class _SettingsState extends State<Settings> {
                 leading: Icon(Icons.color_lens),
                 items: [
                   ListItem<String>(value: "System", caption: 'System'),
+                  ListItem<String>(value: "AMOLED", caption: 'AMOLED'),
                   ListItem<String>(value: "Blue", caption: 'Blue'),
                   ListItem<String>(value: "Green", caption: 'Green'),
                   ListItem<String>(value: "Yellow", caption: 'Yellow'),

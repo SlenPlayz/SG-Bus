@@ -73,6 +73,7 @@ class _MyAppState extends State<MyApp> {
   bool isLoaded = false;
   Color? customScheme = null;
   bool overrideSystemTheme = false;
+  bool isAmoled = false;
   String theme = "";
 
   Future<void> loadThemeSettings() async {
@@ -87,6 +88,10 @@ class _MyAppState extends State<MyApp> {
     if (colorSchemeSettings != null && colorSchemeSettings != "System") {
       isCustomScheme = true;
 
+      if (colorSchemeSettings == "AMOLED") {
+        isAmoled = true;
+        isCustomScheme = false;
+      }
       if (colorSchemeSettings == "Blue") {
         customScheme = Colors.blue;
       }
@@ -117,11 +122,11 @@ class _MyAppState extends State<MyApp> {
       overrideSystemTheme = true;
       theme = themeSettings.toLowerCase();
     }
-    setTheme(overrideSystemTheme
-        ? theme == "dark"
-            ? true
-            : false
-        : isSysDarkMode);
+    setTheme(isAmoled
+        ? true
+        : overrideSystemTheme
+            ? theme == "dark"
+            : isSysDarkMode);
 
     setState(() {
       isLoaded = true;
@@ -153,7 +158,8 @@ class _MyAppState extends State<MyApp> {
                 ? (overrideSystemTheme && theme == "dark")
                     ? darkColorScheme
                     : lightColorScheme
-                : null),
+                : null,
+            isAmoled),
         darkTheme: getTheme(
             context,
             (overrideSystemTheme && theme != "") ? theme : "dark",
@@ -163,7 +169,8 @@ class _MyAppState extends State<MyApp> {
                 ? (overrideSystemTheme && theme == "light")
                     ? lightColorScheme
                     : darkColorScheme
-                : null),
+                : null,
+            isAmoled),
         title: 'SG Bus',
         home: const RootPage(),
       );
