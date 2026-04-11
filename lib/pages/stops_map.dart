@@ -9,6 +9,7 @@ import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
+import 'package:sgbus/components/directionsSearchBar.dart';
 import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/pages/stop.dart';
 
@@ -28,6 +29,7 @@ class _StopsMapState extends State<StopsMap> {
   bool isLoaded = false;
   bool isAdLoaded = false;
   bool error = false;
+  bool initMoved = false;
   int errorCode = 0;
   String errorMsg = '';
   var currLocation;
@@ -43,15 +45,13 @@ class _StopsMapState extends State<StopsMap> {
 
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
+
     mapboxMap.location.updateSettings(LocationComponentSettings(
       enabled: true,
       puckBearingEnabled: true,
     ));
     mapboxMap.scaleBar.updateSettings(ScaleBarSettings(
-      enabled: true,
-      marginTop: getSafeAreaPadding().top - 45,
-      marginLeft: 20,
-      isMetricUnits: true,
+      enabled: false,
     ));
     mapboxMap.compass.updateSettings(CompassSettings(
       enabled: true,
@@ -215,6 +215,9 @@ class _StopsMapState extends State<StopsMap> {
         isLoaded = true;
       });
       if (mapboxMap != null) {
+        setState(() {
+          initMoved = true;
+        });
         mapboxMap?.flyTo(
             CameraOptions(
               anchor: ScreenCoordinate(x: 0, y: 0),
@@ -227,6 +230,10 @@ class _StopsMapState extends State<StopsMap> {
               duration: 2000,
               startDelay: 0,
             ));
+      } else {
+        setState(() {
+          initMoved = false;
+        });
       }
     }).catchError((err) {
       setState(() {
@@ -315,16 +322,26 @@ class _StopsMapState extends State<StopsMap> {
                       borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(18),
                           bottomRight: Radius.circular(18)),
-                      child: MapWidget(
-                        cameraOptions: CameraOptions(
-                          center:
-                              Point(coordinates: Position(103.8198, 1.290270)),
-                          zoom: 9,
-                        ),
-                        onMapCreated: _onMapCreated,
-                        styleUri: isDark
-                            ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
-                            : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
+                      child: Stack(
+                        children: [
+                          MapWidget(
+                            cameraOptions: CameraOptions(
+                              center: Point(
+                                  coordinates: Position(103.8198, 1.290270)),
+                              zoom: 9,
+                            ),
+                            onMapCreated: _onMapCreated,
+                            styleUri: isDark
+                                ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+                                : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
+                          ),
+                          Positioned(
+                            top: 120,
+                            left: 0,
+                            right: 0,
+                            child: DirectionsSearchBarWidget(),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -2,7 +2,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:sgbus/components/searchBar.dart';
+import 'package:sgbus/components/searchBar.dart' as sb;
+
+// ... (imports)
 import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
 import 'package:sgbus/pages/alert_webview_page.dart';
@@ -311,8 +313,8 @@ class _HomeState extends State<Home> {
                     ),
                   ),
                 if (isNFCSupported) SizedBox(width: 8),
-                if (isNFCSupported) Expanded(child: SearchBarWidget()),
-                if (!isNFCSupported) SearchBarWidget(),
+                if (isNFCSupported) Expanded(child: sb.SearchBarWidget()),
+                if (!isNFCSupported) sb.SearchBarWidget(),
               ],
             ),
           ),

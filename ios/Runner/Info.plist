@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -22,7 +24,17 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>MBXAccessToken</key>
+	<string>sk.eyJ1Ijoic2xlbiIsImEiOiJjbG01dDA5MW8zMDN4M2RzNnJqcXBzOXBxIn0.kZHF_05jPibKbtvRkFL2mw</string>
+	<key>NFCReaderUsageDescription</key>
+	<string>SG Bus uses NFC to read the balance &amp; transaction history of your EZ-Link Cards.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>SG Bus uses your location to get nearby stops as well as locate yourself on the map.</string>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
@@ -43,13 +55,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>CADisableMinimumFrameDurationOnPhone</key>
-	<true/>
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-	<key>MBXAccessToken</key>
-	<string>sk.eyJ1Ijoic2xlbiIsImEiOiJjbG01dDA5MW8zMDN4M2RzNnJqcXBzOXBxIn0.kZHF_05jPibKbtvRkFL2mw</string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SG Bus uses your location to get nearby stops as well as locate yourself on the map.</string>
 </dict>
 </plist>
