@@ -113,9 +113,28 @@ class _DirectionsRouteViewBusLegState extends State<DirectionsRouteViewBusLeg> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: ListView(
-        children: [
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: ListTile(
+              title: Text(
+                  "Take Bus ${widget.leg["route"]} to ${getStopName(widget.leg["to"]["stopCode"])}"),
+              subtitle: Text(
+                  (widget.leg["intermediateStops"].length + 1).toString() +
+                      " stops, " +
+                      "about ${(widget.leg["duration"] / 60).round()} mins"),
+              dense: true,
+            ),
+          ),
+        ),
+        if (showTimingsView)
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Container(
@@ -123,75 +142,55 @@ class _DirectionsRouteViewBusLegState extends State<DirectionsRouteViewBusLeg> {
                 color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: ListTile(
-                title: Text(
-                    "Take Bus ${widget.leg["route"]} to ${getStopName(widget.leg["to"]["stopCode"])}"),
-                subtitle: Text(
-                    (widget.leg["intermediateStops"].length + 1).toString() +
-                        " stops, " +
-                        "about ${(widget.leg["duration"] / 60).round()} mins"),
-                dense: true,
+              child: BusTimingsView(
+                stopid: widget.leg["from"]["stopCode"] ?? "",
+                buses: widget.leg["route"].split(" / "),
               ),
             ),
           ),
-          if (showTimingsView)
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: BusTimingsView(
-                  stopid: widget.leg["from"]["stopCode"] ?? "",
-                  buses: widget.leg["route"].split(" / "),
-                ),
-              ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),
+          child: Row(
+            children: [
+              Text(
+                "Stops:",
+                style: Theme.of(context).textTheme.labelSmall,
+              )
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(10),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 0, 0),
-            child: Row(
+            height: 165,
+            child: ListView(
               children: [
-                Text(
-                  "Stops:",
-                  style: Theme.of(context).textTheme.labelSmall,
-                )
+                ListTile(
+                  title: Text(getStopName(widget.leg["from"]["stopCode"])),
+                  subtitle: Text(widget.leg["from"]["stopCode"]),
+                  leading: Icon(Icons.circle),
+                ),
+                for (var stop in widget.leg["intermediateStops"])
+                  ListTile(
+                    title: Text(getStopName(stop["stopCode"])),
+                    subtitle: Text(stop["stopCode"]),
+                    leading: Icon(Icons.circle_outlined),
+                    dense: true,
+                  ),
+                ListTile(
+                  title: Text(getStopName(widget.leg["to"]["stopCode"])),
+                  subtitle: Text(widget.leg["to"]["stopCode"]),
+                  leading: Icon(Icons.location_pin),
+                ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              height: 165,
-              child: ListView(
-                children: [
-                  ListTile(
-                    title: Text(getStopName(widget.leg["from"]["stopCode"])),
-                    subtitle: Text(widget.leg["from"]["stopCode"]),
-                    leading: Icon(Icons.circle),
-                  ),
-                  for (var stop in widget.leg["intermediateStops"])
-                    ListTile(
-                      title: Text(getStopName(stop["stopCode"])),
-                      subtitle: Text(stop["stopCode"]),
-                      leading: Icon(Icons.circle_outlined),
-                      dense: true,
-                    ),
-                  ListTile(
-                    title: Text(getStopName(widget.leg["to"]["stopCode"])),
-                    subtitle: Text(widget.leg["to"]["stopCode"]),
-                    leading: Icon(Icons.location_pin),
-                  ),
-                ],
-              ),
-            ),
-          )
-        ],
-      ),
+        )
+      ],
     );
   }
 }
