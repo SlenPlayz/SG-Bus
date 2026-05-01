@@ -222,6 +222,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_compass:
+    dependency: "direct main"
+    description:
+      name: flutter_compass
+      sha256: "1b4d7e6c95a675ec8482b5c9c9ccf1ebf0ced3dbec59dce28ad609da953de850"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.1"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -352,6 +360,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  google_polyline_algorithm:
+    dependency: "direct main"
+    description:
+      name: google_polyline_algorithm
+      sha256: "357874f00d3f93c3ba1bf4b4d9a154aa9ee87147c068238c1e8392012b686a03"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.1.0"
   gsettings:
     dependency: transitive
     description:
@@ -548,10 +564,10 @@ packages:
     dependency: "direct main"
     description:
       name: mapbox_maps_flutter
-      sha256: "9da440e44be8eb8baad5dcc4d7dac8865cc0451f0d491d70f3b658bf25ba97fc"
+      sha256: "21730e4be0a0d29e54644e41f84e270b14eed253debe0f9ccdc89a51f446d654"
       url: "https://pub.dev"
     source: hosted
-    version: "2.17.0"
+    version: "2.23.0"
   markdown:
     dependency: transitive
     description:

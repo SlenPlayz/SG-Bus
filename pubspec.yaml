@@ -30,7 +30,7 @@ dependencies:
   progress_indicator_m3e: ^0.1.0
   loading_indicator_m3e: ^0.1.0
   cobi_flutter_settings: ^2.1.1
-  mapbox_maps_flutter: ^2.17.0
+  mapbox_maps_flutter: ^2.20.1
   shared_preferences: ^2.0.15
   google_mobile_ads: ^6.0.0
   package_info_plus: ^4.0.2
@@ -48,6 +48,8 @@ dependencies:
   m3e_design: ^0.1.0
   latlong2: ^0.9.0
   hex: ^0.2.0
+  google_polyline_algorithm: ^3.1.0
+  flutter_compass: ^0.8.0
   # wakelock: ^0.6.2
   http: ^0.13.5
   flutter:
