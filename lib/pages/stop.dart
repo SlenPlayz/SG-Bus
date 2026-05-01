@@ -380,7 +380,7 @@ class _StopState extends State<Stop> {
             child: RefreshIndicator(
               onRefresh: getArrTimings,
               child: Container(
-                padding: EdgeInsets.only(left: 10, bottom: 20, right: 10),
+                padding: EdgeInsets.only(left: 8, bottom: 20, right: 8),
                 child: ClipRRect(
                   borderRadius: _showAppBarTitle
                       ? BorderRadius.all(Radius.circular(28.0))
