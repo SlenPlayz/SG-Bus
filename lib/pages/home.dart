@@ -138,19 +138,33 @@ class _HomeState extends State<Home> {
                                                             return SingleChildScrollView(
                                                                 child: Column(
                                                               children: [
-                                                                Text(
-                                                                  alert.value[
-                                                                      "header"],
-                                                                  style: Theme.of(
-                                                                          context)
-                                                                      .textTheme
-                                                                      .titleMedium,
+                                                                Padding(
+                                                                  padding: EdgeInsets
+                                                                      .fromLTRB(
+                                                                          15,
+                                                                          0,
+                                                                          15,
+                                                                          0),
+                                                                  child: Text(
+                                                                    alert.value[
+                                                                        "header"],
+                                                                    style: Theme.of(
+                                                                            context)
+                                                                        .textTheme
+                                                                        .titleMedium,
+                                                                    textAlign:
+                                                                        TextAlign
+                                                                            .center,
+                                                                  ),
                                                                 ),
                                                                 Padding(
                                                                   padding:
                                                                       const EdgeInsets
-                                                                          .all(
-                                                                          15.0),
+                                                                          .fromLTRB(
+                                                                          15.0,
+                                                                          15,
+                                                                          15,
+                                                                          100),
                                                                   child:
                                                                       MarkdownBody(
                                                                     data: alert
@@ -182,8 +196,8 @@ class _HomeState extends State<Home> {
                                                 title: Text(
                                                   alert.value["header"],
                                                   style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold),
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                                 ),
                                                 subtitle: Text(
                                                   alert.value["message"]
