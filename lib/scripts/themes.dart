@@ -3,6 +3,21 @@ import 'package:dynamic_color/dynamic_color.dart';
 
 var corePalette = DynamicColorPlugin.getCorePalette();
 
+const String _fontFamily = 'GoogleSansFlex';
+
+const _labelVariations = [
+  FontVariation('ROND', 100),
+  FontVariation.width(90),
+  FontVariation.weight(800),
+];
+
+TextStyle _labelStyle(TextStyle? base) {
+  return (base ?? const TextStyle()).copyWith(
+    fontFamily: _fontFamily,
+    fontVariations: _labelVariations,
+  );
+}
+
 ThemeData getTheme(BuildContext context, String theme, bool isCustomScheme,
     [Color? scheme, ColorScheme? deviceColorScheme, bool isAmoled = false]) {
   var colorScheme;
@@ -31,6 +46,12 @@ ThemeData getTheme(BuildContext context, String theme, bool isCustomScheme,
 ThemeData light(lightColorScheme, context) {
   return ThemeData.light().copyWith(
     useMaterial3: true,
+    textTheme:
+        ThemeData.light().textTheme.apply(fontFamily: _fontFamily).copyWith(
+              labelSmall: _labelStyle(ThemeData.light().textTheme.labelSmall),
+              labelMedium: _labelStyle(ThemeData.light().textTheme.labelMedium),
+              labelLarge: _labelStyle(ThemeData.light().textTheme.labelLarge),
+            ),
     colorScheme: lightColorScheme ??
         const ColorScheme.light(
           primary: Color.fromARGB(255, 191, 205, 255),
@@ -42,6 +63,27 @@ ThemeData light(lightColorScheme, context) {
       filled: true,
       fillColor:
           lightColorScheme != null ? lightColorScheme.background : Colors.white,
+    ),
+
+    tabBarTheme: TabBarThemeData(
+      labelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
     ),
     dialogBackgroundColor: lightColorScheme?.background,
     // tabBarTheme: TabBarTheme(
@@ -57,18 +99,33 @@ ThemeData light(lightColorScheme, context) {
         : Color.fromARGB(255, 191, 205, 255),
     appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-          fontSize: 22,
-          fontWeight: FontWeight.w900,
-          color: lightColorScheme != null
-              ? lightColorScheme.onSurface
-              : Colors.black),
+        fontFamily: _fontFamily,
+        fontSize: 26,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(1000)
+        ],
+        color: lightColorScheme != null
+            ? lightColorScheme.onSurface
+            : Colors.black,
+      ),
     ),
     listTileTheme: ListTileThemeData(
       titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
       subtitleTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+          fontVariations: [
+            FontVariation('ROND', 100),
+            FontVariation.width(100),
+            FontVariation.weight(600)
+          ],
           color: lightColorScheme != null
               ? lightColorScheme.onSurfaceVariant.withOpacity(0.7)
               : Colors.grey),
@@ -85,6 +142,12 @@ ThemeData light(lightColorScheme, context) {
 ThemeData dark(darkColorScheme, context) {
   return ThemeData.dark().copyWith(
     useMaterial3: true,
+    textTheme:
+        ThemeData.dark().textTheme.apply(fontFamily: _fontFamily).copyWith(
+              labelSmall: _labelStyle(ThemeData.dark().textTheme.labelSmall),
+              labelMedium: _labelStyle(ThemeData.dark().textTheme.labelMedium),
+              labelLarge: _labelStyle(ThemeData.dark().textTheme.labelLarge),
+            ),
     colorScheme: darkColorScheme ??
         const ColorScheme.dark(
           primary: Color.fromARGB(255, 216, 225, 255),
@@ -106,21 +169,54 @@ ThemeData dark(darkColorScheme, context) {
     indicatorColor: darkColorScheme != null
         ? darkColorScheme.secondary
         : Color.fromARGB(255, 216, 225, 255),
+    tabBarTheme: TabBarThemeData(
+      labelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
+    ),
     appBarTheme: AppBarTheme(
       titleTextStyle: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w900,
+        fontFamily: _fontFamily,
+        fontSize: 26,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(1000)
+        ],
       ),
     ),
     listTileTheme: ListTileThemeData(
       titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: darkColorScheme != null
-                ? darkColorScheme.onSurface
-                : Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
+        color:
+            darkColorScheme != null ? darkColorScheme.onSurface : Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
       subtitleTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
+          fontVariations: [
+            FontVariation('ROND', 100),
+            FontVariation.width(100),
+            FontVariation.weight(600)
+          ],
           color: darkColorScheme != null
               ? darkColorScheme.onSurfaceVariant.withOpacity(0.7)
               : Colors.grey),
@@ -141,6 +237,12 @@ ThemeData black(darkColorScheme, context) {
 
   return ThemeData.dark().copyWith(
     useMaterial3: true,
+    textTheme:
+        ThemeData.dark().textTheme.apply(fontFamily: _fontFamily).copyWith(
+              labelSmall: _labelStyle(ThemeData.dark().textTheme.labelSmall),
+              labelMedium: _labelStyle(ThemeData.dark().textTheme.labelMedium),
+              labelLarge: _labelStyle(ThemeData.dark().textTheme.labelLarge),
+            ),
     colorScheme: (darkColorScheme as ColorScheme?)?.copyWith(
           primary: Colors.white,
           onPrimary: Colors.black,
@@ -192,13 +294,36 @@ ThemeData black(darkColorScheme, context) {
       labelColor: Colors.white,
       unselectedLabelColor: Colors.white60,
       indicatorColor: Colors.white,
+      labelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
+      unselectedLabelStyle: TextStyle(
+        fontFamily: _fontFamily,
+        fontSize: 14,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(800)
+        ],
+      ),
     ),
     appBarTheme: AppBarTheme(
       backgroundColor: amoledBlack,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
-        fontSize: 22,
-        fontWeight: FontWeight.w900,
+        fontFamily: _fontFamily,
+        fontSize: 26,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(110),
+          FontVariation.weight(1000)
+        ],
         color: Colors.white,
       ),
     ),
@@ -209,13 +334,21 @@ ThemeData black(darkColorScheme, context) {
     ),
     listTileTheme: ListTileThemeData(
       titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-          ),
-      subtitleTextStyle: Theme.of(context)
-          .textTheme
-          .bodyMedium
-          ?.copyWith(fontWeight: FontWeight.w600, color: Colors.white70),
+        color: Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
+      subtitleTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+          fontVariations: [
+            FontVariation('ROND', 100),
+            FontVariation.width(100),
+            FontVariation.weight(600)
+          ],
+          color: Colors.white70),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: <TargetPlatform, PageTransitionsBuilder>{

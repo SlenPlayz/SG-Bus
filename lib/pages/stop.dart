@@ -271,11 +271,18 @@ class _StopState extends State<Stop> {
     });
   }
 
+  String truncateTo20(String text) {
+    return (text.length <= 20) ? text : text.substring(0, 20);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text(name),
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(truncateTo20(name) + (name.length > 20 ? "..." : "")),
+          ),
           scrolledUnderElevation: 0,
           elevation: 0,
           backgroundColor: Theme.of(context).colorScheme.surface,

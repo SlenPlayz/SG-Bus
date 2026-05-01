@@ -145,16 +145,32 @@ class _HomeState extends State<Home> {
                                                                           0,
                                                                           15,
                                                                           0),
-                                                                  child: Text(
-                                                                    alert.value[
-                                                                        "header"],
-                                                                    style: Theme.of(
-                                                                            context)
-                                                                        .textTheme
-                                                                        .titleMedium,
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .center,
+                                                                  child:
+                                                                      Container(
+                                                                    width: double
+                                                                        .infinity,
+                                                                    child: Text(
+                                                                      alert.value[
+                                                                          "header"],
+                                                                      style: Theme.of(
+                                                                              context)
+                                                                          .textTheme
+                                                                          .titleMedium
+                                                                          ?.copyWith(
+                                                                        fontVariations: [
+                                                                          FontVariation(
+                                                                              'ROND',
+                                                                              100),
+                                                                          FontVariation.width(
+                                                                              100),
+                                                                          FontVariation.weight(
+                                                                              1000)
+                                                                        ],
+                                                                      ),
+                                                                      textAlign:
+                                                                          TextAlign
+                                                                              .left,
+                                                                    ),
                                                                   ),
                                                                 ),
                                                                 Padding(
@@ -170,6 +186,20 @@ class _HomeState extends State<Home> {
                                                                     data: alert
                                                                             .value[
                                                                         "message"],
+                                                                    styleSheet:
+                                                                        MarkdownStyleSheet(
+                                                                            p: TextStyle(
+                                                                      fontVariations: [
+                                                                        FontVariation(
+                                                                          'ROND',
+                                                                          100,
+                                                                        ),
+                                                                        FontVariation
+                                                                            .weight(
+                                                                          400,
+                                                                        ),
+                                                                      ],
+                                                                    )),
                                                                     onTapLink: (text,
                                                                         href,
                                                                         title) {

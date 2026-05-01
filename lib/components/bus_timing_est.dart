@@ -50,8 +50,12 @@ class BusTimingEst extends StatelessWidget {
             Text(
               estimatedArrTime,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                fontVariations: [
+                  FontVariation('ROND', 100),
+                  FontVariation.width(105),
+                  FontVariation.weight(700)
+                ],
+              ),
               textAlign: TextAlign.center,
             ),
             if (doubleStat != "")
@@ -81,6 +85,11 @@ class BusTimingEst extends StatelessWidget {
                   Text(
                     doubleStat,
                     textAlign: TextAlign.center,
+                    style: TextStyle(fontVariations: [
+                      FontVariation('ROND', 100),
+                      FontVariation.width(90),
+                      FontVariation.weight(500)
+                    ], color: Theme.of(context).colorScheme.onSurface),
                   ),
                   data != null &&
                           data["Feature"] != null &&

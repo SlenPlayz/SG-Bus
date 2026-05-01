@@ -108,9 +108,13 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
                     controller: _controller,
                     autofocus: true,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                        ),
+                      fontVariations: [
+                        FontVariation.weight(800),
+                        FontVariation.width(100),
+                        FontVariation("ROND", 100)
+                      ],
+                      fontSize: 15,
+                    ),
                     decoration: const InputDecoration(
                       hintText: 'Search for stops, roads or buses',
                       border: InputBorder.none,

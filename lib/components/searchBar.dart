@@ -50,9 +50,13 @@ class SearchBarWidget extends StatelessWidget {
                     child: Text(
                       "Search for stops, roads or buses",
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
-                          ),
+                        fontVariations: [
+                          FontVariation.weight(800),
+                          FontVariation.width(100),
+                          FontVariation("ROND", 100)
+                        ],
+                        fontSize: 15,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),

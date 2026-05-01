@@ -49,6 +49,8 @@
 	<true/>
 	<key>MBXAccessToken</key>
 	<string>sk.eyJ1Ijoic2xlbiIsImEiOiJjbG01dDA5MW8zMDN4M2RzNnJqcXBzOXBxIn0.kZHF_05jPibKbtvRkFL2mw</string>
+	<key>GADApplicationIdentifier</key>
+	<string>ca-app-pub-3940256099942544~1458002511</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SG Bus uses your location to get nearby stops as well as locate yourself on the map.</string>
 </dict>

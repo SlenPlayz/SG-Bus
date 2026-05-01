@@ -42,20 +42,31 @@ class _BusTimingState extends State<BusTiming> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            widget.data['ServiceNo'],
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              fontSize: 26,
-                              color: Theme.of(context).colorScheme.onSurface
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              widget.data['ServiceNo'],
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                      fontVariations: [
+                                    FontVariation('ROND', 100),
+                                    FontVariation.width(110),
+                                    FontVariation.weight(900)
+                                  ],
+                                      fontSize: 27,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface),
                             ),
                           ),
                           if (widget.data["to"] != null)
-                          Text(
-                            widget.data["to"] ?? "",
-                            style: Theme.of(context).textTheme.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          )
+                            Text(
+                              widget.data["to"] ?? "",
+                              style: Theme.of(context).textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            )
                         ],
                       ),
                     ),
