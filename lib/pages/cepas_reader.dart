@@ -192,8 +192,12 @@ class _CepasReaderState extends State<CepasReader> {
             child: Text(
               "EZ-Link Reader",
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                fontVariations: [
+                  FontVariation.weight(800),
+                  FontVariation.width(100),
+                  FontVariation("ROND", 100)
+                ],
+              ),
             ),
           ),
         ),

@@ -83,7 +83,8 @@ class _HomeState extends State<Home> {
                                               _alertsExpanded =
                                                   !_alertsExpanded;
                                             });
-                                            _setExpanded('alertsExpanded', _alertsExpanded);
+                                            _setExpanded('alertsExpanded',
+                                                _alertsExpanded);
                                           },
                                           child: Padding(
                                             padding: const EdgeInsets.fromLTRB(
@@ -333,7 +334,8 @@ class _HomeState extends State<Home> {
                               setState(() {
                                 _favouritesExpanded = !_favouritesExpanded;
                               });
-                              _setExpanded('favouritesExpanded', _favouritesExpanded);
+                              _setExpanded(
+                                  'favouritesExpanded', _favouritesExpanded);
                             },
                             child: Padding(
                               padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
@@ -457,7 +459,13 @@ class _HomeState extends State<Home> {
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                      ?.copyWith(
+                                    fontVariations: [
+                                      FontVariation.weight(800),
+                                      FontVariation.width(100),
+                                      FontVariation("ROND", 100)
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

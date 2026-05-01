@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -39,6 +40,7 @@ class _StopState extends State<Stop> {
 
   List services = [];
   String name = '';
+  String road = '';
   var coords;
   List arrTimings = [];
   var _favouriteStops;
@@ -51,6 +53,9 @@ class _StopState extends State<Stop> {
   static const String endpoint = serverURL;
   late AdWidget adWidget;
   Map arrivalData = {};
+  final ScrollController _scrollController = ScrollController();
+  bool _showAppBarTitle = false;
+  DateTime? _lastRefreshed;
 
   Future<void> getArrTimings() async {
     try {
@@ -63,6 +68,7 @@ class _StopState extends State<Stop> {
       }
 
       arrivalData = jsonDecode(response);
+      _lastRefreshed = DateTime.now();
 
       try {
         calcTimings();
@@ -163,7 +169,9 @@ class _StopState extends State<Stop> {
           arrTimings.add({"ServiceNo": s});
         });
         setState(() {
+          print(element);
           name = element['Name'];
+          road = element['Road'] ?? '';
           arrTimings = arrTimings;
           coords = element["cords"];
         });
@@ -263,6 +271,14 @@ class _StopState extends State<Stop> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      final shouldShow = _scrollController.offset > 80;
+      if (shouldShow != _showAppBarTitle) {
+        setState(() {
+          _showAppBarTitle = shouldShow;
+        });
+      }
+    });
     loadStop();
     Timer.periodic(Duration(seconds: 30), (Timer t) {
       if (!isLoading) {
@@ -271,115 +287,290 @@ class _StopState extends State<Stop> {
     });
   }
 
-  String truncateTo20(String text) {
-    return (text.length <= 20) ? text : text.substring(0, 20);
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(truncateTo20(name) + (name.length > 20 ? "..." : "")),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      appBar: AppBar(
+        scrolledUnderElevation: 0,
+        elevation: 0,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: AnimatedOpacity(
+          opacity: _showAppBarTitle ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name,
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  fontVariations: [
+                    FontVariation('ROND', 100),
+                    FontVariation.width(100),
+                    FontVariation.weight(800)
+                  ],
+                ),
+              ),
+              Text(
+                road.isNotEmpty
+                    ? '${widget.stopid} \u2022 $road'
+                    : widget.stopid,
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                  color:
+                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  fontVariations: [
+                    FontVariation('ROND', 100),
+                    FontVariation.width(100),
+                    FontVariation.weight(600)
+                  ],
+                ),
+              ),
+            ],
           ),
-          scrolledUnderElevation: 0,
-          elevation: 0,
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          actions: [
-            IconButton(
-              onPressed: () {
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (BuildContext context) => StopSpecMap(
-                          coords: coords,
-                          name: name,
-                        )));
-              },
-              icon: Icon(Icons.map_rounded),
-            ),
-            IconButton(
-              onPressed: favourite,
-              icon: stopIsFavourited
-                  ? const Icon(Icons.favorite_rounded)
-                  : const Icon(Icons.favorite_outline_rounded),
-            ),
-          ],
         ),
-        floatingActionButton: Padding(
-            padding: const EdgeInsets.only(bottom: 50),
-            child: FloatingActionButton(
-              onPressed: isLoading
-                  ? null
-                  : () {
-                      setState(() {
-                        isLoading = true;
-                      });
-                      getArrTimings();
-                    },
-              child: Icon(Icons.refresh),
-            )),
-        body: Column(
-          children: [
-            AnimatedOpacity(
-              opacity: isLoading ? 1.0 : 0.0,
-              duration:
-                  const Duration(milliseconds: 500), // Adjust speed as needed
-              curve: Curves
-                  .easeInOut, // Optional: Makes the transition feel smoother
-              child: LinearProgressIndicatorM3E(),
-            ),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: getArrTimings,
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(8, 0, 8, 1),
-                  // padding: EdgeInsetsGeometry.all(0),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(28.0)),
-                    child: ListView.builder(
-                      itemCount: arrTimings.length,
-                      padding: EdgeInsets.only(bottom: 80),
-                      itemBuilder: (context, index) {
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 2),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.only(
-                              topLeft: index == 0
-                                  ? Radius.circular(28.0)
-                                  : Radius.circular(5),
-                              topRight: index == 0
-                                  ? Radius.circular(28.0)
-                                  : Radius.circular(5),
-                              bottomLeft: index == arrTimings.length - 1
-                                  ? Radius.circular(28.0)
-                                  : Radius.circular(5),
-                              bottomRight: index == arrTimings.length - 1
-                                  ? Radius.circular(28.0)
-                                  : Radius.circular(5),
+        actions: _showAppBarTitle
+            ? [
+                IconButton(
+                  onPressed: () {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (BuildContext context) => StopSpecMap(
+                              coords: coords,
+                              name: name,
+                            )));
+                  },
+                  icon: Icon(Icons.map_rounded),
+                ),
+                IconButton(
+                  onPressed: favourite,
+                  icon: stopIsFavourited
+                      ? const Icon(Icons.favorite_rounded)
+                      : const Icon(Icons.favorite_outline_rounded),
+                ),
+              ]
+            : null,
+      ),
+      floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 50),
+          child: FloatingActionButton(
+            onPressed: isLoading
+                ? null
+                : () {
+                    setState(() {
+                      isLoading = true;
+                    });
+                    getArrTimings();
+                  },
+            child: Icon(Icons.refresh),
+          )),
+      body: Column(
+        children: [
+          AnimatedOpacity(
+            opacity: isLoading ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+            child: LinearProgressIndicatorM3E(),
+          ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: getArrTimings,
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                physics: AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.only(left: 10, bottom: 20, right: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            textAlign: TextAlign.left,
+                            style: Theme.of(context)
+                                .textTheme
+                                .displayMedium!
+                                .copyWith(
+                              fontVariations: [
+                                FontVariation('ROND', 100),
+                                FontVariation.width(105),
+                                FontVariation.weight(900)
+                              ],
                             ),
-                            color: Theme.of(context)
-                                .colorScheme
-                                .surfaceVariant
-                                .withOpacity(0.3),
                           ),
-                          child: BusTiming(arrTimings[index]),
-                        );
-                      },
+                          SizedBox(height: 2),
+                          Text(
+                            road.isNotEmpty
+                                ? '${widget.stopid} • $road'
+                                : widget.stopid,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.6),
+                              fontVariations: [
+                                FontVariation('ROND', 100),
+                                FontVariation.width(120),
+                                FontVariation.weight(700)
+                              ],
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.access_time_rounded,
+                                size: 14,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.45),
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                _lastRefreshed != null
+                                    ? 'Last refreshed at ${_lastRefreshed!.hour.toString().padLeft(2, '0')}:${_lastRefreshed!.minute.toString().padLeft(2, '0')}'
+                                    : 'Loading...',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall!
+                                    .copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.45),
+                                  fontVariations: [
+                                    FontVariation('ROND', 100),
+                                    FontVariation.width(100),
+                                    FontVariation.weight(600)
+                                  ],
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              SizedBox(
+                                height: 28,
+                                width: 28,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  iconSize: 16,
+                                  onPressed: isLoading
+                                      ? null
+                                      : () {
+                                          setState(() => isLoading = true);
+                                          getArrTimings();
+                                        },
+                                  icon: Icon(
+                                    Icons.refresh_rounded,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.45),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          Row(
+                            children: [
+                              FilledButton.tonalIcon(
+                                onPressed: favourite,
+                                icon: Icon(
+                                  stopIsFavourited
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_outline_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  stopIsFavourited ? 'Favourited' : 'Favourite',
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              FilledButton.tonalIcon(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (BuildContext context) =>
+                                          StopSpecMap(
+                                        coords: coords,
+                                        name: name,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.map_rounded,
+                                  size: 18,
+                                ),
+                                label: Text('View Map'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(8, 0, 8, 1),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.all(Radius.circular(28.0)),
+                        child: ListView.builder(
+                          itemCount: arrTimings.length,
+                          padding: EdgeInsets.only(bottom: 80),
+                          shrinkWrap: true,
+                          physics: NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 2),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.only(
+                                  topLeft: index == 0
+                                      ? Radius.circular(28.0)
+                                      : Radius.circular(5),
+                                  topRight: index == 0
+                                      ? Radius.circular(28.0)
+                                      : Radius.circular(5),
+                                  bottomLeft: index == arrTimings.length - 1
+                                      ? Radius.circular(28.0)
+                                      : Radius.circular(5),
+                                  bottomRight: index == arrTimings.length - 1
+                                      ? Radius.circular(28.0)
+                                      : Radius.circular(5),
+                                ),
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .withOpacity(0.3),
+                              ),
+                              child: BusTiming(arrTimings[index]),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            SizedBox(height: 3),
-            isAdLoaded
-                ? Container(
-                    alignment: Alignment.center,
-                    child: adWidget,
-                    width: Ad.size.width.toDouble(),
-                    height: Ad.size.height.toDouble(),
-                  )
-                : Container(),
-          ],
-        ));
+          ),
+          isAdLoaded
+              ? Container(
+                  alignment: Alignment.center,
+                  child: adWidget,
+                  width: Ad.size.width.toDouble(),
+                  height: Ad.size.height.toDouble(),
+                )
+              : Container(),
+        ],
+      ),
+    );
   }
 }
