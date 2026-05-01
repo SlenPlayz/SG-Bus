@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sgbus/components/searchBar.dart';
 import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
@@ -22,6 +23,27 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   int count = 5;
+  bool _alertsExpanded = true;
+  bool _favouritesExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExpandedStates();
+  }
+
+  Future<void> _loadExpandedStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _alertsExpanded = prefs.getBool('alertsExpanded') ?? true;
+      _favouritesExpanded = prefs.getBool('favouritesExpanded') ?? true;
+    });
+  }
+
+  Future<void> _setExpanded(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setBool(key, value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,220 +77,310 @@ class _HomeState extends State<Home> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       if (alerts.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.fromLTRB(
-                                              8, 8, 5, 5),
-                                          child: Text(
-                                            "Alerts:",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelMedium
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error,
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _alertsExpanded =
+                                                  !_alertsExpanded;
+                                            });
+                                            _setExpanded('alertsExpanded', _alertsExpanded);
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                8, 8, 8, 5),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "Alerts:",
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelMedium
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .error,
+                                                      ),
                                                 ),
-                                          ),
-                                        ),
-                                      for (var alert in alerts.asMap().entries)
-                                        if (alert.value["type"] == "text" ||
-                                            alert.value["type"] == "webview")
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 2),
-                                            child: Container(
-                                              margin:
-                                                  EdgeInsets.only(bottom: 1),
-                                              decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.only(
-                                                  topLeft: alert.key == 0
-                                                      ? Radius.circular(28.0)
-                                                      : Radius.circular(5),
-                                                  topRight: alert.key == 0
-                                                      ? Radius.circular(28.0)
-                                                      : Radius.circular(5),
-                                                  bottomLeft: alert.key ==
-                                                          alerts.length - 1
-                                                      ? Radius.circular(28.0)
-                                                      : Radius.circular(5),
-                                                  bottomRight: alert.key ==
-                                                          alerts.length - 1
-                                                      ? Radius.circular(28.0)
-                                                      : Radius.circular(5),
-                                                ),
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceVariant
-                                                    .withOpacity(0.3),
-                                              ),
-                                              child: ListTile(
-                                                visualDensity:
-                                                    VisualDensity.compact,
-                                                onTap: () {
-                                                  if (alert.value["type"] ==
-                                                      "webview") {
-                                                    Navigator.of(context).push(MaterialPageRoute(
-                                                        builder: (context) =>
-                                                            AlertWebviewPage(
-                                                                header: alert
-                                                                        .value[
-                                                                    "header"],
-                                                                message: alert
-                                                                        .value[
-                                                                    "message"],
-                                                                link:
-                                                                    alert.value[
-                                                                        "link"],
-                                                                linkDesc: alert
-                                                                        .value[
-                                                                    "linkDesc"])));
-                                                  }
-                                                  if (alert.value["type"] ==
-                                                      "text") {
-                                                    showModalBottomSheet(
-                                                      context: context,
-                                                      builder: (BuildContext
-                                                          context) {
-                                                        return BottomSheet(
-                                                          onClosing: () {},
-                                                          showDragHandle: true,
-                                                          builder: (BuildContext
-                                                              context) {
-                                                            return SingleChildScrollView(
-                                                                child: Column(
-                                                              children: [
-                                                                Padding(
-                                                                  padding: EdgeInsets
-                                                                      .fromLTRB(
-                                                                          15,
-                                                                          0,
-                                                                          15,
-                                                                          0),
-                                                                  child:
-                                                                      Container(
-                                                                    width: double
-                                                                        .infinity,
-                                                                    child: Text(
-                                                                      alert.value[
-                                                                          "header"],
-                                                                      style: Theme.of(
-                                                                              context)
-                                                                          .textTheme
-                                                                          .titleMedium
-                                                                          ?.copyWith(
-                                                                        fontVariations: [
-                                                                          FontVariation(
-                                                                              'ROND',
-                                                                              100),
-                                                                          FontVariation.width(
-                                                                              100),
-                                                                          FontVariation.weight(
-                                                                              1000)
-                                                                        ],
-                                                                      ),
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .left,
-                                                                    ),
-                                                                  ),
-                                                                ),
-                                                                Padding(
-                                                                  padding:
-                                                                      const EdgeInsets
-                                                                          .fromLTRB(
-                                                                          15.0,
-                                                                          15,
-                                                                          15,
-                                                                          100),
-                                                                  child:
-                                                                      MarkdownBody(
-                                                                    data: alert
-                                                                            .value[
-                                                                        "message"],
-                                                                    styleSheet:
-                                                                        MarkdownStyleSheet(
-                                                                            p: TextStyle(
-                                                                      fontVariations: [
-                                                                        FontVariation(
-                                                                          'ROND',
-                                                                          100,
-                                                                        ),
-                                                                        FontVariation
-                                                                            .weight(
-                                                                          400,
-                                                                        ),
-                                                                      ],
-                                                                    )),
-                                                                    onTapLink: (text,
-                                                                        href,
-                                                                        title) {
-                                                                      if (href !=
-                                                                          null) {
-                                                                        launchUrl(
-                                                                          Uri.parse(
-                                                                              href),
-                                                                          mode:
-                                                                              LaunchMode.externalApplication,
-                                                                        );
-                                                                      }
-                                                                    },
-                                                                  ),
-                                                                )
-                                                              ],
-                                                            ));
-                                                          },
-                                                        );
-                                                      },
-                                                    );
-                                                  }
-                                                },
-                                                title: Text(
-                                                  alert.value["header"],
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
+                                                const SizedBox(width: 4),
+                                                AnimatedRotation(
+                                                  turns: _alertsExpanded
+                                                      ? 0.25
+                                                      : 0,
+                                                  duration: const Duration(
+                                                      milliseconds: 300),
+                                                  curve: Curves.easeOutCubic,
+                                                  child: Icon(
+                                                    Icons.chevron_right_rounded,
+                                                    size: 16,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .error,
                                                   ),
                                                 ),
-                                                subtitle: Text(
-                                                  alert.value["message"]
-                                                              .toString()
-                                                              .length >
-                                                          65
-                                                      ? alert.value["message"]
-                                                              .toString()
-                                                              .substring(
-                                                                  0, 65) +
-                                                          "..."
-                                                      : alert.value["message"],
-                                                ),
-                                                trailing: Icon(Icons
-                                                    .arrow_forward_rounded),
-                                              ),
+                                              ],
                                             ),
-                                          )
+                                          ),
+                                        ),
+                                      ClipRect(
+                                        child: AnimatedAlign(
+                                          duration:
+                                              const Duration(milliseconds: 600),
+                                          curve: Curves.easeOutCubic,
+                                          alignment: Alignment.topCenter,
+                                          heightFactor:
+                                              _alertsExpanded ? 1.0 : 0.0,
+                                          child: Column(
+                                            children: [
+                                              for (var alert
+                                                  in alerts.asMap().entries)
+                                                if (alert.value["type"] ==
+                                                        "text" ||
+                                                    alert.value["type"] ==
+                                                        "webview")
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            bottom: 2),
+                                                    child: Container(
+                                                      margin: EdgeInsets.only(
+                                                          bottom: 1),
+                                                      decoration: BoxDecoration(
+                                                        borderRadius:
+                                                            BorderRadius.only(
+                                                          topLeft: alert.key ==
+                                                                  0
+                                                              ? Radius.circular(
+                                                                  28.0)
+                                                              : Radius.circular(
+                                                                  5),
+                                                          topRight: alert.key ==
+                                                                  0
+                                                              ? Radius.circular(
+                                                                  28.0)
+                                                              : Radius.circular(
+                                                                  5),
+                                                          bottomLeft: alert
+                                                                      .key ==
+                                                                  alerts.length -
+                                                                      1
+                                                              ? Radius.circular(
+                                                                  28.0)
+                                                              : Radius.circular(
+                                                                  5),
+                                                          bottomRight: alert
+                                                                      .key ==
+                                                                  alerts.length -
+                                                                      1
+                                                              ? Radius.circular(
+                                                                  28.0)
+                                                              : Radius.circular(
+                                                                  5),
+                                                        ),
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .surfaceVariant
+                                                            .withOpacity(0.3),
+                                                      ),
+                                                      child: ListTile(
+                                                        visualDensity:
+                                                            VisualDensity
+                                                                .compact,
+                                                        onTap: () {
+                                                          if (alert.value[
+                                                                  "type"] ==
+                                                              "webview") {
+                                                            Navigator.of(context).push(MaterialPageRoute(
+                                                                builder: (context) => AlertWebviewPage(
+                                                                    header: alert
+                                                                            .value[
+                                                                        "header"],
+                                                                    message: alert
+                                                                            .value[
+                                                                        "message"],
+                                                                    link: alert
+                                                                            .value[
+                                                                        "link"],
+                                                                    linkDesc: alert
+                                                                            .value[
+                                                                        "linkDesc"])));
+                                                          }
+                                                          if (alert.value[
+                                                                  "type"] ==
+                                                              "text") {
+                                                            showModalBottomSheet(
+                                                              context: context,
+                                                              builder:
+                                                                  (BuildContext
+                                                                      context) {
+                                                                return BottomSheet(
+                                                                  onClosing:
+                                                                      () {},
+                                                                  showDragHandle:
+                                                                      true,
+                                                                  builder:
+                                                                      (BuildContext
+                                                                          context) {
+                                                                    return SingleChildScrollView(
+                                                                        child:
+                                                                            Column(
+                                                                      children: [
+                                                                        Padding(
+                                                                          padding: EdgeInsets.fromLTRB(
+                                                                              15,
+                                                                              0,
+                                                                              15,
+                                                                              0),
+                                                                          child:
+                                                                              Container(
+                                                                            width:
+                                                                                double.infinity,
+                                                                            child:
+                                                                                Text(
+                                                                              alert.value["header"],
+                                                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                                                                fontVariations: [
+                                                                                  FontVariation('ROND', 100),
+                                                                                  FontVariation.width(100),
+                                                                                  FontVariation.weight(1000)
+                                                                                ],
+                                                                              ),
+                                                                              textAlign: TextAlign.left,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        Padding(
+                                                                          padding: const EdgeInsets
+                                                                              .fromLTRB(
+                                                                              15.0,
+                                                                              15,
+                                                                              15,
+                                                                              100),
+                                                                          child:
+                                                                              MarkdownBody(
+                                                                            data:
+                                                                                alert.value["message"],
+                                                                            styleSheet: MarkdownStyleSheet(
+                                                                                p: TextStyle(
+                                                                              fontVariations: [
+                                                                                FontVariation(
+                                                                                  'ROND',
+                                                                                  100,
+                                                                                ),
+                                                                                FontVariation.weight(
+                                                                                  400,
+                                                                                ),
+                                                                              ],
+                                                                            )),
+                                                                            onTapLink: (text,
+                                                                                href,
+                                                                                title) {
+                                                                              if (href != null) {
+                                                                                launchUrl(
+                                                                                  Uri.parse(href),
+                                                                                  mode: LaunchMode.externalApplication,
+                                                                                );
+                                                                              }
+                                                                            },
+                                                                          ),
+                                                                        )
+                                                                      ],
+                                                                    ));
+                                                                  },
+                                                                );
+                                                              },
+                                                            );
+                                                          }
+                                                        },
+                                                        title: Text(
+                                                          alert.value["header"],
+                                                          style: TextStyle(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        subtitle: Text(
+                                                          alert.value["message"]
+                                                                      .toString()
+                                                                      .length >
+                                                                  65
+                                                              ? alert.value[
+                                                                          "message"]
+                                                                      .toString()
+                                                                      .substring(
+                                                                          0,
+                                                                          65) +
+                                                                  "..."
+                                                              : alert.value[
+                                                                  "message"],
+                                                        ),
+                                                        trailing: Icon(Icons
+                                                            .arrow_forward_rounded),
+                                                      ),
+                                                    ),
+                                                  )
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 );
                               }),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(8, 8, 5, 0),
-                            child: Text(
-                              "Favourites:",
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w900,
+                          GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _favouritesExpanded = !_favouritesExpanded;
+                              });
+                              _setExpanded('favouritesExpanded', _favouritesExpanded);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    "Favourites:",
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                   ),
+                                  const SizedBox(width: 4),
+                                  AnimatedRotation(
+                                    turns: _favouritesExpanded ? 0.25 : 0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOutCubic,
+                                    child: Icon(
+                                      Icons.chevron_right_rounded,
+                                      size: 16,
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.color,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(28.0),
-                            ),
-                            margin: EdgeInsets.fromLTRB(0, 5, 0, 5),
-                            child: Favourites(
-                              key: ValueKey(count),
+                          ClipRect(
+                            child: AnimatedAlign(
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeOutCubic,
+                              alignment: Alignment.topCenter,
+                              heightFactor: _favouritesExpanded ? 1.0 : 0.0,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(28.0),
+                                ),
+                                margin: EdgeInsets.fromLTRB(0, 5, 0, 5),
+                                child: Favourites(
+                                  key: ValueKey(count),
+                                ),
+                              ),
                             ),
                           ),
                           Padding(
