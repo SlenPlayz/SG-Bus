@@ -111,6 +111,24 @@ ThemeData light(lightColorScheme, context) {
             : Colors.black,
       ),
     ),
+    dialogTheme: DialogThemeData(
+      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
+      contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(600)
+        ],
+      ),
+    ),
     listTileTheme: ListTileThemeData(
       titleTextStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
         fontFamily: _fontFamily,
@@ -197,6 +215,28 @@ ThemeData dark(darkColorScheme, context) {
           FontVariation('ROND', 100),
           FontVariation.width(110),
           FontVariation.weight(1000)
+        ],
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+        color:
+            darkColorScheme != null ? darkColorScheme.onSurface : Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
+      contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color:
+            darkColorScheme != null ? darkColorScheme.onSurface : Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(600)
         ],
       ),
     ),
@@ -325,6 +365,28 @@ ThemeData black(darkColorScheme, context) {
           FontVariation.weight(1000)
         ],
         color: Colors.white,
+      ),
+    ),
+    dialogTheme: DialogThemeData(
+      titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+        color:
+            darkColorScheme != null ? darkColorScheme.onSurface : Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(800)
+        ],
+      ),
+      contentTextStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color:
+            darkColorScheme != null ? darkColorScheme.onSurface : Colors.white,
+        fontFamily: _fontFamily,
+        fontVariations: [
+          FontVariation('ROND', 100),
+          FontVariation.width(100),
+          FontVariation.weight(600)
+        ],
       ),
     ),
     navigationBarTheme: NavigationBarThemeData(
