@@ -379,184 +379,190 @@ class _StopState extends State<Stop> {
           Expanded(
             child: RefreshIndicator(
               onRefresh: getArrTimings,
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.only(left: 10, bottom: 20, right: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            name,
-                            textAlign: TextAlign.left,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displayMedium!
-                                .copyWith(
-                              fontVariations: [
-                                FontVariation('ROND', 100),
-                                FontVariation.width(105),
-                                FontVariation.weight(900)
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Text(
-                            road.isNotEmpty
-                                ? '${widget.stopid} • $road'
-                                : widget.stopid,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.6),
-                              fontVariations: [
-                                FontVariation('ROND', 100),
-                                FontVariation.width(120),
-                                FontVariation.weight(700)
-                              ],
-                            ),
-                          ),
-                          SizedBox(height: 2),
-                          Row(
+              child: Container(
+                padding: EdgeInsets.only(left: 10, bottom: 20, right: 10),
+                child: ClipRRect(
+                  borderRadius: _showAppBarTitle
+                      ? BorderRadius.all(Radius.circular(28.0))
+                      : BorderRadius.all(Radius.circular(0.0)),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    physics: AlwaysScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.access_time_rounded,
-                                size: 14,
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurface
-                                    .withOpacity(0.45),
-                              ),
-                              SizedBox(width: 4),
                               Text(
-                                _lastRefreshed != null
-                                    ? 'Last refreshed at ${_lastRefreshed!.hour.toString().padLeft(2, '0')}:${_lastRefreshed!.minute.toString().padLeft(2, '0')}'
-                                    : 'Loading...',
+                                name,
+                                textAlign: TextAlign.left,
                                 style: Theme.of(context)
                                     .textTheme
-                                    .bodySmall!
+                                    .displayMedium!
+                                    .copyWith(
+                                  fontVariations: [
+                                    FontVariation('ROND', 100),
+                                    FontVariation.width(105),
+                                    FontVariation.weight(900)
+                                  ],
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                road.isNotEmpty
+                                    ? '${widget.stopid} • $road'
+                                    : widget.stopid,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
                                     .copyWith(
                                   color: Theme.of(context)
                                       .colorScheme
                                       .onSurface
-                                      .withOpacity(0.45),
+                                      .withOpacity(0.6),
                                   fontVariations: [
                                     FontVariation('ROND', 100),
-                                    FontVariation.width(100),
-                                    FontVariation.weight(600)
+                                    FontVariation.width(120),
+                                    FontVariation.weight(700)
                                   ],
                                 ),
                               ),
-                              SizedBox(width: 2),
-                              SizedBox(
-                                height: 28,
-                                width: 28,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  iconSize: 16,
-                                  onPressed: isLoading
-                                      ? null
-                                      : () {
-                                          setState(() => isLoading = true);
-                                          getArrTimings();
-                                        },
-                                  icon: Icon(
-                                    Icons.refresh_rounded,
+                              SizedBox(height: 2),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time_rounded,
+                                    size: 14,
                                     color: Theme.of(context)
                                         .colorScheme
                                         .onSurface
                                         .withOpacity(0.45),
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          Row(
-                            children: [
-                              FilledButton.tonalIcon(
-                                onPressed: favourite,
-                                icon: Icon(
-                                  stopIsFavourited
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_outline_rounded,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  stopIsFavourited ? 'Favourited' : 'Favourite',
-                                ),
-                              ),
-                              SizedBox(width: 8),
-                              FilledButton.tonalIcon(
-                                onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (BuildContext context) =>
-                                          StopSpecMap(
-                                        coords: coords,
-                                        name: name,
+                                  SizedBox(width: 4),
+                                  Text(
+                                    _lastRefreshed != null
+                                        ? 'Last refreshed at ${_lastRefreshed!.hour.toString().padLeft(2, '0')}:${_lastRefreshed!.minute.toString().padLeft(2, '0')}'
+                                        : 'Loading...',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall!
+                                        .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.45),
+                                      fontVariations: [
+                                        FontVariation('ROND', 100),
+                                        FontVariation.width(100),
+                                        FontVariation.weight(600)
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: 2),
+                                  SizedBox(
+                                    height: 28,
+                                    width: 28,
+                                    child: IconButton(
+                                      padding: EdgeInsets.zero,
+                                      iconSize: 16,
+                                      onPressed: isLoading
+                                          ? null
+                                          : () {
+                                              setState(() => isLoading = true);
+                                              getArrTimings();
+                                            },
+                                      icon: Icon(
+                                        Icons.refresh_rounded,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.45),
                                       ),
                                     ),
-                                  );
-                                },
-                                icon: Icon(
-                                  Icons.map_rounded,
-                                  size: 18,
-                                ),
-                                label: Text('View Map'),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 0),
+                              Row(
+                                children: [
+                                  FilledButton.tonalIcon(
+                                    onPressed: favourite,
+                                    icon: Icon(
+                                      stopIsFavourited
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      stopIsFavourited
+                                          ? 'Favourited'
+                                          : 'Favourite',
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  FilledButton.tonalIcon(
+                                    onPressed: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (BuildContext context) =>
+                                              StopSpecMap(
+                                            coords: coords,
+                                            name: name,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: Icon(
+                                      Icons.map_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text('View Map'),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(8, 0, 8, 1),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.all(Radius.circular(28.0)),
-                        child: ListView.builder(
-                          itemCount: arrTimings.length,
-                          padding: EdgeInsets.only(bottom: 80),
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            return Container(
-                              margin: EdgeInsets.only(bottom: 2),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.only(
-                                  topLeft: index == 0
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                  topRight: index == 0
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                  bottomLeft: index == arrTimings.length - 1
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                  bottomRight: index == arrTimings.length - 1
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                ),
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceVariant
-                                    .withOpacity(0.3),
-                              ),
-                              child: BusTiming(arrTimings[index]),
-                            );
-                          },
                         ),
-                      ),
+                        Container(
+                          padding: EdgeInsets.only(top: 5),
+                          child: ListView.builder(
+                            itemCount: arrTimings.length,
+                            padding: EdgeInsets.only(bottom: 80),
+                            shrinkWrap: true,
+                            physics: NeverScrollableScrollPhysics(),
+                            itemBuilder: (context, index) {
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 2),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: index == 0
+                                        ? Radius.circular(28.0)
+                                        : Radius.circular(5),
+                                    topRight: index == 0
+                                        ? Radius.circular(28.0)
+                                        : Radius.circular(5),
+                                    bottomLeft: index == arrTimings.length - 1
+                                        ? Radius.circular(28.0)
+                                        : Radius.circular(5),
+                                    bottomRight: index == arrTimings.length - 1
+                                        ? Radius.circular(28.0)
+                                        : Radius.circular(5),
+                                  ),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceVariant
+                                      .withOpacity(0.3),
+                                ),
+                                child: BusTiming(arrTimings[index]),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),

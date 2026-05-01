@@ -13,6 +13,9 @@ class BusRoute extends StatefulWidget {
 }
 
 class _BusRouteState extends State<BusRoute> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showAppBarTitle = false;
+
   List bsids = [];
   String routeType = '';
   var currRoute;
@@ -67,7 +70,21 @@ class _BusRouteState extends State<BusRoute> {
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(() {
+      final shouldShow = _scrollController.offset > 40;
+      if (shouldShow != _showAppBarTitle) {
+        setState(() {
+          _showAppBarTitle = shouldShow;
+        });
+      }
+    });
     loadRoute();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Widget _buildRouteListView(List stops) {
@@ -195,37 +212,129 @@ class _BusRouteState extends State<BusRoute> {
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
+        backgroundColor: Theme.of(context).colorScheme.surface,
         appBar: AppBar(
-          title: Text(widget.sno),
-          actions: [
-            IconButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: ((context) => RouteMap(
-                          sno: widget.sno,
-                        )))),
-                icon: const Icon(Icons.map_rounded)),
-          ],
-          bottom: TabBar(
-            dividerHeight: 0,
-            tabs: (routeType == 'PTP')
+          scrolledUnderElevation: 0,
+          elevation: 0,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          title: AnimatedOpacity(
+            opacity: _showAppBarTitle ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Text(
+              'Bus ${widget.sno}',
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                fontVariations: [
+                  FontVariation('ROND', 100),
+                  FontVariation.width(100),
+                  FontVariation.weight(800)
+                ],
+              ),
+            ),
+          ),
+          actions: _showAppBarTitle
+              ? [
+                  IconButton(
+                      onPressed: () =>
+                          Navigator.of(context).push(MaterialPageRoute(
+                              builder: ((context) => RouteMap(
+                                    sno: widget.sno,
+                                  )))),
+                      icon: const Icon(Icons.map_rounded)),
+                ]
+              : null,
+        ),
+        body: NestedScrollView(
+          controller: _scrollController,
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverToBoxAdapter(
+                child: Container(
+                  padding: EdgeInsets.only(left: 10, bottom: 20, right: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bus ${widget.sno}',
+                        textAlign: TextAlign.left,
+                        style:
+                            Theme.of(context).textTheme.displayMedium!.copyWith(
+                          fontVariations: [
+                            FontVariation('ROND', 100),
+                            FontVariation.width(105),
+                            FontVariation.weight(900)
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        currRoute['name'],
+                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurface
+                              .withOpacity(0.6),
+                          fontVariations: [
+                            FontVariation('ROND', 100),
+                            FontVariation.width(120),
+                            FontVariation.weight(700)
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Row(
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (BuildContext context) => RouteMap(
+                                    sno: widget.sno,
+                                  ),
+                                ),
+                              );
+                            },
+                            icon: Icon(
+                              Icons.map_rounded,
+                              size: 18,
+                            ),
+                            label: Text('View Map'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SliverAppBar(
+                pinned: true,
+                floating: false,
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                scrolledUnderElevation: 0,
+                toolbarHeight: 0,
+                bottom: TabBar(
+                  dividerHeight: 0,
+                  tabs: (routeType == 'PTP')
+                      ? [
+                          Tab(text: 'To ${routeStops[0].last['Name']}'),
+                          Tab(text: 'To ${routeStops[1].last['Name']}'),
+                        ]
+                      : [
+                          Tab(text: currRoute['name']),
+                        ],
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: (routeType == 'PTP')
                 ? [
-                    Tab(text: 'To ${routeStops[0].last['Name']}'),
-                    Tab(text: 'To ${routeStops[1].last['Name']}'),
+                    _buildRouteListView(routeStops[0]),
+                    _buildRouteListView(routeStops[1]),
                   ]
                 : [
-                    Tab(text: currRoute['name']),
+                    _buildRouteListView(routeStops),
                   ],
           ),
-        ),
-        body: TabBarView(
-          children: (routeType == 'PTP')
-              ? [
-                  _buildRouteListView(routeStops[0]),
-                  _buildRouteListView(routeStops[1]),
-                ]
-              : [
-                  _buildRouteListView(routeStops),
-                ],
         ),
       ),
     );

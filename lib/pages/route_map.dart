@@ -245,7 +245,7 @@ class _RouteMapState extends State<RouteMap> {
       body: isLoaded
           ? Scaffold(
               appBar: AppBar(
-                title: Text('${'Service ' + widget.sno} route map'),
+                title: Text('${'Bus ' + widget.sno} route map'),
               ),
               body: Column(
                 children: [
