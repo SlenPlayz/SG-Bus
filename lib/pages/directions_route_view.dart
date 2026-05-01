@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:geolocator/geolocator.dart'
     as gl; // Alias for differentiating with Mapbox Position if needed, though Mapbox uses Position w/ lnglat
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
@@ -9,6 +11,7 @@ import 'package:sgbus/components/directions/DirectionsRouteViewBusLeg.dart';
 import 'package:sgbus/components/directions/DirectionsRouteViewTrainLeg.dart';
 import 'package:sgbus/components/directions/DirectionsRouteViewWalkLeg.dart';
 import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/navigation_service.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -50,6 +53,9 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
   Timer? elapsedTimer;
   DateTime? tripStartTime;
   Duration tripElapsed = Duration.zero;
+
+  /// Latest bus timings for the current leg's boarding stop (from BusTimingsView)
+  List _latestBusTimings = [];
 
   // Destination coordinates extracted from last leg's last polyline point
   Position? destPosition;
@@ -213,15 +219,128 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
       );
     });
 
+    // Start background navigation service (foreground notification + Live Activity)
+    _startBackgroundNavigation();
+
     gpsStream = gl.Geolocator.getPositionStream(
-      locationSettings: gl.AndroidSettings(
-        intervalDuration: Duration(milliseconds: 10),
-      ),
+      locationSettings: Platform.isAndroid
+          ? gl.AndroidSettings(
+              intervalDuration: Duration(milliseconds: 10),
+            )
+          : gl.AppleSettings(
+              accuracy: gl.LocationAccuracy.high,
+              activityType: gl.ActivityType.otherNavigation,
+              allowBackgroundLocationUpdates: true,
+              showBackgroundLocationIndicator: true,
+            ),
     ).listen((np) {
       currLocation = np;
       showNearestLeg();
       checkArrival();
+      _syncLiveActivityFromUI();
     });
+  }
+
+  Future<void> _startBackgroundNavigation() async {
+    // Extract destination coordinates
+    double dLat = 1.290270;
+    double dLng = 103.8198;
+    if (destPosition != null) {
+      dLat = destPosition!.lat.toDouble();
+      dLng = destPosition!.lng.toDouble();
+    }
+
+    await NavigationService.startNavigation(
+      route: widget.route,
+      destName: widget.destName,
+      startName: widget.startName,
+      destLat: dLat,
+      destLng: dLng,
+      tripStartTime: tripStartTime ?? DateTime.now(),
+    );
+  }
+
+  /// Called by BusTimingsView (via BusLeg) whenever timings refresh.
+  void _onBusTimingsUpdated(List timings) {
+    _latestBusTimings = timings;
+    _syncLiveActivityFromUI();
+    _syncNotificationTimings();
+  }
+
+  /// Push fresh timing data to the Android foreground service notification.
+  void _syncNotificationTimings() {
+    if (!startedDirections || hasArrived || shownLeg == null) return;
+    final mode = shownLeg?['mode'] as String? ?? 'WALK';
+    if (mode != 'BUS') return; // Only relevant for bus legs
+
+    final busRoute = shownLeg?['route'] as String? ?? '';
+    final stopsLeft = (shownLeg?['intermediateStops'] as List?)?.length ?? 0;
+    final alightStop = shownLeg?['to']?['name'] as String? ?? '';
+    final elapsed = tripElapsed.inMinutes;
+
+    // Extract next two arrival times from the relevant service
+    final timingEntry = _latestBusTimings.isNotEmpty
+        ? _latestBusTimings.firstWhere(
+            (t) => t['ServiceNo'] == busRoute,
+            orElse: () => _latestBusTimings.first,
+          )
+        : null;
+
+    final nextMin = _ParsedBusTiming.fromNextBus(timingEntry?['NextBus']);
+    final next2Min = _ParsedBusTiming.fromNextBus(timingEntry?['NextBus2']);
+
+    // Build a rich notification text: "Bus 14 → 3 stops • Next: 5 min, 12 min"
+    String text;
+    if (nextMin != null) {
+      text = next2Min != null
+          ? '${stopsLeft + 1} stops to $alightStop • Next: $nextMin, $next2Min'
+          : '${stopsLeft + 1} stops to $alightStop • Next: $nextMin';
+    } else {
+      text = '${stopsLeft + 1} stops to $alightStop • ${elapsed} min elapsed';
+    }
+
+    FlutterForegroundTask.updateService(
+      notificationTitle: '🚌 Bus $busRoute',
+      notificationText: text,
+    );
+  }
+
+  /// Sync Live Activity from the foreground UI (more frequent than background)
+  void _syncLiveActivityFromUI() {
+    if (!Platform.isIOS || !startedDirections || hasArrived) return;
+    if (shownLeg == null) return;
+
+    final mode = shownLeg?['mode'] as String? ?? 'WALK';
+    final route = shownLeg?['route'] as String? ?? '';
+    final stopsLeft = (shownLeg?['intermediateStops'] as List?)?.length ?? 0;
+    final alightStop = shownLeg?['to']?['name'] as String? ?? '';
+    final legs = widget.route['legs'] as List;
+    final currentIdx = legs.indexOf(shownLeg);
+
+    // Extract timing strings for the relevant bus service
+    final timingEntry = (mode == 'BUS' && _latestBusTimings.isNotEmpty)
+        ? _latestBusTimings.firstWhere(
+            (t) => t['ServiceNo'] == route,
+            orElse: () => _latestBusTimings.first,
+          )
+        : null;
+
+    final nextMin = _ParsedBusTiming.fromNextBus(timingEntry?['NextBus']);
+    final next2Min = _ParsedBusTiming.fromNextBus(timingEntry?['NextBus2']);
+
+    NavigationService.updateLiveActivity(
+      legMode: mode,
+      legRoute: route,
+      stopsLeft: stopsLeft + 1,
+      destName: widget.destName,
+      elapsedMinutes: tripElapsed.inMinutes,
+      totalLegs: legs.length,
+      currentLegIndex: currentIdx >= 0 ? currentIdx : 0,
+      arrived: false,
+      alightStop: alightStop,
+      nextBusMin: nextMin,
+      nextBus2Min: next2Min,
+    );
   }
 
   void updateLoc(t) {
@@ -294,6 +413,9 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
       elapsedTimer?.cancel();
       centerMapTimer?.cancel();
       WakelockPlus.disable();
+
+      // Stop background service & update Live Activity with arrived state
+      NavigationService.stopNavigation();
 
       HapticFeedback.heavyImpact();
 
@@ -388,6 +510,9 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
     centerMapTimer?.cancel();
     elapsedTimer?.cancel();
 
+    // Stop background service
+    NavigationService.stopNavigation();
+
     setState(() {
       trackUserLoc = false;
       startedDirections = false;
@@ -425,6 +550,17 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
     return "${d.inSeconds}s";
   }
 
+  /// Handle background task data when the user returns to the app
+  void _onReceiveTaskData(Object data) {
+    if (data is Map<String, dynamic>) {
+      final arrived = data['arrived'] as bool? ?? false;
+      if (arrived && !hasArrived && mounted) {
+        // Background detected arrival — trigger UI arrival
+        checkArrival();
+      }
+    }
+  }
+
   @override
   void dispose() {
     WakelockPlus.disable();
@@ -433,7 +569,17 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
     centerMapTimer?.cancel();
     elapsedTimer?.cancel();
     _sheetController.dispose();
+    // Remove task data callback but do NOT stop the service
+    // so it continues running in the background
+    FlutterForegroundTask.removeTaskDataCallback(_onReceiveTaskData);
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Register callback to receive data from background navigation service
+    FlutterForegroundTask.addTaskDataCallback(_onReceiveTaskData);
   }
 
   @override
@@ -751,6 +897,7 @@ class _DirectionsRouteViewState extends State<DirectionsRouteView> {
       return DirectionsRouteViewBusLeg(
         leg: shownLeg!,
         startedRouting: startedDirections,
+        onTimingsUpdated: _onBusTimingsUpdated,
       );
     } else if (shownLeg?["mode"] == "SUBWAY") {
       return DirectionsRouteViewTrainLeg(
@@ -897,5 +1044,27 @@ class DirectionsRouteViewWalkChip extends StatelessWidget {
         )
       ],
     );
+  }
+}
+
+/// Converts a NextBus data map (with EstimatedArrival) to a display string,
+/// matching the same logic used by BusTimingEst widget.
+class _ParsedBusTiming {
+  static String? fromNextBus(Map? nextBus) {
+    if (nextBus == null) return null;
+    final arrival = nextBus['EstimatedArrival'] as String?;
+    if (arrival == null || arrival.isEmpty) return null;
+
+    try {
+      final estTime = DateTime.parse(arrival).toUtc().millisecondsSinceEpoch;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final diffMin = ((estTime - now) / 1000 / 60);
+
+      if (diffMin < -0.5) return null; // already left
+      if (diffMin < 1) return 'Arr';
+      return '${diffMin.round()} min';
+    } catch (_) {
+      return null;
+    }
   }
 }

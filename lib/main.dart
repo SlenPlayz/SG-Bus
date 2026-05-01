@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -29,12 +30,17 @@ import 'package:sgbus/scripts/data.dart';
 import 'package:sgbus/scripts/downloadData.dart';
 import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sgbus/scripts/navigation_service.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize foreground task communication port for background navigation
+  FlutterForegroundTask.initCommunicationPort();
+
   MobileAds.instance.initialize();
 
   mb.MapboxOptions.setAccessToken(mapboxAccessToken);
@@ -136,6 +142,8 @@ class _MyAppState extends State<MyApp> {
   @override
   initState() {
     loadThemeSettings();
+    // Initialize foreground task service configuration
+    NavigationService.initForegroundTask();
     super.initState();
   }
 

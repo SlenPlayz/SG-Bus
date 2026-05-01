@@ -33,7 +33,20 @@
 	<key>NFCReaderUsageDescription</key>
 	<string>SG Bus uses NFC to read the balance &amp; transaction history of your EZ-Link Cards.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>SG Bus uses your location to get nearby stops as well as locate yourself on the map.</string>
+	<string>SG Bus uses your location to get nearby stops, locate yourself on the map, and provide real-time navigation guidance.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>SG Bus needs continuous location access to track your route progress and notify you when to alight, even when the app is in the background.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>fetch</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.pravera.flutter_foreground_task.refresh</string>
+	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

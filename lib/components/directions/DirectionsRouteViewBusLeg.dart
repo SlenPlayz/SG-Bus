@@ -7,10 +7,14 @@ import 'package:sgbus/scripts/utils.dart';
 
 class DirectionsRouteViewBusLeg extends StatefulWidget {
   const DirectionsRouteViewBusLeg(
-      {Key? key, required this.leg, required this.startedRouting})
+      {Key? key,
+      required this.leg,
+      required this.startedRouting,
+      this.onTimingsUpdated})
       : super(key: key);
   final Map leg;
   final bool startedRouting;
+  final void Function(List timings)? onTimingsUpdated;
 
   @override
   _DirectionsRouteViewBusLegState createState() =>
@@ -145,6 +149,7 @@ class _DirectionsRouteViewBusLegState extends State<DirectionsRouteViewBusLeg> {
               child: BusTimingsView(
                 stopid: widget.leg["from"]["stopCode"] ?? "",
                 buses: widget.leg["route"].split(" / "),
+                onTimingsUpdated: widget.onTimingsUpdated,
               ),
             ),
           ),

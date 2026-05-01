@@ -10,10 +10,16 @@ import 'package:sgbus/scripts/utils.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class BusTimingsView extends StatefulWidget {
-  const BusTimingsView({Key? key, required this.stopid, required this.buses})
+  const BusTimingsView(
+      {Key? key,
+      required this.stopid,
+      required this.buses,
+      this.onTimingsUpdated})
       : super(key: key);
   final String stopid;
   final List buses;
+  /// Called whenever timing data refreshes. Receives the filtered arrTimings list.
+  final void Function(List timings)? onTimingsUpdated;
 
   @override
   _BusTimingsViewState createState() => _BusTimingsViewState();
@@ -155,6 +161,8 @@ class _BusTimingsViewState extends State<BusTimingsView> {
         arrTimings = arrTimings;
         isLoading = false;
       });
+      // Notify parent with fresh timing data
+      widget.onTimingsUpdated?.call(List.from(arrTimings));
     }
   }
 
