@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:hex/hex.dart';
-import 'package:sgbus/scripts/cepasManager.dart';
+import 'package:sgbus/scripts/ezlink_reader/cepasManager.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 String insertCepasCanSpaces(String input) {

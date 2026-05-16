@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sgbus/pages/bus_route.dart';
 import 'package:sgbus/pages/stop.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 
 class CustomSearchPage extends StatefulWidget {
   const CustomSearchPage({Key? key}) : super(key: key);

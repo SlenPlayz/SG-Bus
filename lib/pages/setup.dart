@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:restart_app/restart_app.dart';
 import 'package:sgbus/pages/download_page.dart';
-import 'package:sgbus/scripts/downloadData.dart';
+import 'package:sgbus/scripts/data_management/downloadData.dart';
 
 class Setup extends StatefulWidget {
   const Setup({Key? key}) : super(key: key);

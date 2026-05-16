@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sgbus/pages/route_map.dart';
 import 'package:sgbus/pages/route_tracker.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 
 class BusRoute extends StatefulWidget {

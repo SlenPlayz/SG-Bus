@@ -11,7 +11,7 @@ import 'package:sgbus/env.dart';
 import 'package:sgbus/components/bus_timing_row.dart';
 import 'package:http/http.dart';
 import 'package:sgbus/pages/stop_spec_map.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:restart_app/restart_app.dart';
-import 'package:sgbus/scripts/downloadData.dart';
+import 'package:sgbus/scripts/data_management/downloadData.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({Key? key, required this.restartOnComplete})

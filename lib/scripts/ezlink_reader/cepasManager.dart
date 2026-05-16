@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:sgbus/scripts/ezlink_merchant_info.dart';
+import 'package:sgbus/scripts/ezlink_reader/ezlink_merchant_info.dart';
 
 class CepasPurse {
   final String can;

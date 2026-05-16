@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'dart:math';
@@ -247,10 +247,10 @@ class _NearbyState extends State<Nearby> {
                                   // ),
                                 ),
                                 subtitle: Text(
-                                      stop.value['id'],
-                                      // style: TextStyle(
-                                      //     fontWeight: FontWeight.w900),
-                                    ),
+                                  stop.value['id'],
+                                  // style: TextStyle(
+                                  //     fontWeight: FontWeight.w900),
+                                ),
                                 trailing: Text('${stop.value['dist']}m'),
                                 onTap: () {
                                   Navigator.push(

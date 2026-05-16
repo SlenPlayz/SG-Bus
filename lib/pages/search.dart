@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sgbus/components/searchBar.dart';
 import 'package:sgbus/pages/bus_route.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';

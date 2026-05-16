@@ -8,7 +8,7 @@ import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
 import 'package:sgbus/pages/alert_webview_page.dart';
 import 'package:sgbus/pages/cepas_reader.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 
 import 'dart:ui' as ui;
 

@@ -1,4 +1,4 @@
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 
 List stops = getStops();
 

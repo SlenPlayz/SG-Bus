@@ -4,7 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sgbus/components/searchBar.dart';
 import 'package:sgbus/pages/bus_route.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -171,10 +171,11 @@ class _RecentSearchesWidgetState extends State<RecentSearchesWidget> {
                             )),
                           )
                         : Padding(
-                          padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 0),
-                          child: ClipRRect(
-                              borderRadius:
-                                  BorderRadius.only(topLeft: Radius.circular(28.0), topRight: Radius.circular(28.0)),
+                            padding: const EdgeInsets.fromLTRB(8.0, 0, 8.0, 0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(28.0),
+                                  topRight: Radius.circular(28.0)),
                               child: ListView(
                                 children: [
                                   for (var item in recentSearches.reversed
@@ -213,23 +214,24 @@ class _RecentSearchesWidgetState extends State<RecentSearchesWidget> {
                                             Navigator.of(context).push(
                                                 MaterialPageRoute(
                                                     builder: (builder) => Stop(
-                                                        item.value["subtitle"])));
+                                                        item.value[
+                                                            "subtitle"])));
                                           } else if (item.value["type"] ==
                                               "svc") {
                                             Navigator.of(context).push(
                                                 MaterialPageRoute(
                                                     builder: (builder) =>
-                                                        BusRoute(
-                                                            item.value["Name"])));
+                                                        BusRoute(item
+                                                            .value["Name"])));
                                           }
                                         },
                                       ),
                                     ),
-                                    SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                 ],
                               ),
                             ),
-                        ),
+                          ),
                   ),
           )
         ],

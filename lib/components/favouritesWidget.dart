@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:sgbus/scripts/data.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
@@ -83,8 +83,8 @@ class _FavouritesState extends State<Favourites> {
                         // ),
                       ),
                       subtitle: Text(
-                            busStop.value['id'],
-                          ),
+                        busStop.value['id'],
+                      ),
                     ),
                   ),
                 )
