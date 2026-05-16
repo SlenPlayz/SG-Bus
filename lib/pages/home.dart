@@ -188,6 +188,7 @@ class _HomeState extends State<Home> {
                                                         visualDensity:
                                                             VisualDensity
                                                                 .compact,
+                                                        dense: true,
                                                         onTap: () {
                                                           if (alert.value[
                                                                   "type"] ==
@@ -301,23 +302,44 @@ class _HomeState extends State<Home> {
                                                                 FontWeight.bold,
                                                           ),
                                                         ),
-                                                        subtitle: Text(
-                                                          alert.value["message"]
-                                                                      .toString()
-                                                                      .length >
-                                                                  65
-                                                              ? alert.value[
-                                                                          "message"]
-                                                                      .toString()
-                                                                      .substring(
-                                                                          0,
-                                                                          65) +
-                                                                  "..."
-                                                              : alert.value[
-                                                                  "message"],
-                                                        ),
+                                                        // subtitle: Text(
+                                                        //   alert.value["message"]
+                                                        //               .toString()
+                                                        //               .length >
+                                                        //           65
+                                                        //       ? alert.value[
+                                                        //                   "message"]
+                                                        //               .toString()
+                                                        //               .substring(
+                                                        //                   0,
+                                                        //                   65) +
+                                                        //           "..."
+                                                        //       : alert.value[
+                                                        //           "message"],
+                                                        // ),
                                                         trailing: Icon(Icons
-                                                            .arrow_forward_rounded),
+                                                            .chevron_right_rounded),
+                                                        leading: alert.value[
+                                                                    "category"] ==
+                                                                "distruption"
+                                                            ? Icon(
+                                                                Icons
+                                                                    .railway_alert_rounded,
+                                                                color: Colors
+                                                                    .red[300])
+                                                            : alert.value["category"] ==
+                                                                    "non-train"
+                                                                ? Icon(
+                                                                    Icons
+                                                                        .bus_alert_rounded,
+                                                                    color: Colors
+                                                                            .red[
+                                                                        300])
+                                                                : Icon(
+                                                                    Icons
+                                                                        .warning_rounded,
+                                                                    color: Colors
+                                                                        .orange[300]),
                                                       ),
                                                     ),
                                                   )
