@@ -16,8 +16,9 @@ Future<bool> downloadData() async {
   bool isStopsSuccess = false;
   bool isServicesSuccess = false;
 
-  try {
-    await get(stopsEndpoint).then((stopDataAPIResponse) async {
+  var stopsFuture = () async {
+    try {
+      var stopDataAPIResponse = await get(stopsEndpoint);
       var stops = stopDataAPIResponse.body;
 
       bool isStopsDataValid = validateStops(stops);
@@ -29,16 +30,17 @@ Future<bool> downloadData() async {
       saveStops(stops);
 
       isStopsSuccess = true;
-    });
-  } catch (err, stackTrace) {
-    await Sentry.captureException(
-      "An error occured while downloading stop data",
-      stackTrace: stackTrace,
-    );
-  }
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        "An error occured while downloading stop data",
+        stackTrace: stackTrace,
+      );
+    }
+  }();
 
-  try {
-    await get(svcsEndpoint).then((serviceDataAPIResponse) async {
+  var servicesFuture = () async {
+    try {
+      var serviceDataAPIResponse = await get(svcsEndpoint);
       var services = serviceDataAPIResponse.body;
 
       bool isServiceDataValid = validateServices(services);
@@ -50,15 +52,17 @@ Future<bool> downloadData() async {
       saveSvcs(services);
 
       isServicesSuccess = true;
-    });
-  } catch (err, stackTrace) {
-    await Sentry.captureException(
-      "An error occured while downloading service data",
-      stackTrace: stackTrace,
-    );
-  }
+    } catch (err, stackTrace) {
+      await Sentry.captureException(
+        "An error occured while downloading service data",
+        stackTrace: stackTrace,
+      );
+    }
+  }();
 
-  await await prefs.setString(
+  await Future.wait([stopsFuture, servicesFuture]);
+
+  await prefs.setString(
       'version', DateTime.now().millisecondsSinceEpoch.toString());
 
   return (isStopsSuccess && isServicesSuccess);
