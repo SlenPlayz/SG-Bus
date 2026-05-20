@@ -11,6 +11,8 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:sgbus/scripts/location_helper.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StopsMap extends StatefulWidget {
   const StopsMap({Key? key}) : super(key: key);
@@ -27,11 +29,11 @@ ViewPadding getSafeAreaPadding() {
 class _StopsMapState extends State<StopsMap> {
   bool isLoaded = false;
   bool isAdLoaded = false;
-  bool error = false;
-  int errorCode = 0;
-  String errorMsg = '';
-  var currLocation;
+  gl.Position? currLocation;
   late AdWidget adWidget;
+  String? _stopsGeoJson;
+  bool _isSatelliteView = false;
+
   @override
   void setState(fn) {
     if (mounted) {
@@ -59,31 +61,13 @@ class _StopsMapState extends State<StopsMap> {
       marginRight: 10,
     ));
 
-    initMap();
     initStops();
   }
 
   Future<void> initStops() async {
-    List data = getStops();
-    Map stopsGeoJsonMap = {
-      "type": "FeatureCollection",
-      "features": [],
-    };
-
-    for (var stop in data) {
-      stopsGeoJsonMap["features"].add({
-        "type": "Feature",
-        "id": stop["id"],
-        "properties": {
-          "number": stop["id"],
-          "name": stop["Name"],
-          "road": stop["Road"],
-        },
-        "geometry": {"type": "Point", "coordinates": stop["cords"]}
-      });
-    }
-    await mapboxMap?.style.addSource(
-        GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
+    if (_stopsGeoJson == null) return;
+    await mapboxMap?.style
+        .addSource(GeoJsonSource(id: "stops", data: _stopsGeoJson!));
     var stopsLayerJSON = {
       "id": "stops_layer",
       "type": "symbol",
@@ -109,6 +93,10 @@ class _StopsMapState extends State<StopsMap> {
     ));
 
     mapboxMap?.setOnMapTapListener(onTapListener);
+
+    if (_isSatelliteView) {
+      await _toggleSatelliteMode(true);
+    }
   }
 
   Future<void> onTapListener(MapContentGestureContext gestureContext) async {
@@ -149,16 +137,6 @@ class _StopsMapState extends State<StopsMap> {
     listener: BannerAdListener(),
   );
 
-  Future<void> requestGPSPermission() async {
-    await gl.Geolocator.requestPermission();
-    initMap();
-  }
-
-  Future<void> enableGPSInSettings() async {
-    await gl.Geolocator.openLocationSettings();
-    initMap();
-  }
-
   Future<void> loadAd() async {
     try {
       adWidget = AdWidget(ad: Ad);
@@ -173,73 +151,258 @@ class _StopsMapState extends State<StopsMap> {
     }
   }
 
-  Future getLocation() async {
-    // Check if GPS is enabled
-    bool isGPSEnabled = await gl.Geolocator.isLocationServiceEnabled();
-    if (!isGPSEnabled) {
-      error = true;
-      errorMsg = 'GPS is disabled';
-      errorCode = 1;
-      return Future.error(errorMsg);
-    }
-
-    //Check is GPS Permission is given
-    gl.LocationPermission permission = await gl.Geolocator.checkPermission();
-    if (permission == gl.LocationPermission.denied) {
-      error = true;
-      errorMsg = 'GPS Permissions not given';
-      errorCode = 2;
-      return Future.error(errorMsg);
-    }
-
-    //Check if GPS permissions are permenents denied
-    if (permission == gl.LocationPermission.deniedForever) {
-      error = true;
-      errorMsg = 'GPS Permissions are denied';
-      errorCode = 3;
-      return Future.error(errorMsg);
-    }
-
-    currLocation = await gl.Geolocator.getCurrentPosition();
+  Future<void> _loadAllDependencies() async {
     setState(() {
-      currLocation = currLocation;
+      isLoaded = false;
     });
 
-    return currLocation;
+    final List<Future<dynamic>> futures = [
+      LocationHelper.getUserLocation(context).then((res) {
+        if (!res.hasError) {
+          currLocation = res.position;
+        }
+      }),
+      compute(_generateStopsGeoJson, getStops()).then((geoJson) {
+        _stopsGeoJson = geoJson;
+      }),
+      SharedPreferences.getInstance().then((prefs) {
+        _isSatelliteView = prefs.getBool('isSatelliteView') ?? false;
+      }),
+    ];
+
+    if (adsEnabled) {
+      futures.add(loadAd());
+    }
+
+    try {
+      await Future.wait(futures);
+    } catch (e, stackTrace) {
+      print("Error loading dependencies: $e");
+      await Sentry.captureException(e, stackTrace: stackTrace);
+    }
+
+    setState(() {
+      isLoaded = true;
+    });
   }
 
-  Future<void> initMap() async {
-    isLoaded = false;
-    getLocation().then((postion) {
-      setState(() {
-        isLoaded = true;
-      });
-      if (mapboxMap != null) {
-        mapboxMap?.flyTo(
-            CameraOptions(
-              anchor: ScreenCoordinate(x: 0, y: 0),
-              zoom: 17,
-              center: Point(
-                coordinates: Position(postion.longitude, postion.latitude),
-              ),
-            ),
-            MapAnimationOptions(
-              duration: 2000,
-              startDelay: 0,
-            ));
+  Future<void> _setLayerVisibility(String layerId, bool visible) async {
+    try {
+      final style = mapboxMap?.style;
+      if (style != null && await style.styleLayerExists(layerId)) {
+        await style.setStyleLayerProperties(
+          layerId,
+          json.encode({"visibility": visible ? "visible" : "none"}),
+        );
       }
-    }).catchError((err) {
-      setState(() {
-        isLoaded = true;
-      });
+    } catch (e) {
+      print("Error setting visibility for $layerId: $e");
+    }
+  }
+
+  Future<void> _toggleSatelliteMode(bool enableSatellite) async {
+    if (mapboxMap == null) return;
+    setState(() {
+      _isSatelliteView = enableSatellite;
     });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isSatelliteView', enableSatellite);
+    } catch (e) {
+      print("Error saving map mode preference: $e");
+    }
+
+    try {
+      final style = mapboxMap!.style;
+      if (enableSatellite) {
+        // 1. Add Source: Check if a RasterSource with ID onemap-sat-source exists. If not, add it.
+        final sourceExists = await style.styleSourceExists("onemap-sat-source");
+        if (!sourceExists) {
+          await style.addSource(RasterSource(
+            id: "onemap-sat-source",
+            tiles: [
+              "https://www.onemap.gov.sg/maps/tiles/Satellite/{z}/{x}/{y}.png"
+            ],
+            // Retina Hack: Force higher resolution rendering
+            tileSize: 128.0,
+            // Bounding Box: Stop fetching tiles outside of Singapore
+            bounds: [103.5, 1.1, 104.1, 1.5],
+          ));
+        }
+
+        // Retrieve existing layers to determine position and to hide base layers
+        final layers = await style.getStyleLayers();
+        final layerIds =
+            layers.where((l) => l != null).map((l) => l!.id).toList();
+
+        // 2. Add Layer: Check if a RasterLayer with ID onemap-sat-layer exists. If not, add it.
+        final layerExists = await style.styleLayerExists("onemap-sat-layer");
+        if (!layerExists) {
+          LayerPosition? position;
+          if (layerIds.contains("background")) {
+            position = LayerPosition(above: "background");
+          } else if (layerIds.isNotEmpty) {
+            position = LayerPosition(below: layerIds.first);
+          }
+
+          if (position != null) {
+            await style.addLayerAt(
+              RasterLayer(
+                id: "onemap-sat-layer",
+                sourceId: "onemap-sat-source",
+                // Native color grading for better visual punch
+                rasterContrast: 0.20,
+                // rasterSaturation: 0.20,
+              ),
+              position,
+            );
+          } else {
+            await style.addLayer(
+              RasterLayer(
+                id: "onemap-sat-layer",
+                sourceId: "onemap-sat-source",
+                // Native color grading for better visual punch
+                // rasterContrast: 0.25,
+                // rasterSaturation: 0.20,
+              ),
+            );
+          }
+        } else {
+          // If the layer already exists, make sure it is visible
+          await _setLayerVisibility("onemap-sat-layer", true);
+        }
+
+        // 3. Stacking Trick: Hide base layers (background, fill, fill-extrusion, hillshade)
+        // so that the satellite layer shows through.
+        for (var l in layers) {
+          if (l != null && l.id != "onemap-sat-layer") {
+            if (l.type == "background" ||
+                l.type == "fill" ||
+                l.type == "fill-extrusion" ||
+                l.type == "hillshade") {
+              await _setLayerVisibility(l.id, false);
+            }
+          }
+        }
+      } else {
+        // Switch to Regular View:
+        // 1. Set the visibility of onemap-sat-layer to none.
+        await _setLayerVisibility("onemap-sat-layer", false);
+
+        // 2. Restore the visibility of all hidden base layers.
+        final layers = await style.getStyleLayers();
+        for (var l in layers) {
+          if (l != null && l.id != "onemap-sat-layer") {
+            if (l.type == "background" ||
+                l.type == "fill" ||
+                l.type == "fill-extrusion" ||
+                l.type == "hillshade") {
+              await _setLayerVisibility(l.id, true);
+            }
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      print("Error in _toggleSatelliteMode: $e");
+      await Sentry.captureException(e, stackTrace: stackTrace);
+    }
+  }
+
+  void _showMapTypeBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.0)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Map View',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontVariations: [
+                            FontVariation('ROND', 100),
+                            FontVariation.width(120),
+                            FontVariation.weight(1000)
+                          ],
+                        ),
+                      ),
+                      Opacity(
+                        opacity: 0.8,
+                        child: Text(
+                          "Changes how the map is rendered.",
+                          style:
+                              Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontVariations: [
+                              FontVariation('ROND', 50),
+                              FontVariation.width(105),
+                              FontVariation.weight(500),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                RadioListTile<bool>(
+                  value: false,
+                  groupValue: _isSatelliteView,
+                  title: const Text('Regular View'),
+                  subtitle: const Text(
+                      'High contrast vector map. Quick & efficient. '),
+                  activeColor: Theme.of(context).colorScheme.primary,
+                  onChanged: (bool? value) {
+                    if (value != null) {
+                      Navigator.pop(context);
+                      _toggleSatelliteMode(value);
+                    }
+                  },
+                ),
+                RadioListTile<bool>(
+                  value: true,
+                  groupValue: _isSatelliteView,
+                  title: const Text('Satellite View'),
+                  subtitle: const Text(
+                      'HD Satellite imagery. Uses more data.\nSatellite imagery provided by SLA OneMap.'),
+                  activeColor: Theme.of(context).colorScheme.primary,
+                  onChanged: (bool? value) {
+                    if (value != null) {
+                      Navigator.pop(context);
+                      _toggleSatelliteMode(value);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   void initState() {
-    initMap();
-    if (adsEnabled) loadAd();
+    _loadAllDependencies();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    Ad.dispose();
+    super.dispose();
   }
 
   @override
@@ -247,63 +410,45 @@ class _StopsMapState extends State<StopsMap> {
     return Scaffold(
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 50),
-        child: FloatingActionButton(
-          onPressed: () async {
-            getLocation().then((position) {
-              mapboxMap?.flyTo(
-                  CameraOptions(
-                    anchor: ScreenCoordinate(x: 0, y: 0),
-                    zoom: 17,
-                    center: Point(
-                      coordinates:
-                          Position(position.longitude, position.latitude),
-                    ),
-                  ),
-                  MapAnimationOptions(
-                    duration: 2000,
-                    startDelay: 0,
-                  ));
-            }).catchError((err) {
-              showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      icon: const Icon(Icons.warning),
-                      title: (err.runtimeType == String)
-                          ? Text(errorMsg)
-                          : Text(
-                              'An unknown error occured while trying to move to your location'),
-                      actions: [
-                        (errorCode == 1)
-                            ? TextButton(
-                                onPressed: () {
-                                  initMap();
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Retry'))
-                            : (errorCode == 2)
-                                ? TextButton(
-                                    onPressed: () {
-                                      requestGPSPermission();
-                                      Navigator.of(context).pop();
-                                    },
-                                    child: const Text('Request permission'))
-                                : (errorCode == 2)
-                                    ? TextButton(
-                                        onPressed: () {
-                                          enableGPSInSettings();
-                                          Navigator.of(context).pop();
-                                        },
-                                        child: const Text('Request permission'))
-                                    : Container()
-                      ],
-                    );
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'map_layer_toggle',
+              onPressed: () {
+                _showMapTypeBottomSheet(context);
+              },
+              child: const Icon(Icons.layers),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              heroTag: 'my_location',
+              onPressed: () async {
+                final res = await LocationHelper.getUserLocation(context);
+                if (!res.hasError && res.position != null) {
+                  setState(() {
+                    currLocation = res.position;
                   });
-            });
-          },
-          child: (currLocation != null)
-              ? const Icon(Icons.my_location)
-              : const Icon(Icons.location_disabled_rounded),
+                  mapboxMap?.flyTo(
+                      CameraOptions(
+                        zoom: 17,
+                        center: Point(
+                          coordinates: Position(
+                              res.position!.longitude, res.position!.latitude),
+                        ),
+                      ),
+                      MapAnimationOptions(
+                        duration: 2000,
+                        startDelay: 0,
+                      ));
+                }
+              },
+              child: (currLocation != null)
+                  ? const Icon(Icons.my_location)
+                  : const Icon(Icons.location_disabled_rounded),
+            ),
+          ],
         ),
       ),
       body: isLoaded
@@ -317,9 +462,13 @@ class _StopsMapState extends State<StopsMap> {
                           bottomRight: Radius.circular(18)),
                       child: MapWidget(
                         cameraOptions: CameraOptions(
-                          center:
-                              Point(coordinates: Position(103.8198, 1.290270)),
-                          zoom: 9,
+                          center: Point(
+                            coordinates: currLocation != null
+                                ? Position(currLocation!.longitude,
+                                    currLocation!.latitude)
+                                : Position(103.8198, 1.290270),
+                          ),
+                          zoom: currLocation != null ? 17 : 9,
                         ),
                         onMapCreated: _onMapCreated,
                         styleUri: isDark
@@ -342,4 +491,25 @@ class _StopsMapState extends State<StopsMap> {
           : const Center(child: ExpressiveLoadingIndicator()),
     );
   }
+}
+
+String _generateStopsGeoJson(List data) {
+  final Map stopsGeoJsonMap = {
+    "type": "FeatureCollection",
+    "features": [],
+  };
+
+  for (var stop in data) {
+    stopsGeoJsonMap["features"].add({
+      "type": "Feature",
+      "id": stop["id"],
+      "properties": {
+        "number": stop["id"],
+        "name": stop["Name"],
+        "road": stop["Road"],
+      },
+      "geometry": {"type": "Point", "coordinates": stop["cords"]}
+    });
+  }
+  return jsonEncode(stopsGeoJsonMap);
 }

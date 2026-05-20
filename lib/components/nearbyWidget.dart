@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:sgbus/scripts/location_helper.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'dart:math';
 
@@ -21,93 +23,50 @@ class _NearbyState extends State<Nearby> {
   }
 
   bool isLoaded = false;
-  bool error = false;
-  int errorCode = 0;
-  String errorMsg = '';
   List nearbyStops = [];
-  var currLocation;
+  Position? currLocation;
 
-  Random random = new Random();
-
-  Future<Position> getLocation() async {
-    // Check if GPS is enabled
-    bool isGPSEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!isGPSEnabled) {
-      error = true;
-      errorMsg = 'GPS is disabled';
-      errorCode = 1;
-      return Future.error(errorMsg);
-    }
-
-    //Check is GPS Permission is given
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      error = true;
-      errorMsg = 'GPS Permissions not given';
-      errorCode = 2;
-      return Future.error(errorMsg);
-    }
-
-    //Check if GPS permissions are permenents denied
-    if (permission == LocationPermission.deniedForever) {
-      error = true;
-      errorMsg = 'GPS Permissions are denied';
-      errorCode = 3;
-      return Future.error(errorMsg);
-    }
-
-    currLocation = await Geolocator.getCurrentPosition();
-    setState(() {
-      currLocation = currLocation;
-    });
-
-    return currLocation;
-  }
+  Random random = Random();
 
   Future<void> getNearbyStops() async {
-    List newNearbyStops = [];
     setState(() {
-      error = false;
-      errorCode = 0;
-      errorMsg = '';
+      isLoaded = false;
     });
-    getLocation().then((position) async {
-      List stops = getStops();
 
-      for (var stop in stops) {
-        stop['dist'] = Geolocator.distanceBetween(position.latitude,
-                position.longitude, stop['cords'][1], stop['cords'][0])
-            .round();
-
-        if (stop['dist'] < 500) {
-          newNearbyStops.add(stop);
-        }
+    try {
+      final LocationResult result =
+          await LocationHelper.getUserLocation(context);
+      if (result.hasError || result.position == null) {
+        setState(() {
+          currLocation = null;
+          isLoaded = true;
+        });
+        return;
       }
-      newNearbyStops.sort((a, b) => a['dist'].compareTo(b['dist']));
+
+      final position = result.position!;
+      final List stops = getStops();
+
+      final List sortedStops = await compute(
+        _calculateNearbyStops,
+        {
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+          'stops': stops,
+        },
+      );
 
       setState(() {
+        currLocation = position;
+        nearbyStops = sortedStops;
         isLoaded = true;
-        nearbyStops = newNearbyStops;
       });
-    }).catchError((err) {
+    } catch (e) {
       setState(() {
-        error = true;
-        errorMsg = err;
+        currLocation = null;
         isLoaded = true;
       });
-    });
-  }
-
-  Future<void> requestGPSPermission() async {
-    await Geolocator.requestPermission();
-    setState(() => isLoaded = false);
-    getNearbyStops();
-  }
-
-  Future<void> enableGPSInSettings() async {
-    await Geolocator.openLocationSettings();
-    setState(() => isLoaded = false);
-    getNearbyStops();
+    }
   }
 
   @override
@@ -141,130 +100,48 @@ class _NearbyState extends State<Nearby> {
             //     Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
           ),
           margin: EdgeInsets.fromLTRB(0, 5, 0, 5),
-          child: error
-              ? Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: Center(
-                      child: Column(
+          child: !isLoaded
+              ? Skeletonizer(
+                  enabled: true,
+                  child: Column(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Icon(Icons.warning_rounded,
-                            size: 50,
-                            color: Theme.of(context).colorScheme.error),
-                      ),
-                      Text(
-                        errorMsg,
-                        style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.error),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: ButtonBar(
-                          alignment: MainAxisAlignment.center,
-                          children: [
-                            (errorCode == 1)
-                                ? Container()
-                                : (errorCode == 2)
-                                    ? FilledButton.icon(
-                                        onPressed: () {
-                                          requestGPSPermission();
-                                        },
-                                        icon: const Icon(
-                                            Icons.location_searching),
-                                        label: const Text('Request GPS'))
-                                    : FilledButton.icon(
-                                        onPressed: () {
-                                          enableGPSInSettings();
-                                        },
-                                        icon: const Icon(
-                                            Icons.location_searching),
-                                        label: const Text('Request GPS'))
-                          ],
-                        ),
-                      )
+                      for (var stop in nearbyStopsW.asMap().entries)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              topLeft: stop.key == 0
+                                  ? const Radius.circular(28.0)
+                                  : const Radius.circular(5),
+                              topRight: stop.key == 0
+                                  ? const Radius.circular(28.0)
+                                  : const Radius.circular(5),
+                              bottomLeft:
+                                  stop.key == nearbyStopsW.length - 1
+                                      ? const Radius.circular(28.0)
+                                      : const Radius.circular(5),
+                              bottomRight:
+                                  stop.key == nearbyStopsW.length - 1
+                                      ? const Radius.circular(28.0)
+                                      : const Radius.circular(5),
+                            ),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceVariant
+                                .withOpacity(0.3),
+                          ),
+                          child: ListTile(
+                            title: Text(stop.value['Name']),
+                            subtitle: Text(stop.value['id']),
+                            trailing: Text('${stop.value['dist']}m'),
+                            onTap: () {},
+                          ),
+                        )
                     ],
-                  )),
+                  ),
                 )
-              : nearbyStopsW.isNotEmpty
-                  ? Skeletonizer(
-                      enabled: !isLoaded,
-                      // child: ListView.builder(
-                      //     padding: EdgeInsets.zero,
-                      //     itemCount: nearbyStopsW.length,
-                      //     itemBuilder: (BuildContext context, int index) {
-                      //       var stop = nearbyStopsW[index];
-                      //       return ListTile(
-                      //         title: Text(stop['Name']),
-                      //         subtitle: Text(stop['id']),
-                      //         trailing: Text('${stop['dist']}m'),
-                      //         onTap: () {
-                      //           Navigator.push(
-                      //               context,
-                      //               MaterialPageRoute(
-                      //                   builder: (context) =>
-                      //                       Stop(stop['id'])));
-                      //         },
-                      //       );
-                      //     }),
-                      child: Column(
-                        children: [
-                          for (var stop in nearbyStopsW.asMap().entries)
-                            Container(
-                              margin: EdgeInsets.only(bottom: 2),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.only(
-                                  topLeft: stop.key == 0
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                  topRight: stop.key == 0
-                                      ? Radius.circular(28.0)
-                                      : Radius.circular(5),
-                                  bottomLeft:
-                                      stop.key == nearbyStopsW.length - 1
-                                          ? Radius.circular(28.0)
-                                          : Radius.circular(5),
-                                  bottomRight:
-                                      stop.key == nearbyStopsW.length - 1
-                                          ? Radius.circular(28.0)
-                                          : Radius.circular(5),
-                                ),
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceVariant
-                                    .withOpacity(0.3),
-                              ),
-                              child: ListTile(
-                                title: Text(
-                                  stop.value['Name'],
-                                  // style: TextStyle(
-                                  //   fontWeight: FontWeight.w900,
-                                  //   fontVariations: [
-                                  //     FontVariation('ROND', 100),
-                                  //     FontVariation('wdth', 170),
-                                  //   ],
-                                  // ),
-                                ),
-                                subtitle: Text(
-                                  stop.value['id'],
-                                  // style: TextStyle(
-                                  //     fontWeight: FontWeight.w900),
-                                ),
-                                trailing: Text('${stop.value['dist']}m'),
-                                onTap: () {
-                                  Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                          builder: (context) =>
-                                              Stop(stop.value['id'])));
-                                },
-                              ),
-                            )
-                        ],
-                      ),
-                    )
-                  : Center(
+              : currLocation == null
+                  ? Center(
                       child: Padding(
                         padding: const EdgeInsets.all(50.0),
                         child: Column(
@@ -272,23 +149,126 @@ class _NearbyState extends State<Nearby> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Padding(
-                              padding: EdgeInsets.only(bottom: 10.0),
-                              child: Icon(Icons.warning_rounded,
+                              padding: const EdgeInsets.only(bottom: 10.0),
+                              child: Icon(Icons.location_off_rounded,
                                   size: 50,
                                   color: Theme.of(context).colorScheme.error),
                             ),
                             Text(
-                              "There doesn't seem to be any stops near you.",
+                              "Location access is required to find nearby bus stops.",
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: Theme.of(context).colorScheme.error,
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            FilledButton.icon(
+                              onPressed: getNearbyStops,
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Retry'),
+                            ),
                           ],
                         ),
                       ),
-                    ),
+                    )
+                  : nearbyStops.isNotEmpty
+                      ? Column(
+                          children: [
+                            for (var stop in nearbyStops.asMap().entries)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 2),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.only(
+                                    topLeft: stop.key == 0
+                                        ? const Radius.circular(28.0)
+                                        : const Radius.circular(5),
+                                    topRight: stop.key == 0
+                                        ? const Radius.circular(28.0)
+                                        : const Radius.circular(5),
+                                    bottomLeft:
+                                        stop.key == nearbyStops.length - 1
+                                            ? const Radius.circular(28.0)
+                                            : const Radius.circular(5),
+                                    bottomRight:
+                                        stop.key == nearbyStops.length - 1
+                                            ? const Radius.circular(28.0)
+                                            : const Radius.circular(5),
+                                  ),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .surfaceVariant
+                                      .withOpacity(0.3),
+                                ),
+                                child: ListTile(
+                                  title: Text(stop.value['Name']),
+                                  subtitle: Text(stop.value['id']),
+                                  trailing: Text('${stop.value['dist']}m'),
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) =>
+                                                Stop(stop.value['id'])));
+                                  },
+                                ),
+                              )
+                          ],
+                        )
+                      : Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(50.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 10.0),
+                                  child: Icon(Icons.warning_rounded,
+                                      size: 50,
+                                      color: Theme.of(context).colorScheme.error),
+                                ),
+                                Text(
+                                  "There doesn't seem to be any stops near you.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
         ));
   }
+}
+
+List<dynamic> _calculateNearbyStops(Map<String, dynamic> args) {
+  final double latitude = args['latitude'] as double;
+  final double longitude = args['longitude'] as double;
+  final List<dynamic> stops = args['stops'] as List<dynamic>;
+
+  final List<dynamic> nearbyStops = [];
+
+  for (var stop in stops) {
+    final Map<String, dynamic> stopCopy =
+        Map<String, dynamic>.from(stop as Map);
+    final double stopLat = stopCopy['cords'][1] as double;
+    final double stopLon = stopCopy['cords'][0] as double;
+
+    stopCopy['dist'] = Geolocator.distanceBetween(
+      latitude,
+      longitude,
+      stopLat,
+      stopLon,
+    ).round();
+
+    if (stopCopy['dist'] < 500) {
+      nearbyStops.add(stopCopy);
+    }
+  }
+  nearbyStops.sort((a, b) => (a['dist'] as num).compareTo(b['dist'] as num));
+
+  return nearbyStops;
 }
