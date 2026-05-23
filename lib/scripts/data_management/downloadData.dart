@@ -6,66 +6,70 @@ import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<bool> downloadData() async {
+Future<bool> downloadData([List<Map<String, dynamic>>? tasks]) async {
   const String endpoint = serverURL;
   var prefs = await SharedPreferences.getInstance();
 
-  final stopsEndpoint = Uri.parse('$endpoint/api/data/stops');
-  final svcsEndpoint = Uri.parse('$endpoint/api/data/services');
+  final List<Map<String, dynamic>> defaultTasks = [
+    {
+      'url': '$endpoint/api/data/stops',
+      'key': 'stops',
+      'validate': validateStops,
+      'save': saveStops,
+    },
+    {
+      'url': '$endpoint/api/data/services',
+      'key': 'svcs',
+      'validate': validateServices,
+      'save': saveSvcs,
+    },
+  ];
 
-  bool isStopsSuccess = false;
-  bool isServicesSuccess = false;
+  final tasksToRun = tasks ?? defaultTasks;
+  final List<Future<bool>> futures = [];
 
-  var stopsFuture = () async {
-    try {
-      var stopDataAPIResponse = await get(stopsEndpoint);
-      var stops = stopDataAPIResponse.body;
+  for (var task in tasksToRun) {
+    futures.add(() async {
+      final String urlStr = task['url'] as String;
+      final String key = task['key'] as String;
+      final dynamic validate = task['validate'];
+      final dynamic save = task['save'];
 
-      bool isStopsDataValid = validateStops(stops);
-      if (!isStopsDataValid)
-        throw "Invalid Stops data";
-      else
-        await prefs.setString("stops", stops);
+      try {
+        final uri = Uri.parse(urlStr);
+        final response = await get(uri);
+        final data = response.body;
 
-      saveStops(stops);
+        if (validate != null) {
+          bool isValid = validate(data);
+          if (!isValid) {
+            throw "Invalid data for key: $key";
+          }
+        }
 
-      isStopsSuccess = true;
-    } catch (err, stackTrace) {
-      await Sentry.captureException(
-        "An error occured while downloading stop data",
-        stackTrace: stackTrace,
-      );
-    }
-  }();
+        await prefs.setString(key, data);
 
-  var servicesFuture = () async {
-    try {
-      var serviceDataAPIResponse = await get(svcsEndpoint);
-      var services = serviceDataAPIResponse.body;
+        if (save != null) {
+          save(data);
+        }
 
-      bool isServiceDataValid = validateServices(services);
-      if (!isServiceDataValid)
-        throw "Invalid Service data";
-      else
-        await prefs.setString("svcs", services);
+        return true;
+      } catch (err, stackTrace) {
+        await Sentry.captureException(
+          "An error occurred while downloading data for key: $key",
+          stackTrace: stackTrace,
+        );
+        return false;
+      }
+    }());
+  }
 
-      saveSvcs(services);
-
-      isServicesSuccess = true;
-    } catch (err, stackTrace) {
-      await Sentry.captureException(
-        "An error occured while downloading service data",
-        stackTrace: stackTrace,
-      );
-    }
-  }();
-
-  await Future.wait([stopsFuture, servicesFuture]);
+  final results = await Future.wait(futures);
 
   await prefs.setString(
       'version', DateTime.now().millisecondsSinceEpoch.toString());
 
-  return (isStopsSuccess && isServicesSuccess);
+  return results.every((element) => element == true);
 }
 
 bool validateStops(stopsRaw) {
