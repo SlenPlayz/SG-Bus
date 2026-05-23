@@ -17,6 +17,7 @@ import 'package:sgbus/components/searchDelegate.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/alert_webview_page.dart';
 import 'package:sgbus/pages/cepas_reader.dart';
+import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/home.dart';
 import 'package:sgbus/pages/mrt_map.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
@@ -228,8 +229,10 @@ class _RootPageState extends State<RootPage> {
     // }
 
     if (stops == null || svcs == null || localVersion == null) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (builder) => Setup()));
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (builder) => DownloadPage(
+                restartOnComplete: true,
+              )));
     } else {
       saveStops(stops);
       saveSvcs(svcs);
