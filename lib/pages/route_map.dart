@@ -6,9 +6,11 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sgbus/components/base_map.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RouteMap extends StatefulWidget {
   const RouteMap({Key? key, required this.sno}) : super(key: key);
@@ -29,6 +31,8 @@ class _RouteMapState extends State<RouteMap> {
   List routeStops = [];
   late AdWidget adWidget;
   var currRoute;
+  bool _isFirstLoad = true;
+
   @override
   void setState(fn) {
     if (mounted) {
@@ -70,15 +74,9 @@ class _RouteMapState extends State<RouteMap> {
 
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
-    mapboxMap.location.updateSettings(LocationComponentSettings(
-      enabled: true,
-      puckBearingEnabled: true,
-    ));
-    initStops();
   }
 
   Future<void> initStops() async {
-    loadRoute();
     Map stopsGeoJsonMap = {
       "type": "FeatureCollection",
       "features": [],
@@ -118,12 +116,16 @@ class _RouteMapState extends State<RouteMap> {
       "source": "stops"
     };
     await mapboxMap?.style.addStyleLayer(json.encode(stopsLayerJSON), null);
+
+    final prefs = await SharedPreferences.getInstance();
+    final isSat = prefs.getBool('isSatelliteView') ?? false;
+
     var stopsLayerProperties = {
       'text-field': ['get', 'name'],
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": isDark ? "#fff" : "#000",
+      "text-color": (isSat || isDark) ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -146,14 +148,14 @@ class _RouteMapState extends State<RouteMap> {
       linePattern: "oneway-small",
     ));
 
-    if (routeStops.isNotEmpty) {
+    if (_isFirstLoad && routeStops.isNotEmpty) {
+      _isFirstLoad = false;
       double minLat = 90.0;
       double maxLat = -90.0;
       double minLng = 180.0;
       double maxLng = -180.0;
 
       for (var stop in routeStops) {
-        // Ensure coordinates are [lng, lat]
         double lng = stop["cords"][0];
         double lat = stop["cords"][1];
 
@@ -177,8 +179,6 @@ class _RouteMapState extends State<RouteMap> {
 
       mapboxMap?.flyTo(cameraOptions, MapAnimationOptions(duration: 1000));
     }
-
-    mapboxMap?.setOnMapTapListener(onTapListener);
   }
 
   Future<void> onTapListener(MapContentGestureContext gestureContext) async {
@@ -231,7 +231,7 @@ class _RouteMapState extends State<RouteMap> {
   @override
   void initState() {
     super.initState();
-    initStops();
+    loadRoute();
     if (adsEnabled) loadAd();
     setState(() {
       stops = stops;
@@ -250,16 +250,20 @@ class _RouteMapState extends State<RouteMap> {
               body: Column(
                 children: [
                   Expanded(
-                    child: MapWidget(
+                    child: BaseMap(
                       cameraOptions: CameraOptions(
                         center:
                             Point(coordinates: Position(103.8198, 1.290270)),
                         zoom: 9,
                       ),
                       onMapCreated: _onMapCreated,
-                      styleUri: isDark
-                          ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
-                          : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
+                      onStyleLoaded: (map) {
+                        initStops();
+                      },
+                      onMapTap: onTapListener,
+                      showCompass: true,
+                      showScaleBar: true,
+                      topPadding: 10,
                     ),
                   ),
                   isAdLoaded

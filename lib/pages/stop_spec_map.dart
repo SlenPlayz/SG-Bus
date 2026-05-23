@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sgbus/components/base_map.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StopSpecMap extends StatefulWidget {
   final coords;
@@ -36,12 +38,7 @@ class _StopSpecMapState extends State<StopSpecMap> {
 
   _onMapCreated(MapboxMap mapboxMap) {
     this.mapboxMap = mapboxMap;
-    mapboxMap.location.updateSettings(LocationComponentSettings(
-      enabled: true,
-      puckBearingEnabled: true,
-    ));
     initMap();
-    initStops();
   }
 
   Future<void> initStops() async {
@@ -71,12 +68,16 @@ class _StopSpecMapState extends State<StopSpecMap> {
       "source": "stops"
     };
     await mapboxMap?.style.addStyleLayer(json.encode(stopsLayerJSON), null);
+
+    final prefs = await SharedPreferences.getInstance();
+    final isSat = prefs.getBool('isSatelliteView') ?? false;
+
     var stopsLayerProperties = {
       'text-field': ['get', 'name'],
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": isDark ? "#fff" : "#000",
+      "text-color": (isSat || isDark) ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -88,8 +89,6 @@ class _StopSpecMapState extends State<StopSpecMap> {
       maxZoom: 15.0,
       circleColor: Colors.blue.value.toInt(),
     ));
-
-    mapboxMap?.setOnMapTapListener(onTapListener);
   }
 
   Future<void> onTapListener(MapContentGestureContext gestureContext) async {
@@ -166,7 +165,6 @@ class _StopSpecMapState extends State<StopSpecMap> {
 
   @override
   void initState() {
-    initMap();
     if (adsEnabled) loadAd();
     super.initState();
   }
@@ -181,15 +179,19 @@ class _StopSpecMapState extends State<StopSpecMap> {
             appBar: AppBar(
               title: Text(widget.name),
             ),
-            body: MapWidget(
+            body: BaseMap(
               cameraOptions: CameraOptions(
                 center: Point(coordinates: Position(103.8198, 1.290270)),
                 zoom: 9,
               ),
               onMapCreated: _onMapCreated,
-              styleUri: isDark
-                  ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
-                  : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
+              onStyleLoaded: (map) {
+                initStops();
+              },
+              onMapTap: onTapListener,
+              showCompass: true,
+              showScaleBar: true,
+              topPadding: 10,
             ),
           ),
         ),
