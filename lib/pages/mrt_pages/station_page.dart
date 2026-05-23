@@ -1,0 +1,1417 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart' hide Position;
+import 'package:google_polyline_algorithm/google_polyline_algorithm.dart';
+import 'package:http/http.dart' as http;
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:from_css_color/from_css_color.dart';
+import 'package:sgbus/components/base_map.dart';
+import 'package:sgbus/env.dart';
+import 'package:sgbus/pages/stop.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:skeletonizer/skeletonizer.dart';
+
+class StationPage extends StatefulWidget {
+  final String stationCode;
+  const StationPage({super.key, required this.stationCode});
+
+  @override
+  State<StationPage> createState() => _StationPageState();
+}
+
+class _StationPageState extends State<StationPage>
+    with SingleTickerProviderStateMixin {
+  MapboxMap? mapboxMap;
+  var station;
+  bool isLoaded = false;
+
+  late TabController bottomSheetTabController;
+
+  @override
+  void initState() {
+    super.initState();
+    // Fixed: Changed length to 4 to match the number of tabs
+    bottomSheetTabController = TabController(
+      length: 4,
+      vsync: this,
+    );
+    _loadStationData();
+  }
+
+  @override
+  void dispose() {
+    // Clean up the controller when the widget is disposed
+    bottomSheetTabController.dispose();
+    super.dispose();
+  }
+
+  void _loadStationData() {
+    final mrtDataMap = getMRTData();
+    if (mrtDataMap != null && mrtDataMap["stations"] != null) {
+      for (var s in mrtDataMap["stations"]) {
+        final codes = s["codes"] as List? ?? [];
+        if (codes.contains(widget.stationCode)) {
+          station = s;
+          break;
+        }
+      }
+    }
+    setState(() {
+      isLoaded = true;
+    });
+  }
+
+  Color _getLineColor(String code) {
+    final prefix = RegExp(r'^[a-zA-Z]+').stringMatch(code) ?? '';
+    final data = getMRTData();
+    if (data != null && data['lines'] != null) {
+      for (var line in data['lines']) {
+        if (line['code'] == prefix) {
+          return fromCssColor(line['lineColor']);
+        }
+      }
+    }
+    return Colors.blue;
+  }
+
+  Future<void> _initStationMapContent() async {
+    if (station == null || mapboxMap == null) return;
+
+    // 1. Draw station boundaries
+    final boundariesList = station['boundaries'] as List? ?? [];
+    final List<Map<String, dynamic>> boundaryFeatures = [];
+
+    for (int i = 0; i < boundariesList.length; i++) {
+      final String encoded = boundariesList[i] as String;
+      final decodedCoords = decodePolyline(encoded);
+      if (decodedCoords.isEmpty) continue;
+
+      final List<List<double>> polyCoords =
+          decodedCoords.map((c) => [c[1].toDouble(), c[0].toDouble()]).toList();
+
+      boundaryFeatures.add({
+        "type": "Feature",
+        "id": "boundary_feat_$i",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [polyCoords]
+        },
+        "properties": {}
+      });
+    }
+
+    final Color lineColor = _getLineColor(widget.stationCode);
+
+    if (boundaryFeatures.isNotEmpty) {
+      final Map<String, dynamic> boundaryGeoJson = {
+        "type": "FeatureCollection",
+        "features": boundaryFeatures
+      };
+
+      await mapboxMap!.style.addSource(GeoJsonSource(
+        id: "station_boundary_source",
+        data: jsonEncode(boundaryGeoJson),
+      ));
+
+      await mapboxMap!.style.addLayer(FillLayer(
+        id: "station_boundary_fill",
+        sourceId: "station_boundary_source",
+        fillColor: lineColor.value,
+        fillOpacity: 0.18,
+      ));
+
+      await mapboxMap!.style.addLayer(LineLayer(
+        id: "station_boundary_line",
+        sourceId: "station_boundary_source",
+        lineWidth: 3.0,
+        lineColor: lineColor.value,
+      ));
+    }
+
+    // 2. Draw exits
+    final exitsList = station['exits'] as List? ?? [];
+    final List<Map<String, dynamic>> exitFeatures = [];
+
+    for (int i = 0; i < exitsList.length; i++) {
+      final exit = exitsList[i];
+      final exitName = exit['exitName'] ?? '';
+      final coords = exit['coordinates'] as List? ?? [];
+      if (coords.length < 2) continue;
+
+      final double lat = (coords[0] as num).toDouble();
+      final double lng = (coords[1] as num).toDouble();
+
+      exitFeatures.add({
+        "type": "Feature",
+        "id": "exit_feat_$i",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [lng, lat]
+        },
+        "properties": {
+          "exitName": exitName,
+          "name": "Exit $exitName",
+        }
+      });
+    }
+
+    if (exitFeatures.isNotEmpty) {
+      final Map<String, dynamic> exitsGeoJson = {
+        "type": "FeatureCollection",
+        "features": exitFeatures
+      };
+
+      await mapboxMap!.style.addSource(GeoJsonSource(
+        id: "station_exits_source",
+        data: jsonEncode(exitsGeoJson),
+      ));
+
+      await mapboxMap!.style.addLayer(
+        CircleLayer(
+            id: "station_exits_background_layer",
+            sourceId: "station_exits_source",
+            circleRadius: 10,
+            circleColor: Colors.yellow.value,
+            circleStrokeWidth: 3,
+            circleStrokeColor: Colors.black.value),
+      );
+
+      await mapboxMap!.style.addLayer(
+        SymbolLayer(
+          id: "station_exits_layer",
+          sourceId: "station_exits_source",
+          textFieldExpression: ["get", "exitName"],
+          textSize: 10.5,
+          textColor: Colors.black.value,
+          textJustify: TextJustify.CENTER,
+          textAnchor: TextAnchor.CENTER,
+          textFont: ["Open Sans Bold", "Arial Unicode MS Bold"],
+        ),
+      );
+    }
+
+    _fitCameraToStation();
+  }
+
+  Future<void> _fitCameraToStation() async {
+    if (station == null || mapboxMap == null) return;
+
+    double minLat = 90.0;
+    double maxLat = -90.0;
+    double minLng = 180.0;
+    double maxLng = -180.0;
+
+    void updateBounds(double lat, double lng) {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+
+    final double? sLat = station['latitude'] as double?;
+    final double? sLng = station['longitude'] as double?;
+    if (sLat != null && sLng != null) {
+      updateBounds(sLat, sLng);
+    }
+
+    final boundariesList = station['boundaries'] as List? ?? [];
+    for (var encoded in boundariesList) {
+      final decodedCoords = decodePolyline(encoded as String);
+      for (var c in decodedCoords) {
+        updateBounds(c[0].toDouble(), c[1].toDouble());
+      }
+    }
+
+    final exitsList = station['exits'] as List? ?? [];
+    for (var exit in exitsList) {
+      final coords = exit['coordinates'] as List? ?? [];
+      if (coords.length >= 2) {
+        updateBounds(
+            (coords[0] as num).toDouble(), (coords[1] as num).toDouble());
+      }
+    }
+
+    if (minLat < maxLat && minLng < maxLng) {
+      if (maxLat - minLat < 0.001) {
+        minLat -= 0.001;
+        maxLat += 0.001;
+      }
+      if (maxLng - minLng < 0.001) {
+        minLng -= 0.001;
+        maxLng += 0.001;
+      }
+
+      CameraOptions cameraOptions = await mapboxMap!.cameraForCoordinateBounds(
+        CoordinateBounds(
+          southwest: Point(coordinates: Position(minLng, minLat)),
+          northeast: Point(coordinates: Position(maxLng, maxLat)),
+          infiniteBounds: false,
+        ),
+        MbxEdgeInsets(top: 140.0, left: 40.0, bottom: 500, right: 40.0),
+        null,
+        null,
+        null,
+        null,
+      );
+
+      mapboxMap?.flyTo(cameraOptions, MapAnimationOptions(duration: 1500));
+    } else if (sLat != null && sLng != null) {
+      mapboxMap?.flyTo(
+        CameraOptions(
+          center: Point(coordinates: Position(sLng, sLat)),
+          zoom: 17.0,
+        ),
+        MapAnimationOptions(duration: 1500),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (station == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Error'),
+        ),
+        body: const Center(
+          child: Text('Station not found'),
+        ),
+      );
+    }
+
+    final double topSafeArea = MediaQuery.paddingOf(context).top;
+    final double height = MediaQuery.sizeOf(context).height;
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0, top: 8.0, bottom: 8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              color: Theme.of(context).colorScheme.onSurface,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Text(
+            station['name'],
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: BaseMap(
+              cameraOptions: CameraOptions(
+                center: Point(
+                  coordinates: Position(
+                    (station['longitude'] as num).toDouble(),
+                    (station['latitude'] as num).toDouble(),
+                  ),
+                ),
+                zoom: 16.5,
+              ),
+              onMapCreated: (map) {
+                mapboxMap = map;
+              },
+              onStyleLoaded: (map) {
+                _initStationMapContent();
+              },
+              showCompass: true,
+              showScaleBar: true,
+              topPadding: topSafeArea + 64.0,
+              fabBottomPadding: height * 0.4 + 10,
+            ),
+          ),
+          DraggableScrollableSheet(
+            initialChildSize: 0.4,
+            minChildSize: 0.4,
+            maxChildSize: 0.8,
+            snap: true,
+            snapSizes: const [0.4, 0.8],
+            builder: (BuildContext context, ScrollController scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(28.0)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.15),
+                      blurRadius: 10,
+                      spreadRadius: 1,
+                    )
+                  ],
+                ),
+                // Fixed Layout Error: Replaced ListView with a Column + SingleChildScrollView strategy
+                // to allow the TabBarView to properly expand inside the DraggableScrollableSheet.
+                child: Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant
+                              .withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TabBar(
+                      dividerColor: Colors.transparent,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      controller:
+                          bottomSheetTabController, // Fixed: Linked controller here
+                      tabs: const [
+                        Tab(child: Text("Crowdedness")),
+                        Tab(child: Text("First/Last Train")),
+                        Tab(child: Text("Landmarks")),
+                        Tab(child: Text("Bus Stops")),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: bottomSheetTabController,
+                        children: [
+                          // Using SingleChildScrollView linked to scrollController
+                          // so pulling down on the tab lists collapses the sheet nicely
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(16.0),
+                            child: CrowdednessCard(
+                              stationCodes: (station['codes'] as List?)
+                                      ?.map((e) => e.toString())
+                                      .toList() ??
+                                  [],
+                            ),
+                          ),
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(16.0),
+                            child: TrainTimingsCard(
+                              timingsData:
+                                  (station['trainFirstLastData'] as List? ?? [])
+                                      .map((e) => e as Map<String, dynamic>)
+                                      .toList(),
+                            ),
+                          ),
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(8),
+                            child: LandmarksCard(
+                              exits: (station['exits'] as List? ?? [])
+                                  .map((e) => e as Map<String, dynamic>)
+                                  .toList(),
+                            ),
+                          ),
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(8),
+                            child: NearbyStopsCard(
+                              stationLat:
+                                  (station['latitude'] as num).toDouble(),
+                              stationLng:
+                                  (station['longitude'] as num).toDouble(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------- Crowdedness Card ----------
+
+class CrowdednessCard extends StatefulWidget {
+  final List<String> stationCodes;
+  const CrowdednessCard({super.key, required this.stationCodes});
+
+  @override
+  State<CrowdednessCard> createState() => _CrowdednessCardState();
+}
+
+class _CrowdednessCardState extends State<CrowdednessCard> {
+  // ── Static in-memory cache ────────────────────────────────────────────────
+  // Key: sorted station codes joined with ',' (e.g. "CC17,TE9")
+  // Value: { 'data': Map<String, Map>, 'fetchedAt': DateTime }
+  static final Map<String, Map<String, dynamic>> _cache = {};
+  static const Duration _cacheTTL = Duration(minutes: 2);
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // Maps stationCode (e.g. "CC17") -> {crowdLevel, lineName, lineColor, ...}
+  // crowdLevel is null while the entry is still loading.
+  Map<String, Map<String, dynamic>> _crowdData = {};
+  String? _errorMessage;
+  bool _isFetching = true;
+  DateTime? _lastUpdated;
+
+  String get _cacheKey {
+    final sorted = List<String>.from(widget.stationCodes)..sort();
+    return sorted.join(',');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _initData();
+  }
+
+  void _initData({bool forceRefresh = false}) {
+    final cached = _cache[_cacheKey];
+    final fetchedAt = cached?['fetchedAt'] as DateTime?;
+    final isFresh = !forceRefresh &&
+        fetchedAt != null &&
+        DateTime.now().difference(fetchedAt) < _cacheTTL;
+
+    if (isFresh) {
+      setState(() {
+        // Use cached data directly — no network call needed
+        _crowdData = Map<String, Map<String, dynamic>>.from(
+          cached!['data'] as Map,
+        );
+        _lastUpdated = fetchedAt;
+        _isFetching = false;
+      });
+    } else {
+      final mrtDataMap = getMRTData();
+      final lines = mrtDataMap?['lines'] as List? ?? [];
+
+      String? getLineColorStr(String stationCode) {
+        for (final l in lines) {
+          if (l is Map) {
+            final lStations = l['stations'] as List? ?? [];
+            for (final s in lStations) {
+              if (s is Map && s['code'] == stationCode) {
+                return l['lineColor'] as String?;
+              }
+            }
+          }
+        }
+        return null;
+      }
+
+      setState(() {
+        _isFetching = true;
+        // Pre-populate with skeleton placeholders then fetch
+        _crowdData = {
+          for (final code in widget.stationCodes)
+            code: {
+              'crowdLevel': null,
+              'lineName': null,
+              'lineColor': getLineColorStr(code),
+              'startTime': null,
+              'endTime': null,
+            }
+        };
+      });
+      _fetchCrowdData();
+    }
+  }
+
+  Future<void> _fetchCrowdData() async {
+    final mrtDataMap = getMRTData();
+    if (mrtDataMap == null || mrtDataMap['lines'] == null) {
+      if (mounted) setState(() => _errorMessage = 'MRT data unavailable');
+      return;
+    }
+
+    final lines = mrtDataMap['lines'] as List;
+    final stationCodeSet = Set<String>.from(widget.stationCodes);
+
+    // Fetch all lines in parallel
+    final futures = lines.map((line) async {
+      final lineCode = line['code'] as String;
+      final lineName = line['name'] as String? ?? lineCode;
+      final lineColorStr = line['lineColor'] as String? ?? '#888888';
+
+      try {
+        final uri = Uri.parse('$serverURL/api/mrt/liveCrowdData/$lineCode');
+        final response =
+            await http.get(uri).timeout(const Duration(seconds: 10));
+        if (response.statusCode != 200) return;
+
+        final json = jsonDecode(response.body);
+        final values = json['value'] as List? ?? [];
+
+        for (final entry in values) {
+          final stationCode = entry['Station'] as String;
+          if (stationCodeSet.contains(stationCode)) {
+            // Found a match — record it
+            if (mounted) {
+              setState(() {
+                _crowdData[stationCode] = {
+                  'crowdLevel': entry['CrowdLevel'] as String? ?? 'na',
+                  'lineName': lineName,
+                  'lineColor': lineColorStr,
+                  'startTime': entry['StartTime'] as String?,
+                  'endTime': entry['EndTime'] as String?,
+                };
+              });
+            }
+            break; // Only one entry per station code per line
+          }
+        }
+      } catch (_) {
+        // Silently ignore per-line errors
+      }
+    }).toList();
+
+    await Future.wait(futures);
+
+    if (mounted) {
+      setState(() {
+        for (final entry in _crowdData.values) {
+          if (entry['crowdLevel'] == null) {
+            entry['crowdLevel'] = 'na';
+          }
+        }
+        _isFetching = false;
+        _lastUpdated = DateTime.now();
+      });
+    }
+
+    // Write completed data to cache
+    _cache[_cacheKey] = {
+      'data': Map<String, Map<String, dynamic>>.from(_crowdData),
+      'fetchedAt': DateTime.now(),
+    };
+  }
+
+  Color? _crowdColor(String level) {
+    switch (level.toLowerCase()) {
+      case 'l':
+        return Colors.green[200];
+      case 'm':
+        return Colors.amber[200];
+      case 'h':
+        return Theme.of(context).colorScheme.error;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _crowdLabel(String level) {
+    switch (level.toLowerCase()) {
+      case 'l':
+        return 'Low';
+      case 'm':
+        return 'Moderate';
+      case 'h':
+        return 'High';
+      default:
+        return 'No data';
+    }
+  }
+
+  IconData _crowdIcon(String level) {
+    switch (level.toLowerCase()) {
+      case 'l':
+        return Icons.people_outline;
+      case 'm':
+        return Icons.people;
+      case 'h':
+        return Icons.groups;
+      default:
+        return Icons.help_outline;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_errorMessage != null) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(_errorMessage!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      );
+    }
+
+    final resolved = _crowdData.values.where((d) => d['startTime'] != null);
+    final Map<String, dynamic>? firstResolved =
+        resolved.isNotEmpty ? resolved.first : null;
+
+    final entries = _crowdData.entries.toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Time window header — appears once the first entry resolves
+
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Icon(Icons.access_time,
+                  size: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              const SizedBox(width: 4),
+              Skeletonizer(
+                enabled: firstResolved == null && _isFetching,
+                child: Text(
+                  (firstResolved != null)
+                      ? _formatTimeWindow(
+                          firstResolved['startTime'] as String,
+                          firstResolved['endTime'] as String?,
+                        )
+                      : (_isFetching ? "2130 - 2140" : "Data unavailable"),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // One ListTile per station code — visible immediately, pill skeleton until loaded
+        for (var i = 0; i < entries.length; i++)
+          () {
+            final code = entries[i].key;
+            final data = entries[i].value;
+            final isLoaded = data['crowdLevel'] != null;
+            // Use 'l' as fallback so the skeleton pill has a plausible shape
+            final level = isLoaded ? data['crowdLevel'] as String : 'l';
+            final crowdColor = _crowdColor(level)!;
+            Color lineColor;
+            try {
+              lineColor = Color(int.parse(
+                  (data['lineColor'] as String? ?? '#607D8B')
+                      .replaceFirst('#', 'FF'),
+                  radix: 16));
+            } catch (_) {
+              lineColor = Colors.blueGrey;
+            }
+
+            final isFirst = i == 0;
+            final isLast = i == entries.length - 1;
+            const bigR = Radius.circular(28.0);
+            const smallR = Radius.circular(5.0);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: isFirst ? bigR : smallR,
+                  topRight: isFirst ? bigR : smallR,
+                  bottomLeft: isLast ? bigR : smallR,
+                  bottomRight: isLast ? bigR : smallR,
+                ),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceVariant
+                    .withOpacity(0.3),
+              ),
+              child: ListTile(
+                title: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(10, 2, 10, 2),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        color: lineColor,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        code,
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontVariations: [
+                            FontVariation.weight(800),
+                            FontVariation.width(100),
+                            FontVariation('ROND', 100),
+                          ],
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Skeletonizer(
+                  enabled: !isLoaded,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: crowdColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_crowdIcon(level), color: Colors.black, size: 16),
+                        const SizedBox(width: 5),
+                        Text(
+                          _crowdLabel(level),
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }(),
+
+        // Refresh Button Area
+        if (!_isFetching && _lastUpdated != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Last updated: ${_lastUpdated!.toLocal().hour.toString().padLeft(2, '0')}:${_lastUpdated!.toLocal().minute.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    _initData(forceRefresh: true);
+                  },
+                  icon: const Icon(Icons.refresh, size: 20),
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: 'Refresh crowd data',
+                  constraints: const BoxConstraints(),
+                  padding: const EdgeInsets.all(4),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _formatTimeWindow(String start, String? end) {
+    try {
+      final startDt = DateTime.parse(start);
+      final endDt = end != null ? DateTime.parse(end) : null;
+      String fmt(DateTime dt) =>
+          '${dt.toLocal().hour.toString().padLeft(2, '0')}:${dt.toLocal().minute.toString().padLeft(2, '0')}';
+      if (endDt != null) {
+        return '${fmt(startDt)} – ${fmt(endDt)}';
+      }
+      return fmt(startDt);
+    } catch (_) {
+      return start;
+    }
+  }
+}
+
+// ---------- Nearby Stops Card ----------
+
+class NearbyStopsCard extends StatefulWidget {
+  final double stationLat;
+  final double stationLng;
+
+  /// Radius in metres within which to look for stops.
+  final double radiusMetres;
+
+  const NearbyStopsCard({
+    super.key,
+    required this.stationLat,
+    required this.stationLng,
+    this.radiusMetres = 350,
+  });
+
+  @override
+  State<NearbyStopsCard> createState() => _NearbyStopsCardState();
+}
+
+class _NearbyStopsCardState extends State<NearbyStopsCard> {
+  List<Map<String, dynamic>> _stops = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _computeNearbyStops();
+  }
+
+  void _computeNearbyStops() {
+    final allStops = getStops() as List?;
+    if (allStops == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
+
+    final List<Map<String, dynamic>> nearby = [];
+
+    for (final stop in allStops) {
+      final coords = stop['cords'] as List?;
+      if (coords == null || coords.length < 2) continue;
+      final double stopLng = (coords[0] as num).toDouble();
+      final double stopLat = (coords[1] as num).toDouble();
+
+      final double dist = Geolocator.distanceBetween(
+        widget.stationLat,
+        widget.stationLng,
+        stopLat,
+        stopLng,
+      );
+
+      if (dist <= widget.radiusMetres) {
+        nearby.add({
+          'name': stop['Name'] as String? ?? '',
+          'id': stop['id']?.toString() ?? '',
+          'dist': dist.round(),
+        });
+      }
+    }
+
+    nearby.sort((a, b) => (a['dist'] as int).compareTo(b['dist'] as int));
+
+    if (mounted) {
+      setState(() {
+        _stops = nearby;
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 32),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_stops.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.directions_bus_outlined,
+                size: 40,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(
+              'No bus stops within ${widget.radiusMetres.round()}m of this station.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (var i = 0; i < _stops.length; i++)
+          () {
+            final stop = _stops[i];
+            final isFirst = i == 0;
+            final isLast = i == _stops.length - 1;
+            const bigR = Radius.circular(28.0);
+            const smallR = Radius.circular(5.0);
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: isFirst ? bigR : smallR,
+                  topRight: isFirst ? bigR : smallR,
+                  bottomLeft: isLast ? bigR : smallR,
+                  bottomRight: isLast ? bigR : smallR,
+                ),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceVariant
+                    .withOpacity(0.3),
+              ),
+              child: ListTile(
+                title: Text(stop['name'] as String),
+                subtitle: Text(stop['id'] as String),
+                trailing: Text('${stop['dist']}m'),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Stop(stop['id'] as String),
+                    ),
+                  );
+                },
+              ),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+// ---------- Landmarks Card ----------
+
+class LandmarksCard extends StatefulWidget {
+  final List<Map<String, dynamic>> exits;
+  const LandmarksCard({super.key, required this.exits});
+
+  @override
+  State<LandmarksCard> createState() => _LandmarksCardState();
+}
+
+class _LandmarksCardState extends State<LandmarksCard> {
+  // Tracks which exit indices are expanded
+  final Set<int> _expanded = {};
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.exits.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.place_outlined,
+                size: 40,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(
+              'No exit data available for this station.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (var i = 0; i < widget.exits.length; i++)
+          () {
+            final exit = widget.exits[i];
+            final exitName = exit['exitName'] as String? ?? '?';
+            final landmarks = (exit['landmarks'] as List? ?? [])
+                .map((l) => l.toString())
+                .toList();
+            final isFirst = i == 0;
+            final isLast = i == widget.exits.length - 1;
+            final isOpen = _expanded.contains(i);
+            const bigR = Radius.circular(28.0);
+            const smallR = Radius.circular(5.0);
+
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.only(
+                  topLeft: isFirst ? bigR : smallR,
+                  topRight: isFirst ? bigR : smallR,
+                  bottomLeft: isLast && !isOpen ? bigR : smallR,
+                  bottomRight: isLast && !isOpen ? bigR : smallR,
+                ),
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceVariant
+                    .withOpacity(0.3),
+              ),
+              child: Column(
+                children: [
+                  // ── Header tile ──────────────────────────────────────────
+                  ListTile(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.only(
+                        topLeft: isFirst ? bigR : smallR,
+                        topRight: isFirst ? bigR : smallR,
+                        bottomLeft:
+                            isOpen ? Radius.zero : (isLast ? bigR : smallR),
+                        bottomRight:
+                            isOpen ? Radius.zero : (isLast ? bigR : smallR),
+                      ),
+                    ),
+                    leading: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        exitName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      'Exit $exitName',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: landmarks.isEmpty
+                        ? null
+                        : Text(
+                            '${landmarks.length} landmark${landmarks.length == 1 ? '' : 's'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
+                          ),
+                    trailing: AnimatedRotation(
+                      turns: isOpen ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    onTap: () {
+                      setState(() {
+                        if (isOpen) {
+                          _expanded.remove(i);
+                        } else {
+                          _expanded.add(i);
+                        }
+                      });
+                    },
+                  ),
+
+                  // ── Expanded landmarks list (animated) ───────────────────
+                  ClipRect(
+                    child: AnimatedSize(
+                      duration: const Duration(milliseconds: 280),
+                      curve: Curves.easeInOut,
+                      alignment: Alignment.topCenter,
+                      child: isOpen
+                          ? AnimatedOpacity(
+                              opacity: isOpen ? 1.0 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .outlineVariant
+                                          .withOpacity(0.4),
+                                    ),
+                                  ),
+                                ),
+                                child: landmarks.isEmpty
+                                    ? Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16, vertical: 12),
+                                        child: Text(
+                                          'No landmarks listed for this exit.',
+                                          style: TextStyle(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurfaceVariant,
+                                              fontSize: 13),
+                                        ),
+                                      )
+                                    : Column(
+                                        children: [
+                                          for (var j = 0;
+                                              j < landmarks.length;
+                                              j++)
+                                            Padding(
+                                              padding: EdgeInsets.only(
+                                                left: 16,
+                                                right: 16,
+                                                top: j == 0 ? 8 : 0,
+                                                bottom:
+                                                    j == landmarks.length - 1
+                                                        ? 12
+                                                        : 0,
+                                              ),
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                            top: 7, right: 10),
+                                                    child: Icon(
+                                                      Icons.place,
+                                                      size: 15,
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .primary
+                                                          .withOpacity(0.7),
+                                                    ),
+                                                  ),
+                                                  Expanded(
+                                                    child: Padding(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          vertical: 6),
+                                                      child: Text(
+                                                        landmarks[j],
+                                                        style: TextStyle(
+                                                          fontSize: 13.5,
+                                                          color:
+                                                              Theme.of(context)
+                                                                  .colorScheme
+                                                                  .onSurface,
+                                                          fontVariations: [
+                                                            FontVariation(
+                                                                'ROND', 100),
+                                                            FontVariation
+                                                                .weight(550)
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }(),
+      ],
+    );
+  }
+}
+
+// ---------- Train Timings Card ----------
+
+class TrainTimingsCard extends StatelessWidget {
+  final List<Map<String, dynamic>> timingsData;
+  const TrainTimingsCard({super.key, required this.timingsData});
+
+  @override
+  Widget build(BuildContext context) {
+    if (timingsData.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.schedule_outlined,
+                size: 40,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 8),
+            Text(
+              'No train timing data available for this station.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < timingsData.length; i++)
+          () {
+            final data = timingsData[i];
+            final towards = data['towards'] as String? ?? 'Unknown Destination';
+            final firstTrainList = data['firstTrain'] as List? ?? [];
+            final lastTrainList = data['lastTrain'] as List? ?? [];
+
+            // Group by day to handle multiple entries per day
+            final Map<String, List<String>> groupedFirst = {};
+            final Map<String, List<String>> groupedLast = {};
+            final List<String> daysOrder = [];
+
+            for (var entry in firstTrainList) {
+              final day = entry['day'] as String? ?? '';
+              final time = entry['time'] as String? ?? '-';
+              if (!daysOrder.contains(day)) daysOrder.add(day);
+              groupedFirst.putIfAbsent(day, () => []).add(time);
+            }
+
+            for (var entry in lastTrainList) {
+              final day = entry['day'] as String? ?? '';
+              final time = entry['time'] as String? ?? '-';
+              if (!daysOrder.contains(day)) daysOrder.add(day);
+              groupedLast.putIfAbsent(day, () => []).add(time);
+            }
+
+            return Container(
+              margin:
+                  EdgeInsets.only(bottom: i == timingsData.length - 1 ? 0 : 16),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceVariant
+                    .withOpacity(0.3),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .primary
+                          .withOpacity(0.1),
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.directions_transit,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Towards $towards',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowHeight: 40,
+                      dataRowMinHeight: 50,
+                      dataRowMaxHeight: double.infinity,
+                      columns: const [
+                        DataColumn(
+                            label: Text('Day',
+                                style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(
+                            label: Text('First Train',
+                                style: TextStyle(fontWeight: FontWeight.bold))),
+                        DataColumn(
+                            label: Text('Last Train',
+                                style: TextStyle(fontWeight: FontWeight.bold))),
+                      ],
+                      rows: daysOrder.map((day) {
+                        final firstTimes = groupedFirst[day] ?? ['-'];
+                        final lastTimes = groupedLast[day] ?? ['-'];
+
+                        return DataRow(
+                          cells: [
+                            DataCell(Text(day,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w600))),
+                            DataCell(
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children:
+                                      firstTimes.map((t) => Text(t)).toList(),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children:
+                                      lastTimes.map((t) => Text(t)).toList(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }(),
+      ],
+    );
+  }
+}

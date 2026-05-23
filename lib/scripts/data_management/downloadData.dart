@@ -23,6 +23,12 @@ Future<bool> downloadData([List<Map<String, dynamic>>? tasks]) async {
       'validate': validateServices,
       'save': saveSvcs,
     },
+    {
+      'url': '$endpoint/api/data/mrt',
+      'key': 'mrt-data',
+      'validate': validateMRTData,
+      'save': saveMRTData,
+    },
   ];
 
   final tasksToRun = tasks ?? defaultTasks;
@@ -55,6 +61,7 @@ Future<bool> downloadData([List<Map<String, dynamic>>? tasks]) async {
 
         return true;
       } catch (err, stackTrace) {
+        print(err);
         await Sentry.captureException(
           "An error occurred while downloading data for key: $key",
           stackTrace: stackTrace,
@@ -111,6 +118,21 @@ bool validateServices(servicesRaw) {
       valid = false;
     }
   });
+
+  return valid;
+}
+
+bool validateMRTData(mrtDataRaw) {
+  bool valid = true;
+
+  var mrtData = jsonDecode(mrtDataRaw);
+
+  if (mrtData["stations"] == null) {
+    valid = false;
+  }
+  if (mrtData["lines"] == null) {
+    valid = false;
+  }
 
   return valid;
 }

@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:sgbus/components/searchPage.dart'; // Ensure this path is correct
 
 class SearchBarWidget extends StatelessWidget {
-  const SearchBarWidget({Key? key, this.callback}) : super(key: key);
+  const SearchBarWidget({
+    Key? key,
+    this.callback,
+    this.initialTabIndex = 0,
+  }) : super(key: key);
 
   final VoidCallback? callback;
+  /// 0 = Stops (default), 1 = Buses, 2 = MRT Stations
+  final int initialTabIndex;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +35,7 @@ class SearchBarWidget extends StatelessWidget {
                   transitionDuration: const Duration(milliseconds: 600),
                   reverseTransitionDuration: const Duration(milliseconds: 600),
                   pageBuilder: (context, animation, secondaryAnimation) =>
-                      const CustomSearchPage(),
+                      CustomSearchPage(initialTabIndex: initialTabIndex),
                   transitionsBuilder:
                       (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);

@@ -19,7 +19,8 @@ import 'package:sgbus/pages/alert_webview_page.dart';
 import 'package:sgbus/pages/cepas_reader.dart';
 import 'package:sgbus/pages/download_page.dart';
 import 'package:sgbus/pages/home.dart';
-import 'package:sgbus/pages/mrt_map.dart';
+import 'package:sgbus/pages/mrt_pages/mrt.dart';
+import 'package:sgbus/pages/mrt_pages/mrt_map.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
 import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/pages/settings.dart';
@@ -194,9 +195,9 @@ class _RootPageState extends State<RootPage> {
   List<Widget> pages = [
     const StopsMap(),
     const Home(),
-    const MRTMap(),
+    const MRT(),
   ];
-  List pageName = const ['Map', 'Home', 'MRT Map'];
+  List pageName = const ['Map', 'Home', 'MRT'];
   var searchQuery = TextEditingController();
 
   bool isLoaded = false;
@@ -215,6 +216,7 @@ class _RootPageState extends State<RootPage> {
 
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
+    var mrtData = prefs.getString('mrt-data');
     var localVersion = prefs.getString('version');
     // var startupScreen = prefs.getString('startup-screen');
 
@@ -228,7 +230,10 @@ class _RootPageState extends State<RootPage> {
     //   currPageIndex = pageName.indexOf(startupScreen); //TODO: Fix this
     // }
 
-    if (stops == null || svcs == null || localVersion == null) {
+    if (stops == null ||
+        svcs == null ||
+        mrtData == null ||
+        localVersion == null) {
       Navigator.of(context).push(MaterialPageRoute(
           builder: (builder) => DownloadPage(
                 restartOnComplete: true,
@@ -236,6 +241,7 @@ class _RootPageState extends State<RootPage> {
     } else {
       saveStops(stops);
       saveSvcs(svcs);
+      saveMRTData(mrtData);
       setState(() {
         isLoaded = true;
       });
@@ -284,6 +290,7 @@ class _RootPageState extends State<RootPage> {
 
       get(versionEndpoint, headers: {"version": appInfo.buildNumber})
           .then((data) async {
+        hasFetchedLaunchData.value = true;
         var response = jsonDecode(data.body);
         for (var alert in response["alerts"]) {
           print(alert["startTimestamp"]);
@@ -320,8 +327,23 @@ class _RootPageState extends State<RootPage> {
           }
         }
         setState(() {
+          List newAlerts = [];
           print("Alerts updated");
-          globalAlerts.value = alerts;
+          for (var alert in alerts) {
+            var tmpAlert;
+            var nAffectedLine;
+            print(alert["affectedLine"]);
+            if (alert["affectedLine"] == "SKL") {
+              nAffectedLine = "STL";
+            } else if (alert["affectedLine"] == "PTL") {
+              nAffectedLine = "PTL";
+            } else {
+              nAffectedLine = alert["affectedLine"];
+            }
+            alert["affectedLine"] = nAffectedLine;
+            newAlerts.add(alert);
+          }
+          globalAlerts.value = newAlerts;
         });
 
         // alerts.forEach((alert) {
@@ -345,14 +367,27 @@ class _RootPageState extends State<RootPage> {
         //   );
         // });
 
-        int dateDiff =
-            DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
-                .compareTo(DateTime.parse(response["lastUpdated"]));
+        if (response["lastUpdated"] != null &&
+            response["lastUpdatedTransitData"] != null) {
+          final lastUpdated = DateTime.parse(response["lastUpdated"]);
+          final lastUpdatedTransit =
+              DateTime.parse(response["lastUpdatedTransitData"]);
 
-        if (dateDiff < 0) {
-          updateData();
+          var newestDataDate = lastUpdated.isAfter(lastUpdatedTransit)
+              ? lastUpdated
+              : lastUpdatedTransit;
+
+          int dateDiff =
+              DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
+                  .compareTo(newestDataDate);
+
+          print(dateDiff);
+          if (dateDiff < 0) {
+            updateData();
+          }
         }
       }).catchError((err, stackTrace) async {
+        print(err);
         await Sentry.captureException(
           "An error occured when checking for or starting downloading data",
           stackTrace: stackTrace,
@@ -499,9 +534,9 @@ class _RootPageState extends State<RootPage> {
                   label: 'Home',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.directions_transit_filled_outlined),
+                  icon: Icon(Icons.directions_transit_outlined),
                   selectedIcon: Icon(Icons.directions_transit_filled_rounded),
-                  label: 'MRT map',
+                  label: 'MRT',
                 ),
               ],
             ),

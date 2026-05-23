@@ -39,6 +39,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   webview_flutter: ^4.8.0
   sentry_flutter: ^9.8.0
+  from_css_color: ^2.0.0
   dynamic_color: ^1.4.0
   url_launcher: ^6.1.7
   skeletonizer: ^2.1.1
