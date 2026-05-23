@@ -33,6 +33,7 @@ class _StopsMapState extends State<StopsMap> {
   late AdWidget adWidget;
   String? _stopsGeoJson;
   bool _isSatelliteView = false;
+  String? _currentStyleUri;
 
   @override
   void setState(fn) {
@@ -61,7 +62,9 @@ class _StopsMapState extends State<StopsMap> {
       marginRight: 10,
     ));
 
-    initStops();
+    _currentStyleUri = (_isSatelliteView || isDark)
+        ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+        : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m";
   }
 
   Future<void> initStops() async {
@@ -79,7 +82,7 @@ class _StopsMapState extends State<StopsMap> {
       "icon-image": "bus",
       "text-size": 10,
       "text-offset": [0, 2],
-      "text-color": isDark ? "#fff" : "#000",
+      "text-color": (_isSatelliteView || isDark) ? "#fff" : "#000",
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -211,6 +214,16 @@ class _StopsMapState extends State<StopsMap> {
       await prefs.setBool('isSatelliteView', enableSatellite);
     } catch (e) {
       print("Error saving map mode preference: $e");
+    }
+
+    final targetStyleUri = (enableSatellite || isDark)
+        ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
+        : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m";
+
+    if (_currentStyleUri != targetStyleUri) {
+      _currentStyleUri = targetStyleUri;
+      await mapboxMap!.loadStyleURI(targetStyleUri);
+      return;
     }
 
     try {
@@ -471,7 +484,10 @@ class _StopsMapState extends State<StopsMap> {
                           zoom: currLocation != null ? 17 : 9,
                         ),
                         onMapCreated: _onMapCreated,
-                        styleUri: isDark
+                        onStyleLoadedListener: (StyleLoadedEventData event) {
+                          initStops();
+                        },
+                        styleUri: (_isSatelliteView || isDark)
                             ? "mapbox://styles/slen/cl4p0y50c000a15qhcozehloa"
                             : "mapbox://styles/slen/clb64djkx000014pcw46b1h9m",
                       ),
