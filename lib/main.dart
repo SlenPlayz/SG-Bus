@@ -145,11 +145,8 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> appInitialiser() async {
-    Future.delayed(Duration(seconds: 500), () async {
-      initPlugins();
-      await loadThemeSettings();
-    });
-
+    initPlugins();
+    await loadThemeSettings();
     setState(() {
       isLoaded = true;
     });
