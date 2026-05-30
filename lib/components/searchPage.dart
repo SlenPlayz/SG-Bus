@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sgbus/pages/bus_route.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
+import 'package:sgbus/components/trainStationListView.dart';
 
 class CustomSearchPage extends StatefulWidget {
   /// 0 = Stops (default), 1 = Buses, 2 = MRT Stations
@@ -263,26 +264,42 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
 
         // ── MRT Stations tab ───────────────────────────────────────────────
         _ResultList(
-          children: [
-            for (var station in stations.asMap().entries)
-              if (_stationMatches(station.value, q))
-                _ResultTile(
-                  isFirst: station.key == 0,
-                  title: station.value["name"] ?? '',
-                  subtitle:
-                      (station.value["codes"] as List? ?? []).join('  ·  '),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            StationPage(
-                          stationCode: station.value["codes"].first,
+          children: () {
+            final filtered = stations.where((s) => _stationMatches(s, q)).toList();
+            return [
+              for (var i = 0; i < filtered.length; i++)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.only(
+                      topLeft: i == 0
+                          ? const Radius.circular(28.0)
+                          : const Radius.circular(5),
+                      topRight: i == 0
+                          ? const Radius.circular(28.0)
+                          : const Radius.circular(5),
+                    ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceVariant
+                        .withOpacity(0.3),
+                  ),
+                  child: TrainStationListTile(
+                    station: filtered[i],
+                    onTap: () {
+                      Navigator.of(context).push(
+                        PageRouteBuilder(
+                          pageBuilder: (context, animation, secondaryAnimation) =>
+                              StationPage(
+                            stationCode: filtered[i]["codes"].first,
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-          ],
+            ];
+          }(),
         ),
       ],
     );

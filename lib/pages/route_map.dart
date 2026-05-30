@@ -25,19 +25,16 @@ class _RouteMapState extends State<RouteMap> {
   bool isAdLoaded = false;
   List<LatLng> routeAsLatLng = [];
   List bsids = [];
-  List bsnos = [];
   String routeType = '';
-  List shownRoute = [];
   List routeStops = [];
   late AdWidget adWidget;
   var currRoute;
   bool _isFirstLoad = true;
+  MapboxMap? mapboxMap;
 
   @override
   void setState(fn) {
-    if (mounted) {
-      super.setState(fn);
-    }
+    if (mounted) super.setState(fn);
   }
 
   final BannerAd Ad = BannerAd(
@@ -47,168 +44,152 @@ class _RouteMapState extends State<RouteMap> {
     listener: BannerAdListener(),
   );
 
-  Future<void> loadRoute() async {
+  void loadRoute() {
     List bstopsList = getStops();
-    bstopsList.forEach((element) => bsids.add(element['id']));
+    bstopsList.forEach((e) => bsids.add(e['id']));
 
     var svcsParsed = getSvcs();
     currRoute = svcsParsed[widget.sno];
     if (currRoute['name'].contains('⇄')) {
       routeType = 'PTP';
-      currRoute['routes'][0].forEach((element) {
-        routeStops.add(bstopsList[bsids.indexOf(element)]);
-      });
-      currRoute['routes'][1].forEach((element) {
-        routeStops.add(bstopsList[bsids.indexOf(element)]);
-      });
+      currRoute['routes'][0].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
+      currRoute['routes'][1].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
     } else {
-      currRoute['routes'][0].forEach((element) {
-        routeStops.add(bstopsList[bsids.indexOf(element)]);
-      });
+      currRoute['routes'][0].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
     }
-
     setState(() => routeStops = routeStops);
   }
 
-  MapboxMap? mapboxMap;
+  /// Adds only the route-specific layers: route stops source + route line.
+  /// BaseMap already provides the full stops + MRT layers.
+  Future<void> _initRouteLayers(MapboxMap map) async {
+    mapboxMap = map;
 
-  _onMapCreated(MapboxMap mapboxMap) {
-    this.mapboxMap = mapboxMap;
-  }
-
-  Future<void> initStops() async {
-    Map stopsGeoJsonMap = {
-      "type": "FeatureCollection",
-      "features": [],
-    };
-
-    Map busRouteGeoJsonMap = {
-      "type": "FeatureCollection",
-      "features": [
-        {
-          "type": "Feature",
-          "properties": {"number": widget.sno},
-          "geometry": {"type": "LineString", "coordinates": []}
-        }
-      ],
-    };
-
-    for (var stop in routeStops) {
-      stopsGeoJsonMap["features"].add({
-        "type": "Feature",
-        "id": stop["id"],
-        "properties": {
-          "number": stop["id"],
-          "name": stop["Name"],
-          "road": stop["Road"],
+    final stopsGeoJson = {
+      'type': 'FeatureCollection',
+      'features': routeStops.map((stop) => {
+        'type': 'Feature',
+        'id': stop['id'],
+        'properties': {
+          'number': stop['id'],
+          'name': stop['Name'],
+          'road': stop['Road'],
         },
-        "geometry": {"type": "Point", "coordinates": stop["cords"]}
-      });
-
-      busRouteGeoJsonMap["features"][0]["geometry"]["coordinates"]
-          .add(stop["cords"]);
-    }
-    await mapboxMap?.style.addSource(
-        GeoJsonSource(id: "stops", data: jsonEncode(stopsGeoJsonMap)));
-    var stopsLayerJSON = {
-      "id": "stops_layer",
-      "type": "symbol",
-      "source": "stops"
+        'geometry': {'type': 'Point', 'coordinates': stop['cords']},
+      }).toList(),
     };
-    await mapboxMap?.style.addStyleLayer(json.encode(stopsLayerJSON), null);
 
     final prefs = await SharedPreferences.getInstance();
     final isSat = prefs.getBool('isSatelliteView') ?? false;
 
-    var stopsLayerProperties = {
-      'text-field': ['get', 'name'],
-      "icon-image": "bus",
-      "text-size": 10,
-      "text-offset": [0, 2],
-      "text-color": (isSat || isDark) ? "#fff" : "#000",
-    };
-    await mapboxMap?.style.setStyleLayerProperties(
-        "stops_layer", json.encode(stopsLayerProperties));
+    await map.style.addSource(
+        GeoJsonSource(id: 'route_stops', data: jsonEncode(stopsGeoJson)));
 
-    await mapboxMap?.style.addLayer(CircleLayer(
-      id: "stops_circle_layer",
-      sourceId: "stops",
+    await map.style.addStyleLayer(
+      json.encode({'id': 'route_stops_layer', 'type': 'symbol', 'source': 'route_stops'}),
+      null,
+    );
+    await map.style.setStyleLayerProperties(
+      'route_stops_layer',
+      json.encode({
+        'text-field': ['get', 'name'],
+        'icon-image': 'bus',
+        'text-size': 10,
+        'text-offset': [0, 2],
+        'text-color': (isSat || isDark) ? '#fff' : '#000',
+      }),
+    );
+    await map.style.addLayer(CircleLayer(
+      id: 'route_stops_circle_layer',
+      sourceId: 'route_stops',
       circleRadius: 1.5,
       maxZoom: 15.0,
       circleColor: Colors.blue.value,
     ));
 
-    await mapboxMap?.style.addSource(
-        GeoJsonSource(id: "routeLine", data: jsonEncode(busRouteGeoJsonMap)));
+    final routeGeoJson = {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {'number': widget.sno},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': routeStops.map((s) => s['cords']).toList(),
+          },
+        }
+      ],
+    };
 
-    await mapboxMap?.style.addLayer(LineLayer(
-      id: "stops_line_layer",
-      sourceId: "routeLine",
+    await map.style.addSource(
+        GeoJsonSource(id: 'routeLine', data: jsonEncode(routeGeoJson)));
+    await map.style.addLayer(LineLayer(
+      id: 'stops_line_layer',
+      sourceId: 'routeLine',
       lineWidth: 4.0,
-      linePattern: "oneway-small",
+      linePattern: 'oneway-small',
     ));
 
-    if (_isFirstLoad && routeStops.isNotEmpty) {
+    // Fit camera to route bounds on first load
+    if (_isFirstLoad) {
       _isFirstLoad = false;
-      double minLat = 90.0;
-      double maxLat = -90.0;
-      double minLng = 180.0;
-      double maxLng = -180.0;
+      _fitCameraToRoute();
+    }
+  }
 
-      for (var stop in routeStops) {
-        double lng = stop["cords"][0];
-        double lat = stop["cords"][1];
+  Future<void> _fitCameraToRoute() async {
+    if (mapboxMap == null || routeStops.isEmpty) return;
 
-        if (lat < minLat) minLat = lat;
-        if (lat > maxLat) maxLat = lat;
-        if (lng < minLng) minLng = lng;
-        if (lng > maxLng) maxLng = lng;
+    // Give layout a brief moment to settle
+    await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
+
+    double minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
+    for (var stop in routeStops) {
+      final lng = (stop['cords'][0] as num).toDouble();
+      final lat = (stop['cords'][1] as num).toDouble();
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+
+    if (minLat < maxLat && minLng < maxLng) {
+      try {
+        final cam = await mapboxMap!.cameraForCoordinateBounds(
+          CoordinateBounds(
+              southwest: Point(coordinates: Position(minLng, minLat)),
+              northeast: Point(coordinates: Position(maxLng, maxLat)),
+              infiniteBounds: false),
+          MbxEdgeInsets(top: 70.0, left: 25.0, bottom: 70.0, right: 25.0),
+          null, null, null, null,
+        );
+        mapboxMap?.flyTo(cam, MapAnimationOptions(duration: 1000));
+      } catch (e) {
+        print('Error fitting camera to route: $e');
       }
-
-      CameraOptions cameraOptions = await mapboxMap!.cameraForCoordinateBounds(
-        CoordinateBounds(
-            southwest: Point(coordinates: Position(minLng, minLat)),
-            northeast: Point(coordinates: Position(maxLng, maxLat)),
-            infiniteBounds: false),
-        MbxEdgeInsets(top: 70.0, left: 25.0, bottom: 70.0, right: 25.0),
-        null,
-        null,
-        null,
-        null,
-      );
-
-      mapboxMap?.flyTo(cameraOptions, MapAnimationOptions(duration: 1000));
     }
   }
 
   Future<void> onTapListener(MapContentGestureContext gestureContext) async {
     if (mapboxMap == null) return;
-
-    final ScreenCoordinate conv = gestureContext.touchPosition;
-
+    final conv = gestureContext.touchPosition;
     try {
-      final List<QueriedRenderedFeature?> features =
-          await mapboxMap!.queryRenderedFeatures(
+      final features = await mapboxMap!.queryRenderedFeatures(
         RenderedQueryGeometry(
-          value: jsonEncode({
-            "x": conv.x,
-            "y": conv.y,
-          }),
+          value: jsonEncode({'x': conv.x, 'y': conv.y}),
           type: Type.SCREEN_COORDINATE,
         ),
-        RenderedQueryOptions(
-          layerIds: ["stops_layer"],
-        ),
+        RenderedQueryOptions(layerIds: ['route_stops_layer']),
       );
-
       if (features.isNotEmpty &&
-          features[0]?.queriedFeature.feature["id"] != null) {
+          features[0]?.queriedFeature.feature['id'] != null) {
         Navigator.of(context).push(MaterialPageRoute(
-            builder: (builder) =>
-                Stop(features[0]!.queriedFeature.feature["id"].toString())));
+            builder: (_) =>
+                Stop(features[0]!.queriedFeature.feature['id'].toString())));
       }
     } catch (e) {
-      print("Error querying map: $e");
+      print('Error querying map: $e');
     }
   }
 
@@ -216,14 +197,9 @@ class _RouteMapState extends State<RouteMap> {
     try {
       adWidget = AdWidget(ad: Ad);
       await Ad.load();
-      setState(() {
-        isAdLoaded = true;
-      });
+      setState(() => isAdLoaded = true);
     } catch (err, stackTrace) {
-      await Sentry.captureException(
-        err,
-        stackTrace: stackTrace,
-      );
+      await Sentry.captureException(err, stackTrace: stackTrace);
       if (!kReleaseMode) print(err);
     }
   }
@@ -233,10 +209,7 @@ class _RouteMapState extends State<RouteMap> {
     super.initState();
     loadRoute();
     if (adsEnabled) loadAd();
-    setState(() {
-      stops = stops;
-      isLoaded = true;
-    });
+    setState(() => isLoaded = true);
   }
 
   @override
@@ -245,25 +218,23 @@ class _RouteMapState extends State<RouteMap> {
       body: isLoaded
           ? Scaffold(
               appBar: AppBar(
-                title: Text('${'Bus ' + widget.sno} route map'),
+                title: Text('Bus ${widget.sno} route map'),
               ),
               body: Column(
                 children: [
                   Expanded(
                     child: BaseMap(
                       cameraOptions: CameraOptions(
-                        center:
-                            Point(coordinates: Position(103.8198, 1.290270)),
+                        center: Point(coordinates: Position(103.8198, 1.290270)),
                         zoom: 9,
                       ),
-                      onMapCreated: _onMapCreated,
-                      onStyleLoaded: (map) {
-                        initStops();
-                      },
+                      onStyleLoaded: _initRouteLayers,
                       onMapTap: onTapListener,
                       showCompass: true,
                       showScaleBar: true,
                       topPadding: 10,
+                      loadDefaultBusStops: false,
+                      showBusStopsToggle: false,
                     ),
                   ),
                   isAdLoaded

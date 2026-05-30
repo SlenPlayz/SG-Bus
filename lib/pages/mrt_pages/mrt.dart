@@ -10,6 +10,7 @@ import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/location_helper.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:sgbus/pages/mrt_pages/station_page.dart';
+import 'package:sgbus/components/trainStationListView.dart';
 import 'dart:math';
 
 class MRT extends StatefulWidget {
@@ -335,9 +336,8 @@ class _StationTile extends StatelessWidget {
         ),
         color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
       ),
-      child: ListTile(
-        title: Text(station['name'] ?? ''),
-        subtitle: Text(codes.join('  ·  ')),
+      child: TrainStationListTile(
+        station: station,
         trailing: Text(
           '${dist}m',
           style: Theme.of(context).textTheme.bodySmall,

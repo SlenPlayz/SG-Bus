@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,11 +19,6 @@ class StopsMap extends StatefulWidget {
 
   @override
   _StopsMapState createState() => _StopsMapState();
-}
-
-ViewPadding getSafeAreaPadding() {
-  final FlutterView view = PlatformDispatcher.instance.views.first;
-  return view.viewPadding;
 }
 
 class _StopsMapState extends State<StopsMap> {
@@ -205,7 +199,7 @@ class _StopsMapState extends State<StopsMap> {
                         fabBottomPadding: 50.0,
                         showScaleBar: true,
                         showCompass: true,
-                        topPadding: getSafeAreaPadding().top - 45,
+                        topPadding: MediaQuery.paddingOf(context).top,
                       ),
                     ),
                   ),

@@ -6,10 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:from_css_color/from_css_color.dart';
 import 'package:sgbus/components/base_map.dart';
+import 'package:sgbus/components/trainStationListView.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 class StationPage extends StatefulWidget {
@@ -75,125 +75,6 @@ class _StationPageState extends State<StationPage>
     return Colors.blue;
   }
 
-  Future<void> _initStationMapContent() async {
-    if (station == null || mapboxMap == null) return;
-
-    // 1. Draw station boundaries
-    final boundariesList = station['boundaries'] as List? ?? [];
-    final List<Map<String, dynamic>> boundaryFeatures = [];
-
-    for (int i = 0; i < boundariesList.length; i++) {
-      final String encoded = boundariesList[i] as String;
-      final decodedCoords = decodePolyline(encoded);
-      if (decodedCoords.isEmpty) continue;
-
-      final List<List<double>> polyCoords =
-          decodedCoords.map((c) => [c[1].toDouble(), c[0].toDouble()]).toList();
-
-      boundaryFeatures.add({
-        "type": "Feature",
-        "id": "boundary_feat_$i",
-        "geometry": {
-          "type": "Polygon",
-          "coordinates": [polyCoords]
-        },
-        "properties": {}
-      });
-    }
-
-    final Color lineColor = _getLineColor(widget.stationCode);
-
-    if (boundaryFeatures.isNotEmpty) {
-      final Map<String, dynamic> boundaryGeoJson = {
-        "type": "FeatureCollection",
-        "features": boundaryFeatures
-      };
-
-      await mapboxMap!.style.addSource(GeoJsonSource(
-        id: "station_boundary_source",
-        data: jsonEncode(boundaryGeoJson),
-      ));
-
-      await mapboxMap!.style.addLayer(FillLayer(
-        id: "station_boundary_fill",
-        sourceId: "station_boundary_source",
-        fillColor: lineColor.value,
-        fillOpacity: 0.18,
-      ));
-
-      await mapboxMap!.style.addLayer(LineLayer(
-        id: "station_boundary_line",
-        sourceId: "station_boundary_source",
-        lineWidth: 3.0,
-        lineColor: lineColor.value,
-      ));
-    }
-
-    // 2. Draw exits
-    final exitsList = station['exits'] as List? ?? [];
-    final List<Map<String, dynamic>> exitFeatures = [];
-
-    for (int i = 0; i < exitsList.length; i++) {
-      final exit = exitsList[i];
-      final exitName = exit['exitName'] ?? '';
-      final coords = exit['coordinates'] as List? ?? [];
-      if (coords.length < 2) continue;
-
-      final double lat = (coords[0] as num).toDouble();
-      final double lng = (coords[1] as num).toDouble();
-
-      exitFeatures.add({
-        "type": "Feature",
-        "id": "exit_feat_$i",
-        "geometry": {
-          "type": "Point",
-          "coordinates": [lng, lat]
-        },
-        "properties": {
-          "exitName": exitName,
-          "name": "Exit $exitName",
-        }
-      });
-    }
-
-    if (exitFeatures.isNotEmpty) {
-      final Map<String, dynamic> exitsGeoJson = {
-        "type": "FeatureCollection",
-        "features": exitFeatures
-      };
-
-      await mapboxMap!.style.addSource(GeoJsonSource(
-        id: "station_exits_source",
-        data: jsonEncode(exitsGeoJson),
-      ));
-
-      await mapboxMap!.style.addLayer(
-        CircleLayer(
-            id: "station_exits_background_layer",
-            sourceId: "station_exits_source",
-            circleRadius: 10,
-            circleColor: Colors.yellow.value,
-            circleStrokeWidth: 3,
-            circleStrokeColor: Colors.black.value),
-      );
-
-      await mapboxMap!.style.addLayer(
-        SymbolLayer(
-          id: "station_exits_layer",
-          sourceId: "station_exits_source",
-          textFieldExpression: ["get", "exitName"],
-          textSize: 10.5,
-          textColor: Colors.black.value,
-          textJustify: TextJustify.CENTER,
-          textAnchor: TextAnchor.CENTER,
-          textFont: ["Open Sans Bold", "Arial Unicode MS Bold"],
-        ),
-      );
-    }
-
-    _fitCameraToStation();
-  }
-
   Future<void> _fitCameraToStation() async {
     if (station == null || mapboxMap == null) return;
 
@@ -248,7 +129,7 @@ class _StationPageState extends State<StationPage>
           northeast: Point(coordinates: Position(maxLng, maxLat)),
           infiniteBounds: false,
         ),
-        MbxEdgeInsets(top: 140.0, left: 40.0, bottom: 500, right: 40.0),
+        MbxEdgeInsets(top: 180.0, left: 70.0, bottom: 550, right: 70.0),
         null,
         null,
         null,
@@ -341,6 +222,24 @@ class _StationPageState extends State<StationPage>
             ),
           ),
         ),
+        // actions: [
+        //   Container(
+        //     padding: const EdgeInsets.all(5),
+        //     margin: EdgeInsets.only(right: 12),
+        //     decoration: BoxDecoration(
+        //       color: Theme.of(context).colorScheme.surface,
+        //       borderRadius: BorderRadius.circular(24),
+        //       boxShadow: [
+        //         BoxShadow(
+        //           color: Colors.black.withOpacity(0.15),
+        //           blurRadius: 6,
+        //           offset: const Offset(0, 3),
+        //         ),
+        //       ],
+        //     ),
+        //     child: StationCodePills(station: station),
+        //   )
+        // ],
       ),
       body: Stack(
         children: [
@@ -359,12 +258,13 @@ class _StationPageState extends State<StationPage>
                 mapboxMap = map;
               },
               onStyleLoaded: (map) {
-                _initStationMapContent();
+                _fitCameraToStation();
               },
               showCompass: true,
               showScaleBar: true,
-              topPadding: topSafeArea + 64.0,
+              topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
               fabBottomPadding: height * 0.4 + 10,
+              // All 4 toggles shown (default)
             ),
           ),
           DraggableScrollableSheet(
@@ -452,6 +352,8 @@ class _StationPageState extends State<StationPage>
                               exits: (station['exits'] as List? ?? [])
                                   .map((e) => e as Map<String, dynamic>)
                                   .toList(),
+                              exitDataApproximate:
+                                  station['exitDataApproximate'],
                             ),
                           ),
                           SingleChildScrollView(
@@ -490,9 +392,9 @@ class CrowdednessCard extends StatefulWidget {
 
 class _CrowdednessCardState extends State<CrowdednessCard> {
   // ── Static in-memory cache ────────────────────────────────────────────────
-  // Key: sorted station codes joined with ',' (e.g. "CC17,TE9")
-  // Value: { 'data': Map<String, Map>, 'fetchedAt': DateTime }
-  static final Map<String, Map<String, dynamic>> _cache = {};
+  // Key: lineCode (e.g. "EWL")
+  // Value: { 'data': Map<String, dynamic>, 'fetchedAt': DateTime }
+  static final Map<String, Map<String, dynamic>> _lineCache = {};
   static const Duration _cacheTTL = Duration(minutes: 2);
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -503,81 +405,114 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
   bool _isFetching = true;
   DateTime? _lastUpdated;
 
-  String get _cacheKey {
-    final sorted = List<String>.from(widget.stationCodes)..sort();
-    return sorted.join(',');
-  }
-
   @override
   void initState() {
     super.initState();
     _initData();
   }
 
-  void _initData({bool forceRefresh = false}) {
-    final cached = _cache[_cacheKey];
-    final fetchedAt = cached?['fetchedAt'] as DateTime?;
-    final isFresh = !forceRefresh &&
-        fetchedAt != null &&
-        DateTime.now().difference(fetchedAt) < _cacheTTL;
-
-    if (isFresh) {
-      setState(() {
-        // Use cached data directly — no network call needed
-        _crowdData = Map<String, Map<String, dynamic>>.from(
-          cached!['data'] as Map,
-        );
-        _lastUpdated = fetchedAt;
-        _isFetching = false;
-      });
-    } else {
-      final mrtDataMap = getMRTData();
-      final lines = mrtDataMap?['lines'] as List? ?? [];
-
-      String? getLineColorStr(String stationCode) {
-        for (final l in lines) {
-          if (l is Map) {
-            final lStations = l['stations'] as List? ?? [];
-            for (final s in lStations) {
-              if (s is Map && s['code'] == stationCode) {
-                return l['lineColor'] as String?;
-              }
-            }
+  String? _getLineCodeForStation(String stationCode, List allLines) {
+    for (final l in allLines) {
+      if (l is Map) {
+        final lStations = l['stations'] as List? ?? [];
+        for (final s in lStations) {
+          if (s is Map && s['code'] == stationCode) {
+            return l['code'] as String?;
           }
         }
-        return null;
       }
+    }
+    return null;
+  }
 
-      setState(() {
-        _isFetching = true;
-        // Pre-populate with skeleton placeholders then fetch
-        _crowdData = {
-          for (final code in widget.stationCodes)
-            code: {
-              'crowdLevel': null,
-              'lineName': null,
-              'lineColor': getLineColorStr(code),
-              'startTime': null,
-              'endTime': null,
-            }
+  String? _getLineColorStr(String stationCode, List allLines) {
+    for (final l in allLines) {
+      if (l is Map) {
+        final lStations = l['stations'] as List? ?? [];
+        for (final s in lStations) {
+          if (s is Map && s['code'] == stationCode) {
+            return l['lineColor'] as String?;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  void _initData({bool forceRefresh = false}) {
+    final mrtDataMap = getMRTData();
+    final allLines = mrtDataMap?['lines'] as List? ?? [];
+
+    DateTime? oldestFetch;
+    List<String> linesToFetch = [];
+    Map<String, Map<String, dynamic>> initialData = {};
+
+    for (final code in widget.stationCodes) {
+      final lineCode = _getLineCodeForStation(code, allLines);
+      if (lineCode == null) continue;
+
+      final cached = _lineCache[lineCode];
+      final fetchedAt = cached?['fetchedAt'] as DateTime?;
+
+      final isFresh = !forceRefresh && fetchedAt != null && DateTime.now().difference(fetchedAt) < _cacheTTL;
+
+      if (isFresh) {
+        final lineData = cached!['data'] as Map<String, dynamic>;
+        final entryData = lineData[code];
+        if (entryData != null) {
+          initialData[code] = Map<String, dynamic>.from(entryData);
+        } else {
+          initialData[code] = {
+            'crowdLevel': null,
+            'lineName': null,
+            'lineColor': _getLineColorStr(code, allLines),
+            'startTime': null,
+            'endTime': null,
+          };
+        }
+
+        if (oldestFetch == null || fetchedAt.isBefore(oldestFetch)) {
+          oldestFetch = fetchedAt;
+        }
+      } else {
+        if (!linesToFetch.contains(lineCode)) {
+          linesToFetch.add(lineCode);
+        }
+        initialData[code] = {
+          'crowdLevel': null,
+          'lineName': null,
+          'lineColor': _getLineColorStr(code, allLines),
+          'startTime': null,
+          'endTime': null,
         };
-      });
-      _fetchCrowdData();
+      }
+    }
+
+    setState(() {
+      _crowdData = initialData;
+      _lastUpdated = oldestFetch;
+      _isFetching = linesToFetch.isNotEmpty;
+    });
+
+    if (linesToFetch.isNotEmpty) {
+      _fetchCrowdData(linesToFetch);
     }
   }
 
-  Future<void> _fetchCrowdData() async {
+  Future<void> _fetchCrowdData(List<String> lineCodesToFetch) async {
     final mrtDataMap = getMRTData();
     if (mrtDataMap == null || mrtDataMap['lines'] == null) {
       if (mounted) setState(() => _errorMessage = 'MRT data unavailable');
       return;
     }
 
-    final lines = mrtDataMap['lines'] as List;
+    final allLines = mrtDataMap['lines'] as List;
     final stationCodeSet = Set<String>.from(widget.stationCodes);
 
-    // Fetch all lines in parallel
-    final futures = lines.map((line) async {
+    final linesToProcess = allLines.where((line) => lineCodesToFetch.contains(line['code']));
+
+    // Fetch relevant lines in parallel
+    final futures = linesToProcess.map((line) async {
       final lineCode = line['code'] as String;
       final lineName = line['name'] as String? ?? lineCode;
       final lineColorStr = line['lineColor'] as String? ?? '#888888';
@@ -591,24 +526,35 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
         final json = jsonDecode(response.body);
         final values = json['value'] as List? ?? [];
 
+        final now = DateTime.now();
+        final Map<String, dynamic> parsedLineData = {};
+
         for (final entry in values) {
           final stationCode = entry['Station'] as String;
+          final entryData = {
+            'crowdLevel': entry['CrowdLevel'] as String? ?? 'na',
+            'lineName': lineName,
+            'lineColor': lineColorStr,
+            'startTime': entry['StartTime'] as String?,
+            'endTime': entry['EndTime'] as String?,
+          };
+
+          parsedLineData[stationCode] = entryData;
+
           if (stationCodeSet.contains(stationCode)) {
             // Found a match — record it
             if (mounted) {
               setState(() {
-                _crowdData[stationCode] = {
-                  'crowdLevel': entry['CrowdLevel'] as String? ?? 'na',
-                  'lineName': lineName,
-                  'lineColor': lineColorStr,
-                  'startTime': entry['StartTime'] as String?,
-                  'endTime': entry['EndTime'] as String?,
-                };
+                _crowdData[stationCode] = entryData;
               });
             }
-            break; // Only one entry per station code per line
           }
         }
+
+        _lineCache[lineCode] = {
+          'data': parsedLineData,
+          'fetchedAt': now,
+        };
       } catch (_) {
         // Silently ignore per-line errors
       }
@@ -617,6 +563,19 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
     await Future.wait(futures);
 
     if (mounted) {
+      DateTime? oldest;
+      for (final code in widget.stationCodes) {
+        final lineCode = _getLineCodeForStation(code, allLines);
+        if (lineCode != null) {
+          final fetchedAt = _lineCache[lineCode]?['fetchedAt'] as DateTime?;
+          if (fetchedAt != null) {
+            if (oldest == null || fetchedAt.isBefore(oldest)) {
+              oldest = fetchedAt;
+            }
+          }
+        }
+      }
+
       setState(() {
         for (final entry in _crowdData.values) {
           if (entry['crowdLevel'] == null) {
@@ -624,15 +583,9 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
           }
         }
         _isFetching = false;
-        _lastUpdated = DateTime.now();
+        _lastUpdated = oldest ?? DateTime.now();
       });
     }
-
-    // Write completed data to cache
-    _cache[_cacheKey] = {
-      'data': Map<String, Map<String, dynamic>>.from(_crowdData),
-      'fetchedAt': DateTime.now(),
-    };
   }
 
   Color? _crowdColor(String level) {
@@ -1012,7 +965,9 @@ class _NearbyStopsCardState extends State<NearbyStopsCard> {
 
 class LandmarksCard extends StatefulWidget {
   final List<Map<String, dynamic>> exits;
-  const LandmarksCard({super.key, required this.exits});
+  final bool? exitDataApproximate;
+  const LandmarksCard(
+      {super.key, required this.exits, this.exitDataApproximate});
 
   @override
   State<LandmarksCard> createState() => _LandmarksCardState();
@@ -1046,6 +1001,28 @@ class _LandmarksCardState extends State<LandmarksCard> {
 
     return Column(
       children: [
+        if (widget.exitDataApproximate != null)
+          Container(
+            margin: EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color:
+                  Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(28.0),
+            ),
+            child: ListTile(
+              leading: Icon(Icons.warning_rounded,
+                  color: Theme.of(context).colorScheme.error),
+              title: Text(
+                "Incomplete exit data",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  // color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              subtitle: Text(
+                  "Exit data for this station is incomplete. Data provided might not be entirely accurate."),
+            ),
+          ),
         for (var i = 0; i < widget.exits.length; i++)
           () {
             final exit = widget.exits[i];
