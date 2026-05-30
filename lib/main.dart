@@ -9,6 +9,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_nfc_kit/flutter_nfc_kit.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart';
+import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
@@ -37,17 +38,17 @@ import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
+  // MobileAds.instance.initialize();
 
-  mb.MapboxOptions.setAccessToken(mapboxAccessToken);
+  // mb.MapboxOptions.setAccessToken(mapboxAccessToken);
+
+  // RequestConfiguration adConfig = RequestConfiguration(
+  //     testDeviceIds:
+  //         kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
+
+  // MobileAds.instance.updateRequestConfiguration(adConfig);
 
   timeDilation = 0.5;
-
-  RequestConfiguration adConfig = RequestConfiguration(
-      testDeviceIds:
-          kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
-
-  MobileAds.instance.updateRequestConfiguration(adConfig);
 
   if (kReleaseMode) {
     await SentryFlutter.init(
@@ -129,6 +130,25 @@ class _MyAppState extends State<MyApp> {
         : overrideSystemTheme
             ? theme == "dark"
             : isSysDarkMode);
+  }
+
+  void initPlugins() async {
+    MobileAds.instance.initialize();
+
+    mb.MapboxOptions.setAccessToken(mapboxAccessToken);
+
+    RequestConfiguration adConfig = RequestConfiguration(
+        testDeviceIds:
+            kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
+
+    MobileAds.instance.updateRequestConfiguration(adConfig);
+  }
+
+  Future<void> appInitialiser() async {
+    Future.delayed(Duration(seconds: 500), () async {
+      initPlugins();
+      await loadThemeSettings();
+    });
 
     setState(() {
       isLoaded = true;
@@ -137,14 +157,48 @@ class _MyAppState extends State<MyApp> {
 
   @override
   initState() {
-    loadThemeSettings();
+    appInitialiser();
     super.initState();
   }
 
   Widget build(BuildContext context) {
     if (!isLoaded) {
-      return Center(
-        child: CircularProgressIndicator(),
+      return MaterialApp(
+        theme: ThemeData(brightness: Brightness.light),
+        darkTheme: ThemeData(brightness: Brightness.dark),
+        debugShowCheckedModeBanner: false,
+        home: Center(
+          child: Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ExpressiveLoadingIndicator(),
+                    SizedBox(height: 10),
+                    Text(
+                      "Initialising App...",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "This should not take too long. Being stuck on this page could signify a Google Play Services error.",
+                      style: TextStyle(
+                        // fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       );
     }
 
@@ -543,7 +597,32 @@ class _RootPageState extends State<RootPage> {
           )
         : const Scaffold(
             body: Center(
-              child: CircularProgressIndicator(),
+              child: Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    ExpressiveLoadingIndicator(),
+                    SizedBox(height: 10),
+                    Text(
+                      "Checking Data...",
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Fetching Material You theme & verifying transit data",
+                      style: TextStyle(
+                        // fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    )
+                  ],
+                ),
+              ),
             ),
           );
   }
