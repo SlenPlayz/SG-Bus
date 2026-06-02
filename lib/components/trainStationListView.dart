@@ -6,12 +6,14 @@ class TrainStationListTile extends StatelessWidget {
   final dynamic station;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final bool? showCode;
 
   const TrainStationListTile({
     super.key,
     required this.station,
     this.onTap,
     this.trailing,
+    this.showCode,
   });
 
   @override
@@ -22,7 +24,7 @@ class TrainStationListTile extends StatelessWidget {
       title: Text(station['name'] ?? ''),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4.0),
-        child: StationCodePills(station: station),
+        child: (showCode != false) ? StationCodePills(station: station) : null,
       ),
       trailing: trailing,
       onTap: onTap,

@@ -280,10 +280,38 @@ class _BaseMapState extends State<BaseMap> {
     }
   }
 
+  Future<void> _updateBaseMapData() async {
+    final style = mapboxMap?.style;
+    if (style == null) return;
+
+    if (widget.loadDefaultBusStops) {
+      final stopsData = getStops();
+      if (stopsData != null) {
+        final geoJson = await compute(_generateStopsGeoJson, stopsData);
+        if (await style.styleSourceExists('stops')) {
+          await style.setStyleSourceProperty('stops', 'data', geoJson);
+        } else {
+          await _initStops();
+        }
+      }
+    }
+
+    final mrtData = getMRTData();
+    if (mrtData != null) {
+      final geoJson = await compute(_generateMrtGeoJson, mrtData);
+      if (await style.styleSourceExists('mrt_source')) {
+        await style.setStyleSourceProperty('mrt_source', 'data', geoJson);
+      } else {
+        await _initMrt();
+      }
+    }
+  }
+
   void _toggleBusStops(bool v) {
     setState(() => _showBusStops = v);
     _setLayerVisibility('stops_layer', v);
     _setLayerVisibility('stops_circle_layer', v);
+    _updateBaseMapData();
   }
 
   void _toggleTrainLines(bool v) {
@@ -291,18 +319,21 @@ class _BaseMapState extends State<BaseMap> {
     _setLayerVisibility('mrt_line_layer', v);
     _setLayerVisibility('mrt_station_circle_layer', v);
     _setLayerVisibility('mrt_station_text_layer', v);
+    _updateBaseMapData();
   }
 
   void _toggleStationExits(bool v) {
     setState(() => _showStationExits = v);
     _setLayerVisibility('mrt_exit_circle_layer', v);
     _setLayerVisibility('mrt_exit_text_layer', v);
+    _updateBaseMapData();
   }
 
   void _toggleStationBoundaries(bool v) {
     setState(() => _showStationBoundaries = v);
     _setLayerVisibility('mrt_boundary_layer', v);
     _setLayerVisibility('mrt_boundary_line_layer', v);
+    _updateBaseMapData();
   }
 
   // ── Map lifecycle ──────────────────────────────────────────────────────────
@@ -767,14 +798,17 @@ String _generateMrtGeoJson(Map mrtData) {
 
     if (station['exits'] != null) {
       for (var exit in station['exits']) {
-        features.add({
-          'type': 'Feature',
-          'properties': {'type': 'exit', 'name': exit['exitName']},
-          'geometry': {
-            'type': 'Point',
-            'coordinates': [exit['coordinates'][1], exit['coordinates'][0]]
-          },
-        });
+        final coords = exit['coordinates'];
+        if (coords is List && coords.length >= 2) {
+          features.add({
+            'type': 'Feature',
+            'properties': {'type': 'exit', 'name': exit['exitName']},
+            'geometry': {
+              'type': 'Point',
+              'coordinates': [coords[1], coords[0]]
+            },
+          });
+        }
       }
     }
   }

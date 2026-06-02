@@ -5,10 +5,11 @@ class SearchBarWidget extends StatelessWidget {
   const SearchBarWidget({
     Key? key,
     this.callback,
-    this.initialTabIndex = 0,
+    this.initialTabIndex = 4,
   }) : super(key: key);
 
   final VoidCallback? callback;
+
   /// 0 = Stops (default), 1 = Buses, 2 = MRT Stations
   final int initialTabIndex;
 

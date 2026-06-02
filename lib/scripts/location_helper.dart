@@ -124,9 +124,30 @@ class LocationHelper {
       }
 
       // 3. Retrieve current position
-      final Position position = await Geolocator.getCurrentPosition();
+      final Position position =
+          await Geolocator.getCurrentPosition(timeLimit: Duration(seconds: 15));
       return LocationResult.success(position);
     } catch (e) {
+      if (e.toString().contains("TimeoutException")) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              icon: Icon(Icons.settings,
+                  color: Theme.of(context).colorScheme.error),
+              title: const Text('Failed to get GPS Signal'),
+              content: const Text(
+                  "We are unable to retrieve your current location. You may be in a place with weak signal such as a Lift or on the MRT. Please try again later."),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Dismiss'),
+                ),
+              ],
+            );
+          },
+        );
+      }
       return LocationResult.error(
         LocationErrorType.unknown,
         'An error occurred: ${e.toString()}',

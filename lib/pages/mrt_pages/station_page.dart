@@ -5,6 +5,7 @@ import 'package:google_polyline_algorithm/google_polyline_algorithm.dart';
 import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:from_css_color/from_css_color.dart';
+import 'package:sgbus/components/amenity_list_tile.dart';
 import 'package:sgbus/components/base_map.dart';
 import 'package:sgbus/components/trainStationListView.dart';
 import 'package:sgbus/env.dart';
@@ -27,13 +28,15 @@ class _StationPageState extends State<StationPage>
   bool isLoaded = false;
 
   late TabController bottomSheetTabController;
+  final DraggableScrollableController _sheetController =
+      DraggableScrollableController();
 
   @override
   void initState() {
     super.initState();
-    // Fixed: Changed length to 4 to match the number of tabs
+    // Fixed: Changed length to 5 to match the number of tabs
     bottomSheetTabController = TabController(
-      length: 4,
+      length: 5,
       vsync: this,
     );
     _loadStationData();
@@ -268,6 +271,7 @@ class _StationPageState extends State<StationPage>
             ),
           ),
           DraggableScrollableSheet(
+            controller: _sheetController,
             initialChildSize: 0.4,
             minChildSize: 0.4,
             maxChildSize: 0.8,
@@ -313,6 +317,7 @@ class _StationPageState extends State<StationPage>
                       controller:
                           bottomSheetTabController, // Fixed: Linked controller here
                       tabs: const [
+                        Tab(child: Text("Amenities")),
                         Tab(child: Text("Crowdedness")),
                         Tab(child: Text("First/Last Train")),
                         Tab(child: Text("Landmarks")),
@@ -325,6 +330,24 @@ class _StationPageState extends State<StationPage>
                         children: [
                           // Using SingleChildScrollView linked to scrollController
                           // so pulling down on the tab lists collapses the sheet nicely
+                          SingleChildScrollView(
+                            controller: scrollController,
+                            padding: const EdgeInsets.all(16.0),
+                            child: AmenitiesCard(
+                              amenities: (station['amenities'] as List? ?? [])
+                                  .map((e) => e as Map<String, dynamic>)
+                                  .toList(),
+                              onSearchTapped: () {
+                                if (_sheetController.isAttached) {
+                                  _sheetController.animateTo(
+                                    0.8,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                }
+                              },
+                            ),
+                          ),
                           SingleChildScrollView(
                             controller: scrollController,
                             padding: const EdgeInsets.all(16.0),
@@ -376,6 +399,107 @@ class _StationPageState extends State<StationPage>
           ),
         ],
       ),
+    );
+  }
+}
+
+// ---------- Amenities Card ----------
+
+class AmenitiesCard extends StatefulWidget {
+  final List<Map<String, dynamic>> amenities;
+  final VoidCallback? onSearchTapped;
+  const AmenitiesCard(
+      {super.key, required this.amenities, this.onSearchTapped});
+
+  @override
+  State<AmenitiesCard> createState() => _AmenitiesCardState();
+}
+
+class _AmenitiesCardState extends State<AmenitiesCard> {
+  String _searchQuery = "";
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.amenities.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+            color:
+                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(28)),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(Icons.storefront_outlined,
+                size: 40,
+                color: Theme.of(context).colorScheme.onSurfaceVariant),
+            const SizedBox(height: 15),
+            Text(
+              'SG Bus was unable to find amenities at this station.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontVariations: [
+                  FontVariation('ROND', 100),
+                  FontVariation.width(110),
+                  FontVariation.weight(700),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final filteredAmenities = widget.amenities.where((a) {
+      final name = (a['name'] as String? ?? "").toLowerCase();
+      final type = (a['type'] as String? ?? "").toLowerCase();
+      final unit = (a['unit'] as String? ?? "").toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      return name.contains(query) ||
+          type.contains(query) ||
+          unit.contains(query);
+    }).toList();
+
+    return Column(
+      children: [
+        TextField(
+          onTap: widget.onSearchTapped,
+          decoration: InputDecoration(
+            hintText: 'Search amenities...',
+            prefixIcon: const Icon(Icons.search),
+            filled: true,
+            fillColor:
+                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _searchQuery = value;
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        if (filteredAmenities.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'No amenities match your search.',
+              style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+        for (var i = 0; i < filteredAmenities.length; i++)
+          AmenityListTile(
+            showSubtitle: true,
+            amenity: filteredAmenities[i],
+            isFirst: i == 0,
+            isLast: i == filteredAmenities.length - 1,
+          ),
+      ],
     );
   }
 }
@@ -454,7 +578,9 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
       final cached = _lineCache[lineCode];
       final fetchedAt = cached?['fetchedAt'] as DateTime?;
 
-      final isFresh = !forceRefresh && fetchedAt != null && DateTime.now().difference(fetchedAt) < _cacheTTL;
+      final isFresh = !forceRefresh &&
+          fetchedAt != null &&
+          DateTime.now().difference(fetchedAt) < _cacheTTL;
 
       if (isFresh) {
         final lineData = cached!['data'] as Map<String, dynamic>;
@@ -509,7 +635,8 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
     final allLines = mrtDataMap['lines'] as List;
     final stationCodeSet = Set<String>.from(widget.stationCodes);
 
-    final linesToProcess = allLines.where((line) => lineCodesToFetch.contains(line['code']));
+    final linesToProcess =
+        allLines.where((line) => lineCodesToFetch.contains(line['code']));
 
     // Fetch relevant lines in parallel
     final futures = linesToProcess.map((line) async {
@@ -1013,14 +1140,14 @@ class _LandmarksCardState extends State<LandmarksCard> {
               leading: Icon(Icons.warning_rounded,
                   color: Theme.of(context).colorScheme.error),
               title: Text(
-                "Incomplete exit data",
+                "Unreliable exit data",
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   // color: Theme.of(context).colorScheme.error,
                 ),
               ),
               subtitle: Text(
-                  "Exit data for this station is incomplete. Data provided might not be entirely accurate."),
+                  "Exit data for this station is from LTA is unreliable. Exit locations have been approximated."),
             ),
           ),
         for (var i = 0; i < widget.exits.length; i++)
@@ -1077,7 +1204,9 @@ class _LandmarksCardState extends State<LandmarksCard> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        exitName,
+                        exitName
+                            .replaceAll("Exit ", "")
+                            .replaceAll("Terminal ", "T"),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 14,
@@ -1086,7 +1215,7 @@ class _LandmarksCardState extends State<LandmarksCard> {
                       ),
                     ),
                     title: Text(
-                      'Exit $exitName',
+                      '$exitName',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     subtitle: landmarks.isEmpty

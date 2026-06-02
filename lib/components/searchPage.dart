@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:sgbus/components/recentSearchesWidget.dart';
 import 'package:sgbus/pages/mrt_pages/station_page.dart';
+import 'package:sgbus/pages/mrt_pages/amenity_stations_page.dart';
+import 'package:sgbus/components/amenity_list_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sgbus/pages/bus_route.dart';
@@ -25,16 +27,25 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
+  String selectedFilter = 'All';
+
   List stops = [];
   List svcs = [];
   Map svcsRaw = {};
   List<dynamic> stations = [];
+  List<dynamic> allAmenities = [];
   List<dynamic> recentSearches = [];
   SharedPreferences? prefs;
 
   @override
   void initState() {
     super.initState();
+
+    if (widget.initialTabIndex == 0) selectedFilter = 'Stops';
+    if (widget.initialTabIndex == 1) selectedFilter = 'Buses';
+    if (widget.initialTabIndex == 2) selectedFilter = 'Stations';
+    if (widget.initialTabIndex == 3) selectedFilter = 'Amenities';
+    if (widget.initialTabIndex == 4) selectedFilter = 'All';
 
     Future.delayed(const Duration(milliseconds: 350), () {
       if (mounted) _focusNode.requestFocus();
@@ -47,8 +58,19 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
     });
 
     final mrtDataMap = getMRTData();
-    if (mrtDataMap != null && mrtDataMap["stations"] != null) {
+    final Map<String, dynamic> uniqueAmenities = {};
+    if (mrtDataMap["stations"] != null) {
       stations = List<dynamic>.from(mrtDataMap["stations"]);
+      for (var s in stations) {
+        final stationAmenities = s['amenities'] as List? ?? [];
+        for (var a in stationAmenities) {
+          final name = (a['name'] as String? ?? '').toLowerCase().trim();
+          if (name.isNotEmpty && !uniqueAmenities.containsKey(name)) {
+            uniqueAmenities[name] = a;
+          }
+        }
+      }
+      allAmenities = uniqueAmenities.values.toList();
     }
 
     _loadRecents();
@@ -97,212 +119,220 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      initialIndex: widget.initialTabIndex,
-      child: Scaffold(
-        appBar: AppBar(
-          scrolledUnderElevation: 0,
-          titleSpacing: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Hero(
-              tag: 'searchBarHero',
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  height: 45,
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    autofocus: true,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontVariations: [
-                        FontVariation.weight(800),
-                        FontVariation.width(100),
-                        FontVariation("ROND", 100)
-                      ],
-                      fontSize: 15,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: _hintText,
-                      border: InputBorder.none,
-                      prefixIcon: const Icon(Icons.search),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                    ),
-                    onChanged: (val) {
-                      setState(() {
-                        query = val;
-                      });
-                    },
-                  ),
-                ),
+  Widget _buildFilterPills() {
+    const filters = ['All', 'Stops', 'Buses', 'Stations', 'Amenities'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 5.0),
+      child: Row(
+        children: filters.map((f) {
+          final isSelected = selectedFilter == f;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: FilterChip(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(28.0),
               ),
+              side: BorderSide.none,
+              padding: EdgeInsets.symmetric(horizontal: 3.0, vertical: 2.0),
+              label: Text(f),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() {
+                    selectedFilter = f;
+                  });
+                }
+              },
             ),
-          ),
-          actions: [
-            if (query.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  _controller.clear();
-                  setState(() => query = "");
-                },
-              ),
-          ],
-        ),
-        body: Column(
-          children: [
-            Material(
-              color: Theme.of(context).appBarTheme.backgroundColor ??
-                  Theme.of(context).scaffoldBackgroundColor,
-              elevation: 0,
-              child: AnimatedSize(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                child: Container(
-                  height: query.isEmpty ? 0 : null,
-                  child: const TabBar(
-                    tabs: [
-                      Tab(text: 'Stops'),
-                      Tab(text: 'Buses'),
-                      Tab(text: 'Stations'),
-                    ],
-                    indicatorSize: TabBarIndicatorSize.label,
-                    dividerColor: Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                switchInCurve: Curves.easeIn,
-                switchOutCurve: Curves.easeOut,
-                child: query.isEmpty
-                    ? KeyedSubtree(
-                        key: const ValueKey('recents'),
-                        child: RecentSearchesWidget(),
-                      )
-                    : KeyedSubtree(
-                        key: const ValueKey('results'),
-                        child: _searchResults(context),
-                      ),
-              ),
-            ),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 
-  TabBarView _searchResults(BuildContext context) {
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 3, 8, 4),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+      ),
+    );
+  }
+
+  Widget _searchResults(BuildContext context) {
     final q = query.toLowerCase();
 
-    return TabBarView(
-      children: [
-        // ── Stops tab ──────────────────────────────────────────────────────
-        _ResultList(
-          children: [
-            for (var stop in stops.asMap().entries)
-              if (stop.value["Name"] != null &&
-                  stop.value["id"] != null &&
-                  stop.value["Road"] != null &&
-                  (stop.value['Name'].toString().toLowerCase().contains(q) ||
-                      stop.value['id'].toString().toLowerCase().contains(q) ||
-                      stop.value["Road"].toString().toLowerCase().contains(q)))
-                _ResultTile(
-                  isFirst: stop.key == 0,
-                  title: stop.value["Name"],
-                  subtitle: stop.value["id"],
-                  onTap: () async {
-                    await _addToRecents(
-                        {"type": "stop", "id": stop.value["id"]});
-                    if (!mounted) return;
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => Stop(stop.value["id"])));
-                  },
-                ),
-          ],
-        ),
+    List<Widget> children = [];
 
-        // ── Buses tab ──────────────────────────────────────────────────────
-        _ResultList(
-          children: [
-            for (var svc in svcs.asMap().entries)
-              if (svc.value["svc"] != null &&
-                  svc.value["route"] != null &&
-                  svc.value["svc"].toString().toLowerCase().contains(q))
-                _ResultTile(
-                  isFirst: svc.key == 0,
-                  title: svc.value["svc"],
-                  subtitle: svc.value["route"],
-                  onTap: () async {
-                    await _addToRecents(
-                        {"type": "svc", "svc": svc.value["svc"]});
-                    if (!mounted) return;
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => BusRoute(svc.value["svc"])));
-                  },
+    // 1. Stations (MRTs)
+    if (selectedFilter == 'All' || selectedFilter == 'Stations') {
+      List<Widget> stationTiles = [];
+      final filteredStations =
+          stations.where((s) => _stationMatches(s, q)).toList();
+      for (var i = 0; i < filteredStations.length; i++) {
+        stationTiles.add(Container(
+          margin: const EdgeInsets.only(bottom: 2),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.only(
+              topLeft: stationTiles.isEmpty
+                  ? const Radius.circular(28.0)
+                  : const Radius.circular(5),
+              topRight: stationTiles.isEmpty
+                  ? const Radius.circular(28.0)
+                  : const Radius.circular(5),
+            ),
+            color: Theme.of(context)
+                .colorScheme
+                .surfaceVariant
+                .withValues(alpha: 0.3),
+          ),
+          child: TrainStationListTile(
+            station: filteredStations[i],
+            onTap: () {
+              Navigator.of(context).push(
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) =>
+                      StationPage(
+                          stationCode: filteredStations[i]["codes"].first),
                 ),
-          ],
-        ),
+              );
+            },
+          ),
+        ));
+      }
+      if (stationTiles.isNotEmpty) {
+        children.add(_buildLabel("Stations:"));
+        children.addAll(stationTiles);
+      }
+    }
 
-        // ── MRT Stations tab ───────────────────────────────────────────────
-        _ResultList(
-          children: () {
-            final filtered = stations.where((s) => _stationMatches(s, q)).toList();
-            return [
-              for (var i = 0; i < filtered.length; i++)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 2),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.only(
-                      topLeft: i == 0
-                          ? const Radius.circular(28.0)
-                          : const Radius.circular(5),
-                      topRight: i == 0
-                          ? const Radius.circular(28.0)
-                          : const Radius.circular(5),
-                    ),
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceVariant
-                        .withOpacity(0.3),
-                  ),
-                  child: TrainStationListTile(
-                    station: filtered[i],
-                    onTap: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              StationPage(
-                            stationCode: filtered[i]["codes"].first,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-            ];
-          }(),
-        ),
-      ],
-    );
+    // 2. Buses
+    if (selectedFilter == 'All' || selectedFilter == 'Buses') {
+      List<Widget> busTiles = [];
+      final filteredBuses = svcs
+          .where((svc) =>
+              svc["svc"] != null &&
+              svc["route"] != null &&
+              svc["svc"].toString().toLowerCase().contains(q))
+          .toList();
+      for (var i = 0; i < filteredBuses.length; i++) {
+        final svc = filteredBuses[i];
+        busTiles.add(_ResultTile(
+          isFirst: busTiles.isEmpty,
+          title: svc["svc"],
+          subtitle: svc["route"],
+          onTap: () async {
+            await _addToRecents({"type": "svc", "svc": svc["svc"]});
+            if (!mounted) return;
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => BusRoute(svc["svc"])));
+          },
+        ));
+      }
+      if (busTiles.isNotEmpty) {
+        children.add(_buildLabel("Buses:"));
+        children.addAll(busTiles);
+      }
+    }
+
+    // 3 & 4. Stops
+    if (selectedFilter == 'All' || selectedFilter == 'Stops') {
+      final stopsByName = stops
+          .where((stop) =>
+              stop["Name"] != null &&
+              stop["id"] != null &&
+              stop["Road"] != null &&
+              (stop['Name'].toString().toLowerCase().contains(q) ||
+                  stop['id'].toString().toLowerCase().contains(q)))
+          .toList();
+
+      List<Widget> nameTiles = [];
+      for (var i = 0; i < stopsByName.length; i++) {
+        final stop = stopsByName[i];
+        nameTiles.add(_ResultTile(
+          isFirst: nameTiles.isEmpty,
+          title: stop["Name"],
+          subtitle: stop["id"],
+          onTap: () async {
+            await _addToRecents({"type": "stop", "id": stop["id"]});
+            if (!mounted) return;
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => Stop(stop["id"])));
+          },
+        ));
+      }
+      if (nameTiles.isNotEmpty) {
+        children.add(_buildLabel("Stops:"));
+        children.addAll(nameTiles);
+      }
+
+      final stopsByRoad = stops
+          .where((stop) =>
+              stop["Name"] != null &&
+              stop["id"] != null &&
+              stop["Road"] != null &&
+              !(stop['Name'].toString().toLowerCase().contains(q) ||
+                  stop['id'].toString().toLowerCase().contains(q)) &&
+              stop["Road"].toString().toLowerCase().contains(q))
+          .toList();
+
+      List<Widget> roadTiles = [];
+      for (var i = 0; i < stopsByRoad.length; i++) {
+        final stop = stopsByRoad[i];
+        roadTiles.add(_ResultTile(
+          isFirst: roadTiles.isEmpty,
+          title: stop["Name"],
+          subtitle: stop["id"],
+          onTap: () async {
+            await _addToRecents({"type": "stop", "id": stop["id"]});
+            if (!mounted) return;
+            Navigator.push(context,
+                MaterialPageRoute(builder: (context) => Stop(stop["id"])));
+          },
+        ));
+      }
+      if (roadTiles.isNotEmpty) {
+        children.add(_buildLabel("Stops (By Road):"));
+        children.addAll(roadTiles);
+      }
+    }
+
+    // 5. Amenities
+    if (selectedFilter == 'All' || selectedFilter == 'Amenities') {
+      List<Widget> amenityTiles = [];
+      final filteredAmenities = allAmenities.where((a) {
+        final name = (a['name'] as String? ?? '').toLowerCase();
+        final type = (a['type'] as String? ?? '').toLowerCase();
+        return name.contains(q) || type.contains(q);
+      }).toList();
+      for (var i = 0; i < filteredAmenities.length; i++) {
+        amenityTiles.add(
+          AmenityListTile(
+            showSubtitle: false,
+            amenity: filteredAmenities[i],
+            isFirst: amenityTiles.isEmpty,
+            isLast: i == filteredAmenities.length - 1,
+          ),
+        );
+      }
+      if (amenityTiles.isNotEmpty) {
+        children.add(_buildLabel("Amenities:"));
+        children.addAll(amenityTiles);
+      }
+    }
+
+    if (children.isEmpty && query.isNotEmpty) {
+      children.add(const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text("No results found."),
+      ));
+    }
+
+    return _ResultList(children: children);
   }
 
   bool _stationMatches(dynamic station, String q) {
@@ -317,6 +347,104 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
         nameCn.contains(q) ||
         nameTa.contains(q) ||
         codes.any((c) => c.contains(q));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        scrolledUnderElevation: 0,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(right: 16),
+          child: Hero(
+            tag: 'searchBarHero',
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                height: 45,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(50),
+                ),
+                child: TextField(
+                  controller: _controller,
+                  autofocus: true,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontVariations: [
+                      FontVariation.weight(800),
+                      FontVariation.width(100),
+                      FontVariation("ROND", 100)
+                    ],
+                    fontSize: 15,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: _hintText,
+                    border: InputBorder.none,
+                    prefixIcon: const Icon(Icons.search),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onChanged: (val) {
+                    setState(() {
+                      query = val;
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          if (query.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () {
+                _controller.clear();
+                setState(() => query = "");
+              },
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Material(
+            color: Theme.of(context).appBarTheme.backgroundColor ??
+                Theme.of(context).scaffoldBackgroundColor,
+            elevation: 0,
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: Container(
+                height: query.isEmpty ? 0 : null,
+                child: query.isEmpty
+                    ? const SizedBox.shrink()
+                    : _buildFilterPills(),
+              ),
+            ),
+          ),
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeIn,
+              switchOutCurve: Curves.easeOut,
+              child: query.isEmpty
+                  ? KeyedSubtree(
+                      key: const ValueKey('recents'),
+                      child: RecentSearchesWidget(),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('results'),
+                      child: _searchResults(context),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -335,7 +463,10 @@ class _ResultList extends StatelessWidget {
           topLeft: Radius.circular(28.0),
           topRight: Radius.circular(28.0),
         ),
-        child: ListView(children: children),
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          children: children,
+        ),
       ),
     );
   }
@@ -365,7 +496,8 @@ class _ResultTile extends StatelessWidget {
           topRight:
               isFirst ? const Radius.circular(28.0) : const Radius.circular(5),
         ),
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
+        color:
+            Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
       ),
       child: ListTile(
         title: Text(title),
