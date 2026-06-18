@@ -41,6 +41,12 @@ class AmenityListTile extends StatelessWidget {
       case 'bicycle racks':
         iconData = Icons.pedal_bike;
         break;
+      case 'clinic':
+        iconData = Icons.local_hospital_rounded;
+        break;
+      case 'food':
+        iconData = Icons.restaurant_rounded;
+        break;
       default:
         iconData = Icons.info_outline;
     }
