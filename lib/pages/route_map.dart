@@ -225,7 +225,7 @@ class _RouteMapState extends State<RouteMap> {
           null,
           null,
         );
-        mapboxMap?.flyTo(cam, MapAnimationOptions(duration: 1000));
+        mapboxMap?.flyTo(cam, MapAnimationOptions(duration: 2000));
       } catch (e) {
         print('Error fitting camera to route: $e');
       }
