@@ -212,7 +212,7 @@ class _StandardStopState extends State<StandardStop> {
     List data = getStops();
 
     for (var element in data) {
-      if (element['id'].toLowerCase().contains((widget.stopid).toLowerCase())) {
+      if (element['id'].toLowerCase() == (widget.stopid).toLowerCase()) {
         services = element["Services"];
 
         services.sort((a, b) {
