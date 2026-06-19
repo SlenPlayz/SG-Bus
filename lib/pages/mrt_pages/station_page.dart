@@ -132,7 +132,11 @@ class _StationPageState extends State<StationPage>
           northeast: Point(coordinates: Position(maxLng, maxLat)),
           infiniteBounds: false,
         ),
-        MbxEdgeInsets(top: 180.0, left: 70.0, bottom: 550, right: 70.0),
+        MbxEdgeInsets(
+            top: 180.0,
+            left: 70.0,
+            bottom: MediaQuery.sizeOf(context).height * 0.5,
+            right: 70.0),
         null,
         null,
         null,
