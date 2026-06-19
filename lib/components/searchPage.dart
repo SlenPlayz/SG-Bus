@@ -4,6 +4,10 @@ import 'package:sgbus/components/recentSearchesWidget.dart';
 import 'package:sgbus/pages/mrt_pages/station_page.dart';
 import 'package:sgbus/pages/mrt_pages/amenity_stations_page.dart';
 import 'package:sgbus/components/amenity_list_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/public_bus_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/shuttle_attraction_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/shuttle_hospital_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/premium_bus_tile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:sgbus/pages/bus_route.dart';
@@ -36,6 +40,14 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
   List<dynamic> allAmenities = [];
   List<dynamic> recentSearches = [];
   SharedPreferences? prefs;
+
+  static const _publicBusTypes = {
+    'TRUNK',
+    'FEEDER',
+    'EXPRESS',
+    'INDUSTRIAL',
+    'CITY_LINK'
+  };
 
   @override
   void initState() {
@@ -163,6 +175,58 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
     );
   }
 
+  String _getServiceType(String serviceNo) {
+    if (svcsRaw.containsKey(serviceNo)) {
+      return svcsRaw[serviceNo]['type'] ?? 'TRUNK';
+    }
+    return 'TRUNK';
+  }
+
+  Widget _buildBusTile({
+    required String svc,
+    required String route,
+    required bool isFirst,
+    required VoidCallback onTap,
+  }) {
+    final type = _getServiceType(svc);
+
+    Widget tile;
+    if (_publicBusTypes.contains(type)) {
+      tile = PublicBusTile(
+        serviceNo: svc,
+        route: route,
+        onTap: onTap,
+      );
+    } else if (type == 'SHUTTLEATTRACTIONS') {
+      tile = ShuttleAttractionTile({'ServiceNo': svc}, onTap: onTap);
+    } else if (type == 'SHUTTLEHOSPITALS') {
+      tile = ShuttleHospitalTile({'ServiceNo': svc}, onTap: onTap);
+    } else if (type == 'PREMIUM') {
+      tile = PremiumBusTile({'ServiceNo': svc}, onTap: onTap);
+    } else {
+      tile = PublicBusTile(
+        serviceNo: svc,
+        route: route,
+        onTap: onTap,
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.only(
+          topLeft:
+              isFirst ? const Radius.circular(28.0) : const Radius.circular(5),
+          topRight:
+              isFirst ? const Radius.circular(28.0) : const Radius.circular(5),
+        ),
+        color:
+            Theme.of(context).colorScheme.surfaceVariant.withValues(alpha: 0.3),
+      ),
+      child: tile,
+    );
+  }
+
   Widget _searchResults(BuildContext context) {
     final q = query.toLowerCase();
 
@@ -221,10 +285,10 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
           .toList();
       for (var i = 0; i < filteredBuses.length; i++) {
         final svc = filteredBuses[i];
-        busTiles.add(_ResultTile(
+        busTiles.add(_buildBusTile(
+          svc: svc["svc"],
+          route: svc["route"],
           isFirst: busTiles.isEmpty,
-          title: svc["svc"],
-          subtitle: svc["route"],
           onTap: () async {
             await _addToRecents({"type": "svc", "svc": svc["svc"]});
             if (!mounted) return;

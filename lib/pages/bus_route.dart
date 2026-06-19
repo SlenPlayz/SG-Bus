@@ -21,6 +21,9 @@ class _BusRouteState extends State<BusRoute> {
   var currRoute;
   List routeStops = [];
 
+  var sno;
+  var subtitle;
+
   Future<void> loadRoute() async {
     List bstopsList = getStops();
     bstopsList.forEach((element) => bsids.add(element['id']));
@@ -39,7 +42,7 @@ class _BusRouteState extends State<BusRoute> {
     String localRouteType = '';
     List localRouteStops = [];
 
-    if (localCurrRoute['name'].contains('⇄')) {
+    if (localCurrRoute['routes'].length > 1) {
       localRouteType = 'PTP';
       List route1 = [];
       localCurrRoute['routes'][0].forEach((element) {
@@ -78,6 +81,18 @@ class _BusRouteState extends State<BusRoute> {
         });
       }
     });
+
+    if (widget.sno.toString().contains(" - ")) {
+      sno = widget.sno.toString().split(" - ")[0];
+      subtitle = widget.sno.toString().split(" - ")[1];
+    } else {
+      sno = widget.sno;
+    }
+
+    if (subtitle != null && subtitle.toString().startsWith("RWS")) {
+      sno = widget.sno.toString().split(" - ")[0];
+      subtitle = widget.sno.toString().split(" - ")[1];
+    }
     loadRoute();
   }
 
@@ -209,6 +224,32 @@ class _BusRouteState extends State<BusRoute> {
 
     int tabCount = (routeType == 'PTP') ? 2 : 1;
 
+    IconData? typeIcon;
+    String? typeName;
+
+    switch (currRoute['type']) {
+      case 'SHUTTLEATTRACTIONS':
+        typeIcon = Icons.attractions_rounded;
+        typeName = 'Shuttle Bus Services to Attraction';
+        break;
+      case 'SHUTTLEHOSPITALS':
+        typeIcon = Icons.local_hospital_rounded;
+        typeName = 'Shuttle Bus Services to Hospital';
+        break;
+      case 'PREMIUM':
+        typeIcon = Icons.corporate_fare_rounded;
+        typeName = 'Premium Bus (Private)';
+        break;
+      default:
+        if (currRoute['fare'] != null || currRoute['schedule'] != null) {
+          typeIcon = Icons.directions_bus_rounded;
+          typeName = 'Information';
+        }
+    }
+
+    final bool isPublicBus = ['TRUNK', 'FEEDER', 'EXPRESS', 'INDUSTRIAL', 'CITY_LINK'].contains(currRoute['type']);
+    final String titleText = isPublicBus ? 'Bus $sno' : sno.toString();
+
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
@@ -221,7 +262,7 @@ class _BusRouteState extends State<BusRoute> {
             opacity: _showAppBarTitle ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 200),
             child: Text(
-              'Bus ${widget.sno}',
+              titleText,
               style: Theme.of(context).textTheme.titleLarge!.copyWith(
                 fontVariations: [
                   FontVariation('ROND', 100),
@@ -254,7 +295,7 @@ class _BusRouteState extends State<BusRoute> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Bus ${widget.sno}',
+                        titleText,
                         textAlign: TextAlign.left,
                         style:
                             Theme.of(context).textTheme.displayMedium!.copyWith(
@@ -266,20 +307,22 @@ class _BusRouteState extends State<BusRoute> {
                         ),
                       ),
                       SizedBox(height: 2),
-                      Text(
-                        currRoute['name'],
-                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.6),
-                          fontVariations: [
-                            FontVariation('ROND', 100),
-                            FontVariation.width(120),
-                            FontVariation.weight(700)
-                          ],
+                      if (subtitle != null || currRoute['name'] != null)
+                        Text(
+                          subtitle ?? currRoute['name'],
+                          style:
+                              Theme.of(context).textTheme.bodyMedium!.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurface
+                                .withOpacity(0.6),
+                            fontVariations: [
+                              FontVariation('ROND', 100),
+                              FontVariation.width(120),
+                              FontVariation.weight(700)
+                            ],
+                          ),
                         ),
-                      ),
                       SizedBox(height: 12),
                       Row(
                         children: [
@@ -301,6 +344,130 @@ class _BusRouteState extends State<BusRoute> {
                           ),
                         ],
                       ),
+                      if (currRoute['fare'] != null ||
+                          currRoute['schedule'] != null)
+                        Padding(
+                          padding:
+                              const EdgeInsets.only(top: 24.0, bottom: 8.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceVariant
+                                  .withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              children: [
+                                if (typeIcon != null && typeName != null) ...[
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withAlpha(26),
+                                      borderRadius: BorderRadius.only(
+                                        topLeft: Radius.circular(16),
+                                        topRight: Radius.circular(16),
+                                      ),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10.0,
+                                      vertical: 10.0,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(typeIcon, size: 20),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            typeName,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleSmall
+                                                ?.copyWith(
+                                              fontVariations: [
+                                                FontVariation('ROND', 100),
+                                                FontVariation.width(120),
+                                                FontVariation.weight(900),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Divider(
+                                    height: 1,
+                                    color: Theme.of(context)
+                                        .dividerColor
+                                        .withOpacity(0.2),
+                                  ),
+                                ],
+                                Table(
+                                  border: TableBorder(
+                                    horizontalInside: BorderSide(
+                                      color: Theme.of(context)
+                                          .dividerColor
+                                          .withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  columnWidths: const {
+                                    0: IntrinsicColumnWidth(),
+                                    1: FlexColumnWidth(),
+                                  },
+                                  children: [
+                                    if (currRoute['fare'] != null)
+                                      TableRow(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(
+                                              'Fare',
+                                              style: TextStyle(
+                                                fontVariations: [
+                                                  FontVariation('ROND', 100),
+                                                  FontVariation.width(110),
+                                                  FontVariation.weight(900),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(currRoute['fare']),
+                                          ),
+                                        ],
+                                      ),
+                                    if (currRoute['schedule'] != null)
+                                      TableRow(
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(
+                                              'Schedule',
+                                              style: TextStyle(
+                                                fontVariations: [
+                                                  FontVariation('ROND', 100),
+                                                  FontVariation.width(110),
+                                                  FontVariation.weight(900),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.all(16.0),
+                                            child: Text(currRoute['schedule']),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

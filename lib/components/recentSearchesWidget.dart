@@ -9,6 +9,10 @@ import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import 'package:sgbus/components/special_bus_tiles/public_bus_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/shuttle_attraction_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/shuttle_hospital_tile.dart';
+import 'package:sgbus/components/special_bus_tiles/premium_bus_tile.dart';
 
 class RecentSearchesWidget extends StatefulWidget {
   const RecentSearchesWidget({Key? key}) : super(key: key);
@@ -206,26 +210,29 @@ class _RecentSearchesWidgetState extends State<RecentSearchesWidget> {
                                             .surfaceVariant
                                             .withOpacity(0.3),
                                       ),
-                                      child: ListTile(
-                                        title: Text(item.value["Name"]),
-                                        subtitle: Text(item.value["subtitle"]),
-                                        onTap: () {
-                                          if (item.value["type"] == "stop") {
-                                            Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                    builder: (builder) => Stop(
-                                                        item.value[
-                                                            "subtitle"])));
-                                          } else if (item.value["type"] ==
-                                              "svc") {
-                                            Navigator.of(context).push(
-                                                MaterialPageRoute(
-                                                    builder: (builder) =>
-                                                        BusRoute(item
-                                                            .value["Name"])));
-                                          }
-                                        },
-                                      ),
+                                      child: item.value["type"] == "stop"
+                                          ? ListTile(
+                                              title: Text(item.value["Name"]),
+                                              subtitle:
+                                                  Text(item.value["subtitle"]),
+                                              onTap: () {
+                                                Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                        builder: (builder) => Stop(
+                                                            item.value[
+                                                                "subtitle"])));
+                                              },
+                                            )
+                                          : _buildBusTile(
+                                              svc: item.value["Name"],
+                                              route: item.value["subtitle"],
+                                              onTap: () {
+                                                Navigator.of(context).push(
+                                                    MaterialPageRoute(
+                                                        builder: (builder) => BusRoute(
+                                                            item.value["Name"])));
+                                              },
+                                            ),
                                     ),
                                   SizedBox(height: 8),
                                 ],
@@ -237,5 +244,52 @@ class _RecentSearchesWidgetState extends State<RecentSearchesWidget> {
         ],
       ),
     );
+  }
+
+  static const _publicBusTypes = {
+    'TRUNK',
+    'FEEDER',
+    'EXPRESS',
+    'INDUSTRIAL',
+    'CITY_LINK'
+  };
+
+  String _getServiceType(String serviceNo) {
+    if (svcs.containsKey(serviceNo)) {
+      return svcs[serviceNo]['type'] ?? 'TRUNK';
+    }
+    final splitCode = serviceNo.split(" - ");
+    if (splitCode.isNotEmpty && svcs.containsKey(splitCode[0])) {
+      return svcs[splitCode[0]]['type'] ?? 'TRUNK';
+    }
+    return 'TRUNK';
+  }
+
+  Widget _buildBusTile({
+    required String svc,
+    required String route,
+    required VoidCallback onTap,
+  }) {
+    final type = _getServiceType(svc);
+
+    if (_publicBusTypes.contains(type)) {
+      return PublicBusTile(
+        serviceNo: svc,
+        route: route,
+        onTap: onTap,
+      );
+    } else if (type == 'SHUTTLEATTRACTIONS') {
+      return ShuttleAttractionTile({'ServiceNo': svc}, onTap: onTap);
+    } else if (type == 'SHUTTLEHOSPITALS') {
+      return ShuttleHospitalTile({'ServiceNo': svc}, onTap: onTap);
+    } else if (type == 'PREMIUM') {
+      return PremiumBusTile({'ServiceNo': svc}, onTap: onTap);
+    } else {
+      return PublicBusTile(
+        serviceNo: svc,
+        route: route,
+        onTap: onTap,
+      );
+    }
   }
 }

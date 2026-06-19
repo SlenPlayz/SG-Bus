@@ -226,16 +226,18 @@ String _generateStopsGeoJson(List data) {
   };
 
   for (var stop in data) {
-    stopsGeoJsonMap["features"].add({
-      "type": "Feature",
-      "id": stop["id"],
-      "properties": {
-        "number": stop["id"],
-        "name": stop["Name"],
-        "road": stop["Road"],
-      },
-      "geometry": {"type": "Point", "coordinates": stop["cords"]}
-    });
+    if (stop["cords"] != null && stop["cords"].length == 2) {
+      stopsGeoJsonMap["features"].add({
+        "type": "Feature",
+        "id": stop["id"],
+        "properties": {
+          "number": stop["id"],
+          "name": stop["Name"],
+          "road": stop["Road"],
+        },
+        "geometry": {"type": "Point", "coordinates": stop["cords"]}
+      });
+    }
   }
   return jsonEncode(stopsGeoJsonMap);
 }

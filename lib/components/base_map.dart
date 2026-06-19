@@ -118,8 +118,8 @@ class _BaseMapState extends State<BaseMap> {
     await mapboxMap?.style.addLayer(CircleLayer(
       id: 'stops_circle_layer',
       sourceId: 'stops',
-      circleRadius: 0.5,
-      maxZoom: 15.0,
+      circleRadius: 1,
+      maxZoom: 19.0,
       circleColor: Colors.blue.toARGB32(),
     ));
   }
@@ -710,16 +710,18 @@ class _BaseMapState extends State<BaseMap> {
 String _generateStopsGeoJson(List data) {
   final List<Map<String, dynamic>> features = [];
   for (var stop in data) {
-    features.add({
-      'type': 'Feature',
-      'id': stop['id'],
-      'properties': {
-        'number': stop['id'],
-        'name': stop['Name'],
-        'road': stop['Road'],
-      },
-      'geometry': {'type': 'Point', 'coordinates': stop['cords']},
-    });
+    if (stop["cords"] != null && stop["cords"].length == 2) {
+      features.add({
+        'type': 'Feature',
+        'id': stop['id'],
+        'properties': {
+          'number': stop['id'],
+          'name': stop['Name'],
+          'road': stop['Road'],
+        },
+        'geometry': {'type': 'Point', 'coordinates': stop['cords']},
+      });
+    }
   }
   return jsonEncode({
     'type': 'FeatureCollection',

@@ -65,6 +65,7 @@ class _NearbyState extends State<Nearby> {
       setState(() {
         currLocation = null;
         isLoaded = true;
+        print(e);
       });
     }
   }
@@ -116,14 +117,12 @@ class _NearbyState extends State<Nearby> {
                               topRight: stop.key == 0
                                   ? const Radius.circular(28.0)
                                   : const Radius.circular(5),
-                              bottomLeft:
-                                  stop.key == nearbyStopsW.length - 1
-                                      ? const Radius.circular(28.0)
-                                      : const Radius.circular(5),
-                              bottomRight:
-                                  stop.key == nearbyStopsW.length - 1
-                                      ? const Radius.circular(28.0)
-                                      : const Radius.circular(5),
+                              bottomLeft: stop.key == nearbyStopsW.length - 1
+                                  ? const Radius.circular(28.0)
+                                  : const Radius.circular(5),
+                              bottomRight: stop.key == nearbyStopsW.length - 1
+                                  ? const Radius.circular(28.0)
+                                  : const Radius.circular(5),
                             ),
                             color: Theme.of(context)
                                 .colorScheme
@@ -226,7 +225,8 @@ class _NearbyState extends State<Nearby> {
                                   padding: const EdgeInsets.only(bottom: 10.0),
                                   child: Icon(Icons.warning_rounded,
                                       size: 50,
-                                      color: Theme.of(context).colorScheme.error),
+                                      color:
+                                          Theme.of(context).colorScheme.error),
                                 ),
                                 Text(
                                   "There doesn't seem to be any stops near you.",
@@ -254,17 +254,24 @@ List<dynamic> _calculateNearbyStops(Map<String, dynamic> args) {
   for (var stop in stops) {
     final Map<String, dynamic> stopCopy =
         Map<String, dynamic>.from(stop as Map);
-    final double stopLat = stopCopy['cords'][1] as double;
-    final double stopLon = stopCopy['cords'][0] as double;
 
-    stopCopy['dist'] = Geolocator.distanceBetween(
-      latitude,
-      longitude,
-      stopLat,
-      stopLon,
-    ).round();
+    if (stopCopy['cords'] != null &&
+        stopCopy["cords"].length == 2 &&
+        stopCopy['cords'][0] != null &&
+        stopCopy['cords'][1] != null) {
+      final double stopLat = stopCopy['cords'][1] as double;
+      final double stopLon = stopCopy['cords'][0] as double;
 
-    if (stopCopy['dist'] < 500) {
+      stopCopy['dist'] = Geolocator.distanceBetween(
+        latitude,
+        longitude,
+        stopLat,
+        stopLon,
+      ).round();
+    }
+    // print(nearbyStops[0]['cords'][1]);
+
+    if (stopCopy['dist'] != null && stopCopy['dist'] < 500) {
       nearbyStops.add(stopCopy);
     }
   }

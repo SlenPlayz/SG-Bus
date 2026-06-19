@@ -52,12 +52,56 @@ class _RouteMapState extends State<RouteMap> {
     currRoute = svcsParsed[widget.sno];
     if (currRoute['name'].contains('⇄')) {
       routeType = 'PTP';
-      currRoute['routes'][0].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
-      currRoute['routes'][1].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
+      currRoute['routes'][0]
+          .forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
+      currRoute['routes'][1]
+          .forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
     } else {
-      currRoute['routes'][0].forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
+      currRoute['routes'][0]
+          .forEach((e) => routeStops.add(bstopsList[bsids.indexOf(e)]));
     }
     setState(() => routeStops = routeStops);
+  }
+
+  /// Dims all pre-existing map layers so the route stands out.
+  Future<void> _dimBaseLayers(MapboxMap map) async {
+    const double dimOpacity = 0.3;
+    final layers = await map.style.getStyleLayers();
+    for (var layer in layers) {
+      if (layer == null) continue;
+      try {
+        switch (layer.type) {
+          case 'fill':
+            await map.style
+                .setStyleLayerProperty(layer.id, 'fill-opacity', dimOpacity);
+            break;
+          case 'line':
+            await map.style
+                .setStyleLayerProperty(layer.id, 'line-opacity', dimOpacity);
+            break;
+          case 'circle':
+            await map.style.setStyleLayerProperty(
+                layer.id, 'circle-opacity', dimOpacity - 0.3);
+            break;
+          case 'symbol':
+            await map.style
+                .setStyleLayerProperty(layer.id, 'icon-opacity', dimOpacity);
+            await map.style
+                .setStyleLayerProperty(layer.id, 'text-opacity', dimOpacity);
+            break;
+          // case 'raster':
+          //   await map.style
+          //       .setStyleLayerProperty(layer.id, 'raster-opacity', dimOpacity);
+          //   break;
+          // case 'background':
+          //   await map.style.setStyleLayerProperty(
+          //       layer.id, 'background-opacity', dimOpacity);
+          //   break;
+        }
+      } catch (_) {
+        // Some layers may not support opacity — safe to skip
+      }
+    }
   }
 
   /// Adds only the route-specific layers: route stops source + route line.
@@ -65,18 +109,24 @@ class _RouteMapState extends State<RouteMap> {
   Future<void> _initRouteLayers(MapboxMap map) async {
     mapboxMap = map;
 
+    // Dim the base map so the route visually pops
+    await _dimBaseLayers(map);
+
     final stopsGeoJson = {
       'type': 'FeatureCollection',
-      'features': routeStops.map((stop) => {
-        'type': 'Feature',
-        'id': stop['id'],
-        'properties': {
-          'number': stop['id'],
-          'name': stop['Name'],
-          'road': stop['Road'],
-        },
-        'geometry': {'type': 'Point', 'coordinates': stop['cords']},
-      }).toList(),
+      'features': routeStops
+          .where((stop) => stop['cords'] != null && stop['cords'].length == 2)
+          .map((stop) => {
+                'type': 'Feature',
+                'id': stop['id'],
+                'properties': {
+                  'number': stop['id'],
+                  'name': stop['Name'],
+                  'road': stop['Road'],
+                },
+                'geometry': {'type': 'Point', 'coordinates': stop['cords']},
+              })
+          .toList(),
     };
 
     final prefs = await SharedPreferences.getInstance();
@@ -86,7 +136,11 @@ class _RouteMapState extends State<RouteMap> {
         GeoJsonSource(id: 'route_stops', data: jsonEncode(stopsGeoJson)));
 
     await map.style.addStyleLayer(
-      json.encode({'id': 'route_stops_layer', 'type': 'symbol', 'source': 'route_stops'}),
+      json.encode({
+        'id': 'route_stops_layer',
+        'type': 'symbol',
+        'source': 'route_stops'
+      }),
       null,
     );
     await map.style.setStyleLayerProperties(
@@ -115,7 +169,10 @@ class _RouteMapState extends State<RouteMap> {
           'properties': {'number': widget.sno},
           'geometry': {
             'type': 'LineString',
-            'coordinates': routeStops.map((s) => s['cords']).toList(),
+            'coordinates': routeStops
+                .where((s) => s['cords'] != null && s['cords'].length == 2)
+                .map((s) => s['cords'])
+                .toList(),
           },
         }
       ],
@@ -146,6 +203,7 @@ class _RouteMapState extends State<RouteMap> {
 
     double minLat = 90.0, maxLat = -90.0, minLng = 180.0, maxLng = -180.0;
     for (var stop in routeStops) {
+      if (stop['cords'].length != 2) continue;
       final lng = (stop['cords'][0] as num).toDouble();
       final lat = (stop['cords'][1] as num).toDouble();
       if (lat < minLat) minLat = lat;
@@ -162,7 +220,10 @@ class _RouteMapState extends State<RouteMap> {
               northeast: Point(coordinates: Position(maxLng, maxLat)),
               infiniteBounds: false),
           MbxEdgeInsets(top: 70.0, left: 25.0, bottom: 70.0, right: 25.0),
-          null, null, null, null,
+          null,
+          null,
+          null,
+          null,
         );
         mapboxMap?.flyTo(cam, MapAnimationOptions(duration: 1000));
       } catch (e) {
@@ -225,7 +286,8 @@ class _RouteMapState extends State<RouteMap> {
                   Expanded(
                     child: BaseMap(
                       cameraOptions: CameraOptions(
-                        center: Point(coordinates: Position(103.8198, 1.290270)),
+                        center:
+                            Point(coordinates: Position(103.8198, 1.290270)),
                         zoom: 9,
                       ),
                       onStyleLoaded: _initRouteLayers,
