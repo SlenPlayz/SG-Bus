@@ -12,19 +12,19 @@ Future<bool> downloadData([List<Map<String, dynamic>>? tasks]) async {
 
   final List<Map<String, dynamic>> defaultTasks = [
     {
-      'url': '$endpoint/api/data/stops',
+      'url': '$endpoint/api/v2/data/stops',
       'key': 'stops',
       'validate': validateStops,
       'save': saveStops,
     },
     {
-      'url': '$endpoint/api/data/services',
+      'url': '$endpoint/api/v2/data/services',
       'key': 'svcs',
       'validate': validateServices,
       'save': saveSvcs,
     },
     {
-      'url': '$endpoint/api/data/mrt',
+      'url': '$endpoint/api/v2/data/mrt',
       'key': 'mrt-data',
       'validate': validateMRTData,
       'save': saveMRTData,

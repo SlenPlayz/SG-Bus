@@ -418,19 +418,13 @@ class _RootPageState extends State<RootPage> {
         //   );
         // });
 
-        if (response["lastUpdated"] != null &&
-            response["lastUpdatedTransitData"] != null) {
-          final lastUpdated = DateTime.parse(response["lastUpdated"]);
+        if (response["lastUpdatedTransitData"] != null) {
           final lastUpdatedTransit =
               DateTime.parse(response["lastUpdatedTransitData"]);
 
-          var newestDataDate = lastUpdated.isAfter(lastUpdatedTransit)
-              ? lastUpdated
-              : lastUpdatedTransit;
-
           int dateDiff =
               DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
-                  .compareTo(newestDataDate);
+                  .compareTo(lastUpdatedTransit);
 
           print(dateDiff);
           if (dateDiff < 0) {
