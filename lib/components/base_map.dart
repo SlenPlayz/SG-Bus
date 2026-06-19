@@ -6,6 +6,8 @@ import 'package:geolocator/geolocator.dart' as gl;
 import 'package:google_polyline_algorithm/google_polyline_algorithm.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:sgbus/pages/mrt_pages/station_page.dart';
+import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/location_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -379,9 +381,103 @@ class _BaseMapState extends State<BaseMap> {
 
     if (_isSatelliteView) await _toggleSatelliteMode(true);
 
-    if (widget.onMapTap != null) {
-      mapboxMap!.setOnMapTapListener(widget.onMapTap!);
+    mapboxMap!.setOnMapTapListener(_handleMapTap);
+  }
+
+  /// Extracts a property value from a queried feature's properties,
+  /// handling both Map and JSON-string formats returned by Mapbox SDK.
+  String? _getFeatureProperty(
+      QueriedRenderedFeature? qrf, String propertyName) {
+    if (qrf == null) return null;
+    try {
+      final feature = qrf.queriedFeature.feature;
+      var properties = feature['properties'];
+      if (properties is String) {
+        properties = json.decode(properties);
+      }
+      if (properties is Map) {
+        final value = properties[propertyName];
+        return value?.toString();
+      }
+    } catch (e) {
+      print('Error extracting feature property "$propertyName": $e');
     }
+    return null;
+  }
+
+  Future<void> _handleMapTap(MapContentGestureContext gestureContext) async {
+    if (mapboxMap == null) {
+      widget.onMapTap?.call(gestureContext);
+      return;
+    }
+
+    final conv = gestureContext.touchPosition;
+    final screenCoord = RenderedQueryGeometry.fromScreenCoordinate(
+      ScreenCoordinate(x: conv.x, y: conv.y),
+    );
+
+    // 1. Check MRT station circles
+    try {
+      final stationFeatures = await mapboxMap!.queryRenderedFeatures(
+        screenCoord,
+        RenderedQueryOptions(layerIds: ['mrt_station_circle_layer']),
+      );
+      if (stationFeatures.isNotEmpty) {
+        final codeStr = _getFeatureProperty(stationFeatures[0], 'code');
+        if (codeStr != null && codeStr.isNotEmpty) {
+          final code = codeStr.split('/').first;
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => StationPage(stationCode: code),
+          ));
+          return;
+        }
+      }
+    } catch (e) {
+      print('Error querying station circles: $e');
+    }
+
+    // 2. Check MRT boundaries (fill + outline)
+    try {
+      final boundaryFeatures = await mapboxMap!.queryRenderedFeatures(
+        screenCoord,
+        RenderedQueryOptions(
+            layerIds: ['mrt_boundary_layer', 'mrt_boundary_line_layer']),
+      );
+      if (boundaryFeatures.isNotEmpty) {
+        final codeStr = _getFeatureProperty(boundaryFeatures[0], 'code');
+        if (codeStr != null && codeStr.isNotEmpty) {
+          final code = codeStr.split('/').first;
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => StationPage(stationCode: code),
+          ));
+          return;
+        }
+      }
+    } catch (e) {
+      print('Error querying boundaries: $e');
+    }
+
+    // 3. Check bus stops
+    try {
+      final stopFeatures = await mapboxMap!.queryRenderedFeatures(
+        screenCoord,
+        RenderedQueryOptions(
+            layerIds: ['stops_layer', 'stops_circle_layer']),
+      );
+      if (stopFeatures.isNotEmpty &&
+          stopFeatures[0]?.queriedFeature.feature['id'] != null) {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => Stop(
+              stopFeatures[0]!.queriedFeature.feature['id'].toString()),
+        ));
+        return;
+      }
+    } catch (e) {
+      print('Error querying bus stops: $e');
+    }
+
+    // Fall through to page-specific tap handler
+    widget.onMapTap?.call(gestureContext);
   }
 
   Future<void> _toggleSatelliteMode(bool enableSatellite) async {
@@ -789,7 +885,11 @@ String _generateMrtGeoJson(Map mrtData) {
             decodePolyline(encoded as String).map((c) => [c[1], c[0]]).toList();
         features.add({
           'type': 'Feature',
-          'properties': {'type': 'boundary', 'color': color},
+          'properties': {
+            'type': 'boundary',
+            'color': color,
+            'code': (station['codes'] as List?)?.join('/') ?? '',
+          },
           'geometry': {
             'type': 'Polygon',
             'coordinates': [coords]
