@@ -269,6 +269,8 @@ class _RootPageState extends State<RootPage> {
     var svcs = prefs.getString('svcs');
     var mrtData = prefs.getString('mrt-data');
     var localVersion = prefs.getString('version');
+    var lastOpenedAppVersion = prefs.getString('last-opened-version');
+
     // var startupScreen = prefs.getString('startup-screen');
 
     // if (startupScreen != null) {
@@ -281,10 +283,15 @@ class _RootPageState extends State<RootPage> {
     //   currPageIndex = pageName.indexOf(startupScreen); //TODO: Fix this
     // }
 
+    if (lastOpenedAppVersion == null) {
+      prefs.setString('last-opened-version', appInfo.version.toString());
+    }
+
     if (stops == null ||
         svcs == null ||
         mrtData == null ||
-        localVersion == null) {
+        localVersion == null ||
+        lastOpenedAppVersion == null) {
       Navigator.of(context).push(MaterialPageRoute(
           builder: (builder) => DownloadPage(
                 restartOnComplete: true,
