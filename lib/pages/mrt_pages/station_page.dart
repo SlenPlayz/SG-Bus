@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' hide Position;
 import 'package:google_polyline_algorithm/google_polyline_algorithm.dart';
@@ -860,10 +861,11 @@ class _CrowdednessCardState extends State<CrowdednessCard> {
                         style:
                             Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontVariations: [
-                            FontVariation.weight(800),
+                            FontVariation.weight(750),
                             FontVariation.width(100),
                             FontVariation('ROND', 100),
                           ],
+                          color: Colors.white,
                           fontSize: 15,
                         ),
                       ),
