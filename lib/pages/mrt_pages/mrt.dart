@@ -521,13 +521,16 @@ class _LineStatusListTileState extends State<LineStatusListTile> {
             activeAlertData != null ? Text(activeAlertData["header"]) : null,
         trailing: activeAlertData != null
             ? activeAlertData["severity"] == "low"
-                ? Icon(Icons.info_rounded, color: Colors.amber[200])
+                ? Icon(
+                    Icons.info_rounded,
+                    color: isDark ? Colors.amber[200] : Colors.amber[600],
+                  )
                 : Icon(Icons.warning_rounded,
                     color: Theme.of(context).colorScheme.error)
             : hasLoadedLaunch
                 ? Icon(
                     Icons.check_circle_rounded,
-                    color: Colors.green[200],
+                    color: isDark ? Colors.green[200] : Colors.green[400],
                   )
                 : Icon(Icons.circle, color: Colors.grey),
         leading: Container(
