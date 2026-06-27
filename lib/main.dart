@@ -104,6 +104,9 @@ class _MyAppState extends State<MyApp> {
       if (colorSchemeSettings == "Yellow") {
         customScheme = Colors.yellow;
       }
+      if (colorSchemeSettings == "Lime") {
+        customScheme = Colors.lime;
+      }
       if (colorSchemeSettings == "Purple") {
         customScheme = Colors.deepPurple;
       }

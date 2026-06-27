@@ -67,6 +67,7 @@ class _SettingsState extends State<Settings> {
                   ListItem<String>(value: "Blue", caption: 'Blue'),
                   ListItem<String>(value: "Green", caption: 'Green'),
                   ListItem<String>(value: "Yellow", caption: 'Yellow'),
+                  ListItem<String>(value: "Lime", caption: 'Lime'),
                   ListItem<String>(value: "Purple", caption: 'Purple'),
                   ListItem<String>(value: "Orange", caption: 'Orange'),
                   ListItem<String>(value: "Cyan", caption: 'Cyan'),
