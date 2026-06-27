@@ -425,7 +425,7 @@ class _HomeState extends State<Home> {
                             ),
                           ),
                           SizedBox(
-                            height: 65,
+                            height: getNavBarClearance(context),
                           ),
                         ],
                       ),
@@ -448,7 +448,7 @@ class _HomeState extends State<Home> {
             ),
           ),
           Container(
-            padding: EdgeInsets.fromLTRB(8, 10, 8, 10),
+            padding: EdgeInsets.fromLTRB(8, 10, 8, getNavBarClearance(context)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

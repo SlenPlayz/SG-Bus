@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
@@ -241,7 +242,7 @@ class RootPage extends StatefulWidget {
   _RootPageState createState() => _RootPageState();
 }
 
-class _RootPageState extends State<RootPage> {
+class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
   int currPageIndex = 1;
 
   var alerts = [];
@@ -562,36 +563,143 @@ class _RootPageState extends State<RootPage> {
                 ),
               ],
             ),
-            body: Column(
+            extendBody: true,
+            body: Stack(
               children: [
-                (isDataUpdating && currPageIndex != 0)
-                    ? LinearProgressIndicatorM3E()
-                    : Container(),
-                Expanded(child: pages[currPageIndex]),
-              ],
-            ),
-            bottomNavigationBar: NavigationBar(
-              onDestinationSelected: (int index) {
-                setState(() {
-                  currPageIndex = index;
-                });
-              },
-              selectedIndex: currPageIndex,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.map_outlined),
-                  selectedIcon: Icon(Icons.map_rounded),
-                  label: 'Map',
+                Column(
+                  children: [
+                    (isDataUpdating && currPageIndex != 0)
+                        ? LinearProgressIndicatorM3E()
+                        : Container(),
+                    Expanded(child: pages[currPageIndex]),
+                  ],
                 ),
-                NavigationDestination(
-                  icon: Icon(Icons.circle_outlined),
-                  selectedIcon: Icon(Icons.circle),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.directions_transit_outlined),
-                  selectedIcon: Icon(Icons.directions_transit_filled_rounded),
-                  label: 'MRT',
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom:
+                      MediaQuery.of(context).padding.bottom + kNavBarBottomGap,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(100),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeInOutCubicEmphasized,
+                            padding: const EdgeInsets.all(kNavBarOuterPadding),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceVariant
+                                  .withOpacity(0.55),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(3, (index) {
+                                final isSelected = currPageIndex == index;
+                                final icons = [
+                                  Icons.map_outlined,
+                                  Icons.circle_outlined,
+                                  Icons.directions_transit_outlined,
+                                ];
+                                final selectedIcons = [
+                                  Icons.map_rounded,
+                                  Icons.circle,
+                                  Icons.directions_transit_filled_rounded,
+                                ];
+                                final labels = ['Map', 'Home', 'MRT'];
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      currPageIndex = index;
+                                    });
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 400),
+                                    curve: Curves.easeInOutCubicEmphasized,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: isSelected ? 20 : 14,
+                                      vertical: kNavBarInnerVerticalPadding,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(100),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AnimatedSwitcher(
+                                          duration:
+                                              const Duration(milliseconds: 300),
+                                          transitionBuilder:
+                                              (child, animation) {
+                                            return FadeTransition(
+                                              opacity: animation,
+                                              child: ScaleTransition(
+                                                scale: animation,
+                                                child: child,
+                                              ),
+                                            );
+                                          },
+                                          child: Icon(
+                                            isSelected
+                                                ? selectedIcons[index]
+                                                : icons[index],
+                                            key: ValueKey(isSelected),
+                                            size: kNavBarIconSize,
+                                            color: isSelected
+                                                ? Theme.of(context)
+                                                    .colorScheme
+                                                    .onSecondaryContainer
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                          ),
+                                        ),
+                                        AnimatedSize(
+                                          duration:
+                                              const Duration(milliseconds: 400),
+                                          curve:
+                                              Curves.easeInOutCubicEmphasized,
+                                          child: isSelected
+                                              ? Row(
+                                                  children: [
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      labels[index],
+                                                      style: TextStyle(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onSecondaryContainer,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                )
+                                              : const SizedBox.shrink(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

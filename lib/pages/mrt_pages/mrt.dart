@@ -104,7 +104,7 @@ class _MRTState extends State<MRT> {
                   ),
                 ),
                 Container(
-                  padding: EdgeInsets.fromLTRB(8, 10, 8, 10),
+                  padding: EdgeInsets.fromLTRB(8, 10, 8, getNavBarClearance(context)),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

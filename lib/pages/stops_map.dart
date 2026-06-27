@@ -179,13 +179,13 @@ class _StopsMapState extends State<StopsMap> {
                       showScaleBar: true,
                       showCompass: true,
                       topPadding: MediaQuery.paddingOf(context).top,
-                      bottomPadding: 5,
+                      bottomPadding: getNavBarClearance(context),
                     ),
                   ),
                 ),
                   FloatingAd(
                     margin: EdgeInsets.only(
-                      bottom: 30,
+                      bottom: getNavBarClearance(context, extraSpacing: 16),
                       left: 3,
                     ),
                   ),
