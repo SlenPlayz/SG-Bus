@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/base_map.dart';
+import 'package:sgbus/components/floating_ad.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
@@ -22,12 +23,11 @@ class RouteMap extends StatefulWidget {
 
 class _RouteMapState extends State<RouteMap> {
   bool isLoaded = false;
-  bool isAdLoaded = false;
+
   List<LatLng> routeAsLatLng = [];
   List bsids = [];
   String routeType = '';
   List routeStops = [];
-  late AdWidget adWidget;
   var currRoute;
   bool _isFirstLoad = true;
   MapboxMap? mapboxMap;
@@ -36,13 +36,6 @@ class _RouteMapState extends State<RouteMap> {
   void setState(fn) {
     if (mounted) super.setState(fn);
   }
-
-  final BannerAd Ad = BannerAd(
-    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
-    size: AdSize.banner,
-    request: AdRequest(),
-    listener: BannerAdListener(),
-  );
 
   void loadRoute() {
     List bstopsList = getStops();
@@ -112,6 +105,34 @@ class _RouteMapState extends State<RouteMap> {
     // Dim the base map so the route visually pops
     await _dimBaseLayers(map);
 
+    final routeGeoJson = {
+      'type': 'FeatureCollection',
+      'features': [
+        {
+          'type': 'Feature',
+          'properties': {'number': widget.sno},
+          'geometry': {
+            'type': 'LineString',
+            'coordinates': routeStops
+                .where((s) => s['cords'] != null && s['cords'].length == 2)
+                .map((s) => s['cords'])
+                .toList(),
+          },
+        }
+      ],
+    };
+
+    await map.style.addSource(
+        GeoJsonSource(id: 'routeLine', data: jsonEncode(routeGeoJson)));
+    await map.style.addLayer(LineLayer(
+      id: 'stops_line_layer',
+      sourceId: 'routeLine',
+      slot: LayerSlot.TOP,
+      lineWidth: 4.0,
+      lineColor: Colors.blue.toARGB32(),
+      lineEmissiveStrength: 1.0,
+    ));
+
     final stopsGeoJson = {
       'type': 'FeatureCollection',
       'features': routeStops
@@ -139,7 +160,8 @@ class _RouteMapState extends State<RouteMap> {
       json.encode({
         'id': 'route_stops_layer',
         'type': 'symbol',
-        'source': 'route_stops'
+        'source': 'route_stops',
+        'slot': 'top',
       }),
       null,
     );
@@ -147,44 +169,24 @@ class _RouteMapState extends State<RouteMap> {
       'route_stops_layer',
       json.encode({
         'text-field': ['get', 'name'],
-        'icon-image': 'bus',
-        'text-size': 10,
-        'text-offset': [0, 2],
-        'text-color': (isSat || isDark) ? '#fff' : '#000',
+        'text-size': 11,
+        'text-offset': [0, 1.2],
+        'text-color': (isSat || isDark) ? '#ffffff' : '#000000',
+        'text-halo-color': (isSat || isDark) ? '#000000' : '#ffffff',
+        'text-halo-width': 1.5,
+        'text-emissive-strength': 1,
       }),
     );
     await map.style.addLayer(CircleLayer(
       id: 'route_stops_circle_layer',
       sourceId: 'route_stops',
-      circleRadius: 1.5,
-      maxZoom: 15.0,
+      slot: LayerSlot.TOP,
+      circleRadius: 4.0,
+      // maxZoom: 15.0,
       circleColor: Colors.blue.value,
-    ));
-
-    final routeGeoJson = {
-      'type': 'FeatureCollection',
-      'features': [
-        {
-          'type': 'Feature',
-          'properties': {'number': widget.sno},
-          'geometry': {
-            'type': 'LineString',
-            'coordinates': routeStops
-                .where((s) => s['cords'] != null && s['cords'].length == 2)
-                .map((s) => s['cords'])
-                .toList(),
-          },
-        }
-      ],
-    };
-
-    await map.style.addSource(
-        GeoJsonSource(id: 'routeLine', data: jsonEncode(routeGeoJson)));
-    await map.style.addLayer(LineLayer(
-      id: 'stops_line_layer',
-      sourceId: 'routeLine',
-      lineWidth: 4.0,
-      linePattern: 'oneway-small',
+      circleStrokeWidth: 1.5,
+      circleStrokeColor: Colors.white.value,
+      circleEmissiveStrength: 1.0,
     ));
 
     // Fit camera to route bounds on first load
@@ -254,63 +256,108 @@ class _RouteMapState extends State<RouteMap> {
     }
   }
 
-  Future<void> loadAd() async {
-    try {
-      adWidget = AdWidget(ad: Ad);
-      await Ad.load();
-      setState(() => isAdLoaded = true);
-    } catch (err, stackTrace) {
-      await Sentry.captureException(err, stackTrace: stackTrace);
-      if (!kReleaseMode) print(err);
-    }
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
     loadRoute();
-    if (adsEnabled) loadAd();
     setState(() => isLoaded = true);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!isLoaded) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
-      body: isLoaded
-          ? Scaffold(
-              appBar: AppBar(
-                title: Text('Bus ${widget.sno} route map'),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12.0, top: 8.0, bottom: 8.0),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              color: Theme.of(context).colorScheme.onSurface,
+              onPressed: () => Navigator.pop(context),
+            ),
+          ),
+        ),
+        title: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
               ),
-              body: Column(
-                children: [
-                  Expanded(
-                    child: BaseMap(
-                      cameraOptions: CameraOptions(
-                        center:
-                            Point(coordinates: Position(103.8198, 1.290270)),
-                        zoom: 9,
-                      ),
-                      onStyleLoaded: _initRouteLayers,
-                      onMapTap: onTapListener,
-                      showCompass: true,
-                      showScaleBar: true,
-                      topPadding: 10,
-                      loadDefaultBusStops: false,
-                      showBusStopsToggle: false,
-                    ),
-                  ),
-                  isAdLoaded
-                      ? Container(
-                          alignment: Alignment.center,
-                          child: adWidget,
-                          width: Ad.size.width.toDouble(),
-                          height: Ad.size.height.toDouble(),
-                        )
-                      : Container()
-                ],
+            ],
+          ),
+          child: Text(
+            'Bus ${widget.sno}',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontVariations: [
+                FontVariation('ROND', 100),
+                FontVariation.width(120),
+                FontVariation.weight(1000)
+              ],
+              fontSize: 18,
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: BaseMap(
+              cameraOptions: CameraOptions(
+                center: Point(coordinates: Position(103.8198, 1.290270)),
+                zoom: 9,
               ),
-            )
-          : const Center(child: CircularProgressIndicator()),
+              onStyleLoaded: _initRouteLayers,
+              onMapTap: onTapListener,
+              showCompass: true,
+              showScaleBar: true,
+              topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
+              bottomPadding: MediaQuery.paddingOf(context).bottom + 20,
+              loadDefaultBusStops: false,
+              showBusStopsToggle: false,
+            ),
+          ),
+          FloatingAd(
+            margin: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(context).bottom + 25,
+                left: 3),
+          ),
+        ],
+      ),
     );
   }
 }

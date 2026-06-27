@@ -17,11 +17,11 @@ class BaseMap extends StatefulWidget {
   final void Function(MapboxMap mapboxMap)? onMapCreated;
   final void Function(MapboxMap mapboxMap)? onStyleLoaded;
   final void Function(MapContentGestureContext gestureContext)? onMapTap;
-  final double fabBottomPadding;
   final Widget? overlay;
   final bool showScaleBar;
   final bool showCompass;
   final double? topPadding;
+  final double? bottomPadding;
 
   // Controls whether the standard Singapore-wide bus stops are automatically
   // loaded and displayed on the map.
@@ -40,11 +40,11 @@ class BaseMap extends StatefulWidget {
     this.onMapCreated,
     this.onStyleLoaded,
     this.onMapTap,
-    this.fabBottomPadding = 16.0,
     this.overlay,
     required this.showScaleBar,
     required this.showCompass,
     this.topPadding,
+    this.bottomPadding,
     this.loadDefaultBusStops = true,
     this.showBusStopsToggle = true,
     this.showTrainLinesToggle = true,
@@ -60,6 +60,7 @@ class _BaseMapState extends State<BaseMap> {
   MapboxMap? mapboxMap;
   gl.Position? currLocation;
   bool _isSatelliteView = false;
+  String _mapTheme = 'auto';
   bool _isPreferencesLoaded = false;
   String? _currentStyleUri;
   bool locationError = false;
@@ -86,6 +87,7 @@ class _BaseMapState extends State<BaseMap> {
     if (mounted) {
       setState(() {
         _isSatelliteView = prefs.getBool('isSatelliteView') ?? false;
+        _mapTheme = prefs.getString('mapTheme') ?? 'auto';
         _isPreferencesLoaded = true;
       });
     }
@@ -97,32 +99,45 @@ class _BaseMapState extends State<BaseMap> {
     final stopsData = getStops();
     if (stopsData == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final isSat = prefs.getBool('isSatelliteView') ?? false;
 
     final geoJson = await compute(_generateStopsGeoJson, stopsData);
 
     await mapboxMap?.style.addSource(GeoJsonSource(id: 'stops', data: geoJson));
 
     await mapboxMap?.style.addStyleLayer(
-      json.encode({'id': 'stops_layer', 'type': 'symbol', 'source': 'stops'}),
+      json.encode({
+        'id': 'stops_layer',
+        'type': 'symbol',
+        'source': 'stops',
+        'slot': 'top',
+        'minzoom': 13.0,
+      }),
       null,
     );
     await mapboxMap?.style.setStyleLayerProperties(
       'stops_layer',
       json.encode({
         'text-field': ['get', 'name'],
-        'icon-image': 'bus',
-        'text-size': 10,
-        'text-offset': [0, 2],
-        'text-color': (isSat || isDark) ? '#fff' : '#000',
+        'text-size': 11,
+        'text-offset': [0, 1.2],
+        'text-color': _isMapDark ? '#ffffff' : '#000000',
+        'text-halo-color': _isMapDark ? '#000000' : '#ffffff',
+        'text-halo-width': 1.5,
+        'text-emissive-strength': 1,
+        'icon-emissive-strength': 1,
       }),
     );
     await mapboxMap?.style.addLayer(CircleLayer(
       id: 'stops_circle_layer',
       sourceId: 'stops',
-      circleRadius: 1,
+      slot: LayerSlot.TOP,
+      circleRadius: 4.0,
+      minZoom: 13.0,
       maxZoom: 19.0,
       circleColor: Colors.blue.toARGB32(),
+      circleStrokeWidth: 1.5,
+      circleStrokeColor: Colors.white.toARGB32(),
+      circleEmissiveStrength: 1.0,
     ));
   }
 
@@ -130,7 +145,6 @@ class _BaseMapState extends State<BaseMap> {
     final mrtData = getMRTData();
     if (mrtData == null) return;
     final prefs = await SharedPreferences.getInstance();
-    final isSat = prefs.getBool('isSatelliteView') ?? false;
 
     final geoJson = await compute(_generateMrtGeoJson, mrtData);
 
@@ -146,11 +160,13 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_boundary_layer',
         'type': 'fill',
         'source': 'mrt_source',
+        'slot': 'middle',
         'minzoom': 14.0,
         'filter': ['==', 'type', 'boundary'],
         'paint': {
           'fill-color': ['get', 'color'],
-          'fill-opacity': 0.18
+          'fill-opacity': 0.18,
+          'fill-emissive-strength': 1,
         },
       }),
       belowStops,
@@ -162,11 +178,13 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_boundary_line_layer',
         'type': 'line',
         'source': 'mrt_source',
+        'slot': 'middle',
         'minzoom': 14.0,
         'filter': ['==', 'type', 'boundary'],
         'paint': {
           'line-color': ['get', 'color'],
-          'line-width': 3.0
+          'line-width': 3.0,
+          'line-emissive-strength': 1,
         },
       }),
       belowStops,
@@ -178,10 +196,12 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_line_layer',
         'type': 'line',
         'source': 'mrt_source',
+        'slot': 'middle',
         'filter': ['==', 'type', 'line'],
         'paint': {
           'line-color': ['get', 'lineColor'],
-          'line-width': 4.0
+          'line-width': 4.0,
+          'line-emissive-strength': 1,
         },
       }),
       belowStops,
@@ -193,6 +213,7 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_station_circle_layer',
         'type': 'circle',
         'source': 'mrt_source',
+        'slot': 'top',
         'minzoom': 10.5,
         'filter': ['==', 'type', 'station'],
         'paint': {
@@ -200,6 +221,7 @@ class _BaseMapState extends State<BaseMap> {
           'circle-color': '#ffffff',
           'circle-stroke-width': 2.0,
           'circle-stroke-color': '#000000',
+          'circle-emissive-strength': 1,
         },
       }),
       null,
@@ -211,6 +233,7 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_station_text_layer',
         'type': 'symbol',
         'source': 'mrt_source',
+        'slot': 'top',
         'minzoom': 15.0,
         'filter': ['==', 'type', 'station'],
         'layout': {
@@ -219,9 +242,10 @@ class _BaseMapState extends State<BaseMap> {
           'text-offset': [0, 1.5]
         },
         'paint': {
-          'text-color': (isSat || isDark) ? '#ffffff' : '#000000',
-          'text-halo-color': (isSat || isDark) ? '#000000' : '#ffffff',
+          'text-color': _isMapDark ? '#ffffff' : '#000000',
+          'text-halo-color': _isMapDark ? '#000000' : '#ffffff',
           'text-halo-width': 1.0,
+          'text-emissive-strength': 1,
         },
       }),
       null,
@@ -233,6 +257,7 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_exit_circle_layer',
         'type': 'circle',
         'source': 'mrt_source',
+        'slot': 'top',
         'minzoom': 15.0,
         'filter': ['==', 'type', 'exit'],
         'paint': {
@@ -240,6 +265,7 @@ class _BaseMapState extends State<BaseMap> {
           'circle-color': '#ffeb3b',
           'circle-stroke-width': 1.0,
           'circle-stroke-color': '#000000',
+          'circle-emissive-strength': 1,
         },
       }),
       null,
@@ -251,6 +277,7 @@ class _BaseMapState extends State<BaseMap> {
         'id': 'mrt_exit_text_layer',
         'type': 'symbol',
         'source': 'mrt_source',
+        'slot': 'top',
         'minzoom': 15.0,
         'filter': ['==', 'type', 'exit'],
         'layout': {
@@ -258,7 +285,10 @@ class _BaseMapState extends State<BaseMap> {
           'text-size': 10,
           'text-offset': [0, 1.2]
         },
-        'paint': {'text-color': (isSat || isDark) ? '#ffffff' : '#000000'},
+        'paint': {
+          'text-color': _isMapDark ? '#ffffff' : '#000000',
+          'text-emissive-strength': 1,
+        },
       }),
       null,
     );
@@ -344,6 +374,9 @@ class _BaseMapState extends State<BaseMap> {
     mapboxMap = map;
     map.location.updateSettings(
         LocationComponentSettings(enabled: true, puckBearingEnabled: true));
+    final bottomMargin = widget.bottomPadding ?? 0;
+    map.logo.updateSettings(LogoSettings(marginBottom: bottomMargin));
+    map.attribution.updateSettings(AttributionSettings(marginBottom: bottomMargin));
     if (widget.showCompass) {
       map.compass.updateSettings(CompassSettings(
           enabled: true, marginTop: widget.topPadding ?? 0, marginRight: 10));
@@ -360,15 +393,16 @@ class _BaseMapState extends State<BaseMap> {
       map.scaleBar.updateSettings(ScaleBarSettings(enabled: false));
     }
 
-    _currentStyleUri = (_isSatelliteView || isDark)
-        ? 'mapbox://styles/slen/cl4p0y50c000a15qhcozehloa'
-        : 'mapbox://styles/slen/clb64djkx000014pcw46b1h9m';
+    _currentStyleUri = MapboxStyles.STANDARD;
 
     if (widget.onMapCreated != null) widget.onMapCreated!(map);
   }
 
   Future<void> _onStyleLoaded(StyleLoadedEventData event) async {
     if (mapboxMap == null) return;
+
+    // Configure Standard style: light preset and disable transit labels
+    await _applyStandardStyleConfig();
 
     // Always initialise standard layers first
     if (widget.loadDefaultBusStops) {
@@ -382,6 +416,92 @@ class _BaseMapState extends State<BaseMap> {
     if (_isSatelliteView) await _toggleSatelliteMode(true);
 
     mapboxMap!.setOnMapTapListener(_handleMapTap);
+  }
+
+  bool get _isMapDark {
+    if (_isSatelliteView) return true;
+    if (_mapTheme == 'night' || _mapTheme == 'dusk') return true;
+    if (_mapTheme == 'day' || _mapTheme == 'dawn') return false;
+    final hour = DateTime.now().hour;
+    return (hour >= 19 || hour < 7);
+  }
+
+  Future<void> _updateLayerTextColors() async {
+    final style = mapboxMap?.style;
+    if (style == null) return;
+
+    final textColor = _isMapDark ? '#ffffff' : '#000000';
+    final haloColor = _isMapDark ? '#000000' : '#ffffff';
+
+    try {
+      if (await style.styleLayerExists('stops_layer')) {
+        await style.setStyleLayerProperty(
+            'stops_layer', 'text-color', textColor);
+        await style.setStyleLayerProperty(
+            'stops_layer', 'text-halo-color', haloColor);
+      }
+      if (await style.styleLayerExists('mrt_station_text_layer')) {
+        await style.setStyleLayerProperty(
+            'mrt_station_text_layer', 'text-color', textColor);
+        await style.setStyleLayerProperty(
+            'mrt_station_text_layer', 'text-halo-color', haloColor);
+      }
+      if (await style.styleLayerExists('mrt_exit_text_layer')) {
+        await style.setStyleLayerProperty(
+            'mrt_exit_text_layer', 'text-color', textColor);
+      }
+    } catch (e) {
+      print('Error updating text colors: $e');
+    }
+  }
+
+  Future<void> _setMapTheme(String theme) async {
+    setState(() => _mapTheme = theme);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('mapTheme', theme);
+    await _applyStandardStyleConfig();
+    await _updateLayerTextColors();
+  }
+
+  /// Applies Standard style configuration: sets the light preset based on
+  /// the current theme and disables transit labels.
+  Future<void> _applyStandardStyleConfig() async {
+    try {
+      final style = mapboxMap?.style;
+      if (style == null) return;
+
+      String preset = 'day';
+      if (_isSatelliteView) {
+        preset = 'night';
+      } else if (_mapTheme == 'night') {
+        preset = 'night';
+      } else if (_mapTheme == 'dusk') {
+        preset = 'dusk';
+      } else if (_mapTheme == 'day') {
+        preset = 'day';
+      } else if (_mapTheme == 'dawn') {
+        preset = 'dawn';
+      } else {
+        final hour = DateTime.now().hour;
+        if (hour >= 9 && hour < 17) {
+          preset = 'day';
+        } else if (hour >= 17 && hour < 19) {
+          preset = 'dusk';
+        } else if (hour >= 19 || hour < 6) {
+          preset = 'night';
+        } else {
+          preset = 'dawn';
+        }
+      }
+
+      await style.setStyleImportConfigProperties('basemap', {
+        'lightPreset': preset,
+        'showTransitLabels': false,
+        'show3dObjects': !_isSatelliteView,
+      });
+    } catch (e) {
+      print('Error applying Standard style config: $e');
+    }
   }
 
   /// Extracts a property value from a queried feature's properties,
@@ -461,14 +581,13 @@ class _BaseMapState extends State<BaseMap> {
     try {
       final stopFeatures = await mapboxMap!.queryRenderedFeatures(
         screenCoord,
-        RenderedQueryOptions(
-            layerIds: ['stops_layer', 'stops_circle_layer']),
+        RenderedQueryOptions(layerIds: ['stops_layer', 'stops_circle_layer']),
       );
       if (stopFeatures.isNotEmpty &&
           stopFeatures[0]?.queriedFeature.feature['id'] != null) {
         Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => Stop(
-              stopFeatures[0]!.queriedFeature.feature['id'].toString()),
+          builder: (_) =>
+              Stop(stopFeatures[0]!.queriedFeature.feature['id'].toString()),
         ));
         return;
       }
@@ -491,9 +610,7 @@ class _BaseMapState extends State<BaseMap> {
       print('Error saving map mode preference: $e');
     }
 
-    final targetStyleUri = (enableSatellite || isDark)
-        ? 'mapbox://styles/slen/cl4p0y50c000a15qhcozehloa'
-        : 'mapbox://styles/slen/clb64djkx000014pcw46b1h9m';
+    final targetStyleUri = MapboxStyles.STANDARD;
 
     if (_currentStyleUri != targetStyleUri) {
       _currentStyleUri = targetStyleUri;
@@ -516,56 +633,32 @@ class _BaseMapState extends State<BaseMap> {
           ));
         }
 
-        final layers = await style.getStyleLayers();
-        final layerIds =
-            layers.where((l) => l != null).map((l) => l!.id).toList();
         final layerExists = await style.styleLayerExists('onemap-sat-layer');
         if (!layerExists) {
-          LayerPosition? position;
-          if (layerIds.contains('background')) {
-            position = LayerPosition(above: 'background');
-          } else if (layerIds.isNotEmpty) {
-            position = LayerPosition(below: layerIds.first);
-          }
-          if (position != null) {
-            await style.addLayerAt(
-                RasterLayer(
-                    id: 'onemap-sat-layer',
-                    sourceId: 'onemap-sat-source',
-                    rasterContrast: 0.20),
-                position);
-          } else {
-            await style.addLayer(RasterLayer(
-                id: 'onemap-sat-layer', sourceId: 'onemap-sat-source'));
-          }
+          await style.addLayer(RasterLayer(
+            id: 'onemap-sat-layer',
+            sourceId: 'onemap-sat-source',
+            slot: LayerSlot.MIDDLE,
+            rasterContrast: 0.40,
+            rasterSaturation: -0.1,
+            rasterEmissiveStrength: 1.0,
+          ));
         } else {
           await _setLayerVisibility('onemap-sat-layer', true);
         }
-
-        for (var l in layers) {
-          if (l != null && l.id != 'onemap-sat-layer') {
-            if (l.type == 'background' ||
-                l.type == 'fill' ||
-                l.type == 'fill-extrusion' ||
-                l.type == 'hillshade') {
-              await _setLayerVisibility(l.id, false);
-            }
-          }
-        }
       } else {
         await _setLayerVisibility('onemap-sat-layer', false);
-        final layers = await style.getStyleLayers();
-        for (var l in layers) {
-          if (l != null && l.id != 'onemap-sat-layer') {
-            if (l.type == 'background' ||
-                l.type == 'fill' ||
-                l.type == 'fill-extrusion' ||
-                l.type == 'hillshade') {
-              await _setLayerVisibility(l.id, true);
-            }
-          }
-        }
       }
+
+      await _applyStandardStyleConfig();
+
+      // Smoothly animate the pitch
+      mapboxMap!.easeTo(
+        CameraOptions(pitch: enableSatellite ? 0.0 : 45.0),
+        MapAnimationOptions(duration: 1000),
+      );
+
+      await _updateLayerTextColors();
     } catch (e, stackTrace) {
       print('Error in _toggleSatelliteMode: $e');
       await Sentry.captureException(e, stackTrace: stackTrace);
@@ -577,150 +670,310 @@ class _BaseMapState extends State<BaseMap> {
   void _showMapTypeBottomSheet(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      showDragHandle: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      showDragHandle: false,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24.0))),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.7,
+      ),
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            void toggle(void Function() updateState, void Function(bool) fn,
-                bool value) {
-              setModalState(updateState);
-              fn(value);
-            }
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24.0)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+            child: Container(
+              color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+              child: StatefulBuilder(
+                builder: (BuildContext context, StateSetter setModalState) {
+                  void toggle(void Function() updateState,
+                      void Function(bool) fn, bool value) {
+                    setModalState(updateState);
+                    fn(value);
+                  }
 
-            final hasLayers =
-                (widget.loadDefaultBusStops && widget.showBusStopsToggle) ||
-                    widget.showTrainLinesToggle ||
-                    widget.showStationExitsToggle ||
-                    widget.showStationBoundariesToggle;
+                  final hasLayers = (widget.loadDefaultBusStops &&
+                          widget.showBusStopsToggle) ||
+                      widget.showTrainLinesToggle ||
+                      widget.showStationExitsToggle ||
+                      widget.showStationBoundariesToggle;
 
-            TextStyle? titleStyle(BuildContext ctx) =>
-                Theme.of(ctx).textTheme.titleLarge?.copyWith(fontVariations: [
-                  FontVariation('ROND', 100),
-                  FontVariation.width(120),
-                  FontVariation.weight(1000),
-                ]);
+                  TextStyle? titleStyle(BuildContext ctx) => Theme.of(ctx)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontVariations: [
+                        FontVariation('ROND', 100),
+                        FontVariation.width(120),
+                        FontVariation.weight(1000),
+                      ]);
 
-            TextStyle? subtitleStyle(BuildContext ctx) =>
-                Theme.of(ctx).textTheme.labelMedium?.copyWith(fontVariations: [
-                  FontVariation('ROND', 50),
-                  FontVariation.width(105),
-                  FontVariation.weight(500),
-                ]);
+                  TextStyle? subtitleStyle(BuildContext ctx) => Theme.of(ctx)
+                          .textTheme
+                          .labelMedium
+                          ?.copyWith(fontVariations: [
+                        FontVariation('ROND', 50),
+                        FontVariation.width(105),
+                        FontVariation.weight(500),
+                      ]);
 
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 24.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, bottom: 16.0),
+                  return SafeArea(
+                    child: SingleChildScrollView(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Map View', style: titleStyle(context)),
-                          Opacity(
-                            opacity: 0.8,
-                            child: Text('Changes how the map is rendered.',
-                                style: subtitleStyle(context)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    RadioListTile<bool>(
-                      value: false,
-                      groupValue: _isSatelliteView,
-                      title: const Text('Regular View'),
-                      subtitle: const Text(
-                          'High contrast vector map. Quick & efficient.'),
-                      activeColor: Theme.of(context).colorScheme.primary,
-                      onChanged: (v) {
-                        if (v != null) {
-                          Navigator.pop(context);
-                          _toggleSatelliteMode(v);
-                        }
-                      },
-                    ),
-                    RadioListTile<bool>(
-                      value: true,
-                      groupValue: _isSatelliteView,
-                      title: const Text('Satellite View'),
-                      subtitle: const Text(
-                          'HD Satellite imagery. Uses more data.\nSatellite imagery provided by SLA OneMap.'),
-                      activeColor: Theme.of(context).colorScheme.primary,
-                      onChanged: (v) {
-                        if (v != null) {
-                          Navigator.pop(context);
-                          _toggleSatelliteMode(v);
-                        }
-                      },
-                    ),
-                    if (hasLayers) ...[
-                      const Divider(height: 32),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16.0, bottom: 8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Layers', style: titleStyle(context)),
-                            Opacity(
-                              opacity: 0.8,
-                              child: Text('Toggle map data layers on or off.',
-                                  style: subtitleStyle(context)),
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            margin:
+                                const EdgeInsets.only(top: 16.0, bottom: 8.0),
+                            width: 32,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant
+                                  .withOpacity(0.4),
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                      if (widget.loadDefaultBusStops &&
-                          widget.showBusStopsToggle)
-                        SwitchListTile(
-                          secondary: const Icon(Icons.directions_bus),
-                          title: const Text('Bus Stops'),
-                          value: _showBusStops,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          onChanged: (v) => toggle(
-                              () => _showBusStops = v, _toggleBusStops, v),
-                        ),
-                      if (widget.showTrainLinesToggle)
-                        SwitchListTile(
-                          secondary: const Icon(Icons.train),
-                          title: const Text('Train Line Routes'),
-                          value: _showTrainLines,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          onChanged: (v) => toggle(
-                              () => _showTrainLines = v, _toggleTrainLines, v),
-                        ),
-                      if (widget.showStationExitsToggle)
-                        SwitchListTile(
-                          secondary: const Icon(Icons.exit_to_app),
-                          title: const Text('Station Exits'),
-                          value: _showStationExits,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          onChanged: (v) => toggle(() => _showStationExits = v,
-                              _toggleStationExits, v),
-                        ),
-                      if (widget.showStationBoundariesToggle)
-                        SwitchListTile(
-                          secondary: const Icon(Icons.crop_square),
-                          title: const Text('Station Boundaries'),
-                          value: _showStationBoundaries,
-                          activeColor: Theme.of(context).colorScheme.primary,
-                          onChanged: (v) => toggle(
-                              () => _showStationBoundaries = v,
-                              _toggleStationBoundaries,
-                              v),
-                        ),
-                    ],
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+                        Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 24.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 16.0, bottom: 16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Map View',
+                                        style: titleStyle(context)),
+                                    Opacity(
+                                      opacity: 0.8,
+                                      child: Text(
+                                          'Changes how the map is rendered.',
+                                          style: subtitleStyle(context)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              RadioListTile<bool>(
+                                value: false,
+                                groupValue: _isSatelliteView,
+                                title: const Text('Regular View'),
+                                subtitle: const Text(
+                                    'High contrast vector map. Quick & efficient.'),
+                                activeColor:
+                                    Theme.of(context).colorScheme.primary,
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    Navigator.pop(context);
+                                    _toggleSatelliteMode(v);
+                                  }
+                                },
+                              ),
+                              RadioListTile<bool>(
+                                value: true,
+                                groupValue: _isSatelliteView,
+                                title: const Text('Satellite View'),
+                                subtitle: const Text(
+                                    'HD Satellite imagery. Uses more data.\nSatellite imagery provided by SLA OneMap.'),
+                                activeColor:
+                                    Theme.of(context).colorScheme.primary,
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    Navigator.pop(context);
+                                    _toggleSatelliteMode(v);
+                                  }
+                                },
+                              ),
+                              const Divider(height: 32),
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 16.0, bottom: 16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Map Theme',
+                                        style: titleStyle(context)),
+                                    Opacity(
+                                      opacity: 0.8,
+                                      child: Text(
+                                          'Controls the map\'s lighting style.',
+                                          style: subtitleStyle(context)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16.0),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: Wrap(
+                                    spacing: 8.0,
+                                    runSpacing: 8.0,
+                                    children: [
+                                      ChoiceChip(
+                                        label: const Text('Dawn'),
+                                        avatar: const Icon(Icons.wb_twilight,
+                                            size: 18),
+                                        showCheckmark: false,
+                                        selected: _mapTheme == 'dawn',
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setModalState(
+                                                () => _mapTheme = 'dawn');
+                                            _setMapTheme('dawn');
+                                          }
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: const Text('Day'),
+                                        avatar: const Icon(Icons.light_mode,
+                                            size: 18),
+                                        showCheckmark: false,
+                                        selected: _mapTheme == 'day',
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setModalState(
+                                                () => _mapTheme = 'day');
+                                            _setMapTheme('day');
+                                          }
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: const Text('Dusk'),
+                                        avatar: const Icon(Icons.wb_twilight,
+                                            size: 18),
+                                        showCheckmark: false,
+                                        selected: _mapTheme == 'dusk',
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setModalState(
+                                                () => _mapTheme = 'dusk');
+                                            _setMapTheme('dusk');
+                                          }
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: const Text('Night'),
+                                        avatar: const Icon(Icons.dark_mode,
+                                            size: 18),
+                                        showCheckmark: false,
+                                        selected: _mapTheme == 'night',
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setModalState(
+                                                () => _mapTheme = 'night');
+                                            _setMapTheme('night');
+                                          }
+                                        },
+                                      ),
+                                      ChoiceChip(
+                                        label: const Text('Time of Day'),
+                                        avatar: const Icon(Icons.access_time,
+                                            size: 18),
+                                        showCheckmark: false,
+                                        selected: _mapTheme == 'auto',
+                                        onSelected: (selected) {
+                                          if (selected) {
+                                            setModalState(
+                                                () => _mapTheme = 'auto');
+                                            _setMapTheme('auto');
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (hasLayers) ...[
+                                const Divider(height: 32),
+                                Padding(
+                                  padding: const EdgeInsets.only(
+                                      left: 16.0, bottom: 8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text('Layers',
+                                          style: titleStyle(context)),
+                                      Opacity(
+                                        opacity: 0.8,
+                                        child: Text(
+                                            'Toggle map data layers on or off.',
+                                            style: subtitleStyle(context)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (widget.loadDefaultBusStops &&
+                                    widget.showBusStopsToggle)
+                                  SwitchListTile(
+                                    secondary: const Icon(Icons.directions_bus),
+                                    title: const Text('Bus Stops'),
+                                    value: _showBusStops,
+                                    activeColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    onChanged: (v) => toggle(
+                                        () => _showBusStops = v,
+                                        _toggleBusStops,
+                                        v),
+                                  ),
+                                if (widget.showTrainLinesToggle)
+                                  SwitchListTile(
+                                    secondary: const Icon(Icons.train),
+                                    title: const Text('Train Line Routes'),
+                                    value: _showTrainLines,
+                                    activeColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    onChanged: (v) => toggle(
+                                        () => _showTrainLines = v,
+                                        _toggleTrainLines,
+                                        v),
+                                  ),
+                                if (widget.showStationExitsToggle)
+                                  SwitchListTile(
+                                    secondary: const Icon(Icons.exit_to_app),
+                                    title: const Text('Station Exits'),
+                                    value: _showStationExits,
+                                    activeColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    onChanged: (v) => toggle(
+                                        () => _showStationExits = v,
+                                        _toggleStationExits,
+                                        v),
+                                  ),
+                                if (widget.showStationBoundariesToggle)
+                                  SwitchListTile(
+                                    secondary: const Icon(Icons.crop_square),
+                                    title: const Text('Station Boundaries'),
+                                    value: _showStationBoundaries,
+                                    activeColor:
+                                        Theme.of(context).colorScheme.primary,
+                                    onChanged: (v) => toggle(
+                                        () => _showStationBoundaries = v,
+                                        _toggleStationBoundaries,
+                                        v),
+                                  ),
+                              ], // Closes `if (hasLayers) ...[`
+                            ], // Closes children of inner Column
+                          ), // Closes inner Column
+                        ), // Closes Padding
+                      ], // Closes children of outer Column
+                    ), // Closes outer Column
+                    ), // Closes SingleChildScrollView
+                  ); // Closes SafeArea
+                }, // Closes builder for StatefulBuilder
+              ), // Closes StatefulBuilder
+            ), // Closes Container
+          ), // Closes BackdropFilter
+        ); // Closes ClipRRect
       },
     );
   }
@@ -748,12 +1001,10 @@ class _BaseMapState extends State<BaseMap> {
               ),
           onMapCreated: _onMapCreated,
           onStyleLoadedListener: _onStyleLoaded,
-          styleUri: (_isSatelliteView || isDark)
-              ? 'mapbox://styles/slen/cl4p0y50c000a15qhcozehloa'
-              : 'mapbox://styles/slen/clb64djkx000014pcw46b1h9m',
+          styleUri: MapboxStyles.STANDARD,
         ),
         Positioned(
-          bottom: widget.fabBottomPadding,
+          bottom: widget.bottomPadding ?? 16.0,
           right: 16,
           child: Column(
             mainAxisSize: MainAxisSize.min,

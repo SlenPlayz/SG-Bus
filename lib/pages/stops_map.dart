@@ -8,6 +8,7 @@ import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/base_map.dart';
+import 'package:sgbus/components/floating_ad.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
@@ -23,9 +24,7 @@ class StopsMap extends StatefulWidget {
 
 class _StopsMapState extends State<StopsMap> {
   bool isLoaded = false;
-  bool isAdLoaded = false;
   gl.Position? currLocation;
-  late AdWidget adWidget;
   String? _stopsGeoJson;
 
   @override
@@ -51,15 +50,18 @@ class _StopsMapState extends State<StopsMap> {
     var stopsLayerJSON = {
       "id": "stops_layer",
       "type": "symbol",
-      "source": "stops"
+      "source": "stops",
+      "slot": "top"
     };
     await mapboxMap?.style.addStyleLayer(json.encode(stopsLayerJSON), null);
     var stopsLayerProperties = {
       'text-field': ['get', 'name'],
-      "icon-image": "bus",
-      "text-size": 10,
-      "text-offset": [0, 2],
-      "text-color": (isSat || isDark) ? "#fff" : "#000",
+      "text-size": 11,
+      "text-offset": [0, 1.2],
+      "text-color": (isSat || isDark) ? "#ffffff" : "#000000",
+      "text-halo-color": (isSat || isDark) ? "#000000" : "#ffffff",
+      "text-halo-width": 1.5,
+      "text-emissive-strength": 1,
     };
     await mapboxMap?.style.setStyleLayerProperties(
         "stops_layer", json.encode(stopsLayerProperties));
@@ -67,9 +69,13 @@ class _StopsMapState extends State<StopsMap> {
     await mapboxMap?.style.addLayer(CircleLayer(
       id: "stops_circle_layer",
       sourceId: "stops",
-      circleRadius: 0.5,
+      slot: LayerSlot.TOP,
+      circleRadius: 4.0,
       maxZoom: 15.0,
-      circleColor: Colors.blue.value.toInt(),
+      circleColor: Colors.blue.toARGB32(),
+      circleStrokeWidth: 1.5,
+      circleStrokeColor: Colors.white.toARGB32(),
+      circleEmissiveStrength: 1.0,
     ));
   }
 
@@ -104,27 +110,6 @@ class _StopsMapState extends State<StopsMap> {
     }
   }
 
-  final BannerAd Ad = BannerAd(
-    adUnitId: kReleaseMode ? bannerUnitID : testBannerUnitID,
-    size: AdSize.banner,
-    request: AdRequest(),
-    listener: BannerAdListener(),
-  );
-
-  Future<void> loadAd() async {
-    try {
-      adWidget = AdWidget(ad: Ad);
-      await Ad.load();
-      isAdLoaded = true;
-    } catch (err, stackTrace) {
-      await Sentry.captureException(
-        err,
-        stackTrace: stackTrace,
-      );
-      if (!kReleaseMode) print(err);
-    }
-  }
-
   Future<void> _loadAllDependencies() async {
     setState(() {
       isLoaded = false;
@@ -140,10 +125,6 @@ class _StopsMapState extends State<StopsMap> {
         _stopsGeoJson = geoJson;
       }),
     ];
-
-    if (adsEnabled) {
-      futures.add(loadAd());
-    }
 
     try {
       await Future.wait(futures);
@@ -165,7 +146,6 @@ class _StopsMapState extends State<StopsMap> {
 
   @override
   void dispose() {
-    Ad.dispose();
     super.dispose();
   }
 
@@ -173,45 +153,42 @@ class _StopsMapState extends State<StopsMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: isLoaded
-          ? Column(
+          ? Stack(
               children: [
-                Expanded(
-                  child: Scaffold(
-                    body: ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(18),
-                          bottomRight: Radius.circular(18)),
-                      child: BaseMap(
-                        cameraOptions: CameraOptions(
-                          center: Point(
-                            coordinates: currLocation != null
-                                ? Position(currLocation!.longitude,
-                                    currLocation!.latitude)
-                                : Position(103.8198, 1.290270),
-                          ),
-                          zoom: currLocation != null ? 17 : 9,
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(18),
+                        bottomRight: Radius.circular(18)),
+                    child: BaseMap(
+                      cameraOptions: CameraOptions(
+                        center: Point(
+                          coordinates: currLocation != null
+                              ? Position(currLocation!.longitude,
+                                  currLocation!.latitude)
+                              : Position(103.8198, 1.290270),
                         ),
-                        onMapCreated: _onMapCreated,
-                        onStyleLoaded: (map) {
-                          initStops();
-                        },
-                        onMapTap: onTapListener,
-                        fabBottomPadding: 50.0,
-                        showScaleBar: true,
-                        showCompass: true,
-                        topPadding: MediaQuery.paddingOf(context).top,
+                        zoom: currLocation != null ? 17 : 9,
+                        pitch: 45,
                       ),
+                      onMapCreated: _onMapCreated,
+                      onStyleLoaded: (map) {
+                        initStops();
+                      },
+                      onMapTap: onTapListener,
+                      showScaleBar: true,
+                      showCompass: true,
+                      topPadding: MediaQuery.paddingOf(context).top,
+                      bottomPadding: 5,
                     ),
                   ),
                 ),
-                isAdLoaded
-                    ? Container(
-                        alignment: Alignment.center,
-                        child: adWidget,
-                        width: Ad.size.width.toDouble(),
-                        height: Ad.size.height.toDouble(),
-                      )
-                    : Container()
+                  FloatingAd(
+                    margin: EdgeInsets.only(
+                      bottom: 30,
+                      left: 3,
+                    ),
+                  ),
               ],
             )
           : const Center(child: ExpressiveLoadingIndicator()),

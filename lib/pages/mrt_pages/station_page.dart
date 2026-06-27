@@ -270,7 +270,7 @@ class _StationPageState extends State<StationPage>
               showCompass: true,
               showScaleBar: true,
               topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
-              fabBottomPadding: height * 0.4 + 10,
+              bottomPadding: height * 0.4 + 10,
               // All 4 toggles shown (default)
             ),
           ),
