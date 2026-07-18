@@ -346,15 +346,23 @@ class _RouteMapState extends State<RouteMap> {
               showCompass: true,
               showScaleBar: true,
               topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
-              bottomPadding: MediaQuery.paddingOf(context).bottom + 20,
+              bottomPadding: MediaQuery.paddingOf(context).bottom + 65,
               loadDefaultBusStops: false,
               showBusStopsToggle: false,
             ),
           ),
-          FloatingAd(
-            margin: EdgeInsets.only(
-                bottom: MediaQuery.paddingOf(context).bottom + 25,
-                left: 3),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Center(
+              child: FloatingAd(
+                margin: const EdgeInsets.only(
+                  bottom: 8,
+                  // left: 3,
+                ),
+              ),
+            ),
           ),
         ],
       ),

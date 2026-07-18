@@ -63,64 +63,56 @@ class _FloatingAdState extends State<FloatingAd> {
   @override
   Widget build(BuildContext context) {
     if (_hasError || !adsEnabled) {
-      return const Positioned(
-        bottom: 0,
-        left: 0,
-        child: SizedBox.shrink(),
-      );
+      return const SizedBox.shrink();
     }
 
-    return Positioned(
-      bottom: 0,
-      left: 0,
-      child: SafeArea(
-        child: Container(
-          margin: widget.margin,
-          decoration: BoxDecoration(
-            color: _isLoaded && _ad != null
-                ? Theme.of(context).colorScheme.surface
-                : Theme.of(context).colorScheme.surface.withOpacity(0.75),
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.hardEdge,
-          width: AdSize.banner.width.toDouble(),
-          height: AdSize.banner.height.toDouble(),
-          child: _isLoaded && _ad != null
-              ? AdWidget(ad: _ad!)
-              : BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          height: 30,
-                          width: 30,
-                          child: ExpressiveLoadingIndicator(),
+    return SafeArea(
+      child: Container(
+        margin: widget.margin,
+        decoration: BoxDecoration(
+          color: _isLoaded && _ad != null
+              ? Theme.of(context).colorScheme.surface
+              : Theme.of(context).colorScheme.surface.withOpacity(0.75),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.hardEdge,
+        width: AdSize.banner.width.toDouble(),
+        height: AdSize.banner.height.toDouble(),
+        child: _isLoaded && _ad != null
+            ? AdWidget(ad: _ad!)
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 2, 2, 2),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        height: 30,
+                        width: 30,
+                        child: ExpressiveLoadingIndicator(),
+                      ),
+                      SizedBox(width: 4),
+                      Text(
+                        "Loading Ad...",
+                        style: TextStyle(
+                          fontVariations: [
+                            FontVariation('ROND', 100),
+                            FontVariation.width(120),
+                            FontVariation.weight(1000)
+                          ],
                         ),
-                        SizedBox(width: 4),
-                        Text(
-                          "Loading Ad...",
-                          style: TextStyle(
-                            fontVariations: [
-                              FontVariation('ROND', 100),
-                              FontVariation.width(120),
-                              FontVariation.weight(1000)
-                            ],
-                          ),
-                        )
-                      ],
-                    ),
+                      )
+                    ],
                   ),
                 ),
-        ),
+              ),
       ),
     );
   }

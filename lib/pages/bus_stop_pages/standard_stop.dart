@@ -370,7 +370,7 @@ class _StandardStopState extends State<StandardStop> {
         (orderedGroups.isNotEmpty && orderedGroups.first != 'PUBLIC_BUS');
 
     return Container(
-      padding: EdgeInsets.only(top: 5, bottom: 80),
+      padding: EdgeInsets.only(top: 5, bottom: 180),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -538,16 +538,19 @@ class _StandardStopState extends State<StandardStop> {
               ]
             : null,
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: isLoading
-            ? null
-            : () {
-                setState(() {
-                  isLoading = true;
-                });
-                getArrTimings();
-              },
-        child: Icon(Icons.refresh),
+      floatingActionButton: Container(
+        margin: EdgeInsets.only(bottom: 55),
+        child: FloatingActionButton(
+          onPressed: isLoading
+              ? null
+              : () {
+                  setState(() {
+                    isLoading = true;
+                  });
+                  getArrTimings();
+                },
+          child: Icon(Icons.refresh),
+        ),
       ),
       body: Stack(
         children: [
@@ -563,7 +566,7 @@ class _StandardStopState extends State<StandardStop> {
                 child: RefreshIndicator(
                   onRefresh: getArrTimings,
                   child: Container(
-                    padding: EdgeInsets.only(left: 8, bottom: 20, right: 8),
+                    padding: EdgeInsets.only(left: 8, bottom: 0, right: 8),
                     child: ClipRRect(
                       borderRadius: _showAppBarTitle
                           ? BorderRadius.all(Radius.circular(28.0))
@@ -721,10 +724,14 @@ class _StandardStopState extends State<StandardStop> {
               ),
             ],
           ),
-          FloatingAd(
-            margin: EdgeInsets.only(
-              bottom: 20,
-              left: 8,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: FloatingAd(
+              margin: const EdgeInsets.only(
+                bottom: 10,
+                right: 15,
+              ),
             ),
           ),
         ],
