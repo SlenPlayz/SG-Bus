@@ -12,7 +12,14 @@ import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/location_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+enum GpsState {
+  uncentered,
+  centered,
+  heading,
+}
+
 class BaseMap extends StatefulWidget {
+  final GpsState initialGpsState;
   final CameraOptions? cameraOptions;
   final void Function(MapboxMap mapboxMap)? onMapCreated;
   final void Function(MapboxMap mapboxMap)? onStyleLoaded;
@@ -36,6 +43,7 @@ class BaseMap extends StatefulWidget {
 
   const BaseMap({
     Key? key,
+    this.initialGpsState = GpsState.uncentered,
     this.cameraOptions,
     this.onMapCreated,
     this.onStyleLoaded,
@@ -56,6 +64,7 @@ class BaseMap extends StatefulWidget {
   _BaseMapState createState() => _BaseMapState();
 }
 
+
 class _BaseMapState extends State<BaseMap> {
   MapboxMap? mapboxMap;
   gl.Position? currLocation;
@@ -65,11 +74,54 @@ class _BaseMapState extends State<BaseMap> {
   String? _currentStyleUri;
   bool locationError = false;
 
+  GpsState _gpsState = GpsState.uncentered;
+  ViewportState? _viewportState;
+
   // Layer visibility state — owned entirely by BaseMap
   bool _showBusStops = true;
   bool _showTrainLines = true;
   bool _showStationExits = true;
   bool _showStationBoundaries = true;
+
+  void _onMapScroll(MapContentGestureContext context) {
+    _onMapInteraction();
+  }
+
+  void _onMapZoom(MapContentGestureContext context) {
+    _onMapInteraction();
+  }
+
+  void _onMapInteraction() {
+    if (_gpsState != GpsState.uncentered) {
+      setState(() {
+        _gpsState = GpsState.uncentered;
+        _viewportState = const IdleViewportState();
+      });
+    }
+  }
+
+  Widget _buildGpsIcon() {
+    if (locationError) {
+      return const Icon(Icons.location_disabled_rounded);
+    }
+    switch (_gpsState) {
+      case GpsState.uncentered:
+        return Icon(
+          Icons.location_searching,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        );
+      case GpsState.centered:
+        return Icon(
+          Icons.my_location,
+          color: Theme.of(context).colorScheme.primary,
+        );
+      case GpsState.heading:
+        return Icon(
+          Icons.explore,
+          color: Theme.of(context).colorScheme.primary,
+        );
+    }
+  }
 
   @override
   void setState(fn) {
@@ -79,6 +131,14 @@ class _BaseMapState extends State<BaseMap> {
   @override
   void initState() {
     super.initState();
+    _gpsState = widget.initialGpsState;
+    if (_gpsState == GpsState.centered) {
+      _viewportState = FollowPuckViewportState(
+        zoom: widget.cameraOptions?.zoom ?? 17.0,
+        bearing: const FollowPuckViewportStateBearingConstant(0.0),
+        pitch: widget.cameraOptions?.pitch ?? 0.0,
+      );
+    }
     _loadPreferences();
   }
 
@@ -999,9 +1059,12 @@ class _BaseMapState extends State<BaseMap> {
                 ),
                 zoom: currLocation != null ? 17 : 9,
               ),
+          viewport: _viewportState,
           onMapCreated: _onMapCreated,
           onStyleLoadedListener: _onStyleLoaded,
           styleUri: MapboxStyles.STANDARD,
+          onScrollListener: _onMapScroll,
+          onZoomListener: _onMapZoom,
         ),
         Positioned(
           bottom: widget.bottomPadding ?? 16.0,
@@ -1019,29 +1082,54 @@ class _BaseMapState extends State<BaseMap> {
               FloatingActionButton(
                 heroTag: 'my_location_${widget.hashCode}',
                 onPressed: () async {
+                  if (locationError) {
+                    setState(() => locationError = false);
+                  }
+
                   final res = await LocationHelper.getUserLocation(context);
                   if (!res.hasError && res.position != null) {
                     setState(() {
                       locationError = false;
                       currLocation = res.position;
                     });
-                    mapboxMap?.flyTo(
-                      CameraOptions(
-                        zoom: 17,
-                        center: Point(
-                          coordinates: Position(
-                              res.position!.longitude, res.position!.latitude),
-                        ),
-                      ),
-                      MapAnimationOptions(duration: 2000, startDelay: 0),
-                    );
+
+                    if (_gpsState == GpsState.uncentered) {
+                      setStateWithViewportAnimation(() {
+                        _viewportState = FollowPuckViewportState(
+                          zoom: 17.0,
+                          bearing: const FollowPuckViewportStateBearingConstant(0.0),
+                          pitch: 0.0,
+                        );
+                        _gpsState = GpsState.centered;
+                      }, transition: const EasingViewportTransition(duration: Duration(milliseconds: 1000)));
+                    } else if (_gpsState == GpsState.centered) {
+                      setStateWithViewportAnimation(() {
+                        _viewportState = const FollowPuckViewportState(
+                          zoom: 17.0,
+                          bearing: FollowPuckViewportStateBearingHeading(),
+                          pitch: 45.0,
+                        );
+                        _gpsState = GpsState.heading;
+                      }, transition: const EasingViewportTransition(duration: Duration(milliseconds: 1000)));
+                    } else if (_gpsState == GpsState.heading) {
+                      setStateWithViewportAnimation(() {
+                        _viewportState = FollowPuckViewportState(
+                          zoom: 17.0,
+                          bearing: const FollowPuckViewportStateBearingConstant(0.0),
+                          pitch: 0.0,
+                        );
+                        _gpsState = GpsState.centered;
+                      }, transition: const EasingViewportTransition(duration: Duration(milliseconds: 1000)));
+                    }
                   } else {
-                    setState(() => locationError = true);
+                    setState(() {
+                      locationError = true;
+                      _gpsState = GpsState.uncentered;
+                      _viewportState = const IdleViewportState();
+                    });
                   }
                 },
-                child: (!locationError)
-                    ? const Icon(Icons.my_location)
-                    : const Icon(Icons.location_disabled_rounded),
+                child: _buildGpsIcon(),
               ),
             ],
           ),

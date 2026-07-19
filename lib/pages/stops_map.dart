@@ -161,6 +161,9 @@ class _StopsMapState extends State<StopsMap> {
                         bottomLeft: Radius.circular(18),
                         bottomRight: Radius.circular(18)),
                     child: BaseMap(
+                      initialGpsState: currLocation != null
+                          ? GpsState.centered
+                          : GpsState.uncentered,
                       cameraOptions: CameraOptions(
                         center: Point(
                           coordinates: currLocation != null
