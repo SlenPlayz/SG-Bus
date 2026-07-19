@@ -76,6 +76,7 @@ class _BaseMapState extends State<BaseMap> {
 
   GpsState _gpsState = GpsState.uncentered;
   ViewportState? _viewportState;
+  double _currentPitch = 0.0;
 
   // Layer visibility state — owned entirely by BaseMap
   bool _showBusStops = true;
@@ -97,6 +98,33 @@ class _BaseMapState extends State<BaseMap> {
         _gpsState = GpsState.uncentered;
         _viewportState = const IdleViewportState();
       });
+    }
+  }
+
+  void _toggle3d() {
+    final targetPitch = _currentPitch == 0.0 ? 45.0 : 0.0;
+
+    if (_gpsState == GpsState.centered) {
+      setStateWithViewportAnimation(() {
+        _viewportState = FollowPuckViewportState(
+          zoom: 17.0,
+          bearing: const FollowPuckViewportStateBearingConstant(0.0),
+          pitch: targetPitch,
+        );
+      }, transition: const EasingViewportTransition(duration: Duration(milliseconds: 300)));
+    } else if (_gpsState == GpsState.heading) {
+      setStateWithViewportAnimation(() {
+        _viewportState = FollowPuckViewportState(
+          zoom: 17.0,
+          bearing: const FollowPuckViewportStateBearingHeading(),
+          pitch: targetPitch,
+        );
+      }, transition: const EasingViewportTransition(duration: Duration(milliseconds: 300)));
+    } else {
+      mapboxMap?.easeTo(
+        CameraOptions(pitch: targetPitch),
+        MapAnimationOptions(duration: 300),
+      );
     }
   }
 
@@ -139,6 +167,7 @@ class _BaseMapState extends State<BaseMap> {
         pitch: widget.cameraOptions?.pitch ?? 0.0,
       );
     }
+    _currentPitch = widget.cameraOptions?.pitch ?? 0.0;
     _loadPreferences();
   }
 
@@ -1065,6 +1094,14 @@ class _BaseMapState extends State<BaseMap> {
           styleUri: MapboxStyles.STANDARD,
           onScrollListener: _onMapScroll,
           onZoomListener: _onMapZoom,
+          onCameraChangeListener: (data) {
+            final newPitch = data.cameraState.pitch;
+            if (_currentPitch != newPitch) {
+              setState(() {
+                _currentPitch = newPitch;
+              });
+            }
+          },
         ),
         Positioned(
           bottom: widget.bottomPadding ?? 16.0,
@@ -1073,6 +1110,18 @@ class _BaseMapState extends State<BaseMap> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
+              FloatingActionButton.small(
+                heroTag: 'map_3d_2d_toggle_${widget.hashCode}',
+                onPressed: _toggle3d,
+                child: Text(
+                  _currentPitch == 0.0 ? '3D' : '2D',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               FloatingActionButton.small(
                 heroTag: 'map_layer_toggle_${widget.hashCode}',
                 onPressed: () => _showMapTypeBottomSheet(context),
