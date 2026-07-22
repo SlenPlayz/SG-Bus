@@ -42,11 +42,8 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
   SharedPreferences? prefs;
 
   static const _publicBusTypes = {
+    'Public Bus',
     'TRUNK',
-    'FEEDER',
-    'EXPRESS',
-    'INDUSTRIAL',
-    'CITY_LINK'
   };
 
   @override
@@ -177,9 +174,9 @@ class _CustomSearchPageState extends State<CustomSearchPage> {
 
   String _getServiceType(String serviceNo) {
     if (svcsRaw.containsKey(serviceNo)) {
-      return svcsRaw[serviceNo]['type'] ?? 'TRUNK';
+      return svcsRaw[serviceNo]['type'] ?? 'Public Bus';
     }
-    return 'TRUNK';
+    return 'Public Bus';
   }
 
   Widget _buildBusTile({

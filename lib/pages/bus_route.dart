@@ -230,24 +230,21 @@ class _BusRouteState extends State<BusRoute> {
     switch (currRoute['type']) {
       case 'SHUTTLEATTRACTIONS':
         typeIcon = Icons.attractions_rounded;
-        typeName = 'Shuttle Bus Services to Attraction';
         break;
       case 'SHUTTLEHOSPITALS':
         typeIcon = Icons.local_hospital_rounded;
-        typeName = 'Shuttle Bus Services to Hospital';
         break;
       case 'PREMIUM':
         typeIcon = Icons.corporate_fare_rounded;
-        typeName = 'Premium Bus (Private)';
         break;
       default:
         if (currRoute['fare'] != null || currRoute['schedule'] != null) {
           typeIcon = Icons.directions_bus_rounded;
-          typeName = 'Information';
         }
     }
+    typeName = currRoute['type'] ?? ((currRoute['fare'] != null || currRoute['schedule'] != null) ? 'Information' : null);
 
-    final bool isPublicBus = ['TRUNK', 'FEEDER', 'EXPRESS', 'INDUSTRIAL', 'CITY_LINK'].contains(currRoute['type']);
+    final bool isPublicBus = ['Public Bus', 'TRUNK'].contains(currRoute['type']);
     final String titleText = isPublicBus ? 'Bus $sno' : sno.toString();
 
     return DefaultTabController(

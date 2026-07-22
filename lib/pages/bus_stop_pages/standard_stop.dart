@@ -21,25 +21,22 @@ import 'package:sgbus/scripts/utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _publicBusTypes = {
+  'Public Bus',
   'TRUNK',
-  'FEEDER',
-  'EXPRESS',
-  'INDUSTRIAL',
-  'CITY_LINK'
 };
 
 String _getServiceType(String serviceNo) {
   final svcs = getSvcs();
   if (svcs != null) {
     if (svcs.containsKey(serviceNo)) {
-      return svcs[serviceNo]['type'] ?? 'TRUNK';
+      return svcs[serviceNo]['type'] ?? 'Public Bus';
     }
     final splitCode = serviceNo.split(" - ");
     if (splitCode.isNotEmpty && svcs.containsKey(splitCode[0])) {
-      return svcs[splitCode[0]]['type'] ?? 'TRUNK';
+      return svcs[splitCode[0]]['type'] ?? 'Public Bus';
     }
   }
-  return 'TRUNK';
+  return 'Public Bus';
 }
 
 String _getDisplayGroup(String type) {
@@ -48,18 +45,10 @@ String _getDisplayGroup(String type) {
 }
 
 String _getGroupDisplayName(String group) {
-  switch (group) {
-    case 'PUBLIC_BUS':
-      return 'Public Buses';
-    case 'PREMIUM':
-      return 'Premium Buses (Private)';
-    case 'SHUTTLEATTRACTIONS':
-      return 'Shuttle Bus Services to Attractions';
-    case 'SHUTTLEHOSPITALS':
-      return 'Shuttle Bus Services to Hospitals';
-    default:
-      return group;
+  if (group == 'PUBLIC_BUS') {
+    return 'Public Buses';
   }
+  return group;
 }
 
 class StandardStop extends StatefulWidget {

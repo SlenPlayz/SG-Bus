@@ -247,22 +247,19 @@ class _RecentSearchesWidgetState extends State<RecentSearchesWidget> {
   }
 
   static const _publicBusTypes = {
+    'Public Bus',
     'TRUNK',
-    'FEEDER',
-    'EXPRESS',
-    'INDUSTRIAL',
-    'CITY_LINK'
   };
 
   String _getServiceType(String serviceNo) {
     if (svcs.containsKey(serviceNo)) {
-      return svcs[serviceNo]['type'] ?? 'TRUNK';
+      return svcs[serviceNo]['type'] ?? 'Public Bus';
     }
     final splitCode = serviceNo.split(" - ");
     if (splitCode.isNotEmpty && svcs.containsKey(splitCode[0])) {
-      return svcs[splitCode[0]]['type'] ?? 'TRUNK';
+      return svcs[splitCode[0]]['type'] ?? 'Public Bus';
     }
-    return 'TRUNK';
+    return 'Public Bus';
   }
 
   Widget _buildBusTile({
