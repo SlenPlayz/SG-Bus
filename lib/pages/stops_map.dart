@@ -3,13 +3,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as gl;
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/base_map.dart';
 import 'package:sgbus/components/floating_ad.dart';
-import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/location_helper.dart';
@@ -24,6 +22,7 @@ class StopsMap extends StatefulWidget {
 
 class _StopsMapState extends State<StopsMap> {
   bool isLoaded = false;
+  bool _adFailedToLoad = false;
   gl.Position? currLocation;
   String? _stopsGeoJson;
 
@@ -184,7 +183,7 @@ class _StopsMapState extends State<StopsMap> {
                       topPadding: MediaQuery.paddingOf(context).top,
                       bottomPadding: getNavBarClearance(
                         context,
-                        extraSpacing: 65,
+                        extraSpacing: _adFailedToLoad ? 8 : 65,
                       ),
                     ),
                   ),
@@ -199,6 +198,13 @@ class _StopsMapState extends State<StopsMap> {
                         bottom: kNavBarPillHeight + kNavBarBottomGap + 8,
                         // left: 3,
                       ),
+                      onAdFailedToLoad: () {
+                        if (mounted) {
+                          setState(() {
+                            _adFailedToLoad = true;
+                          });
+                        }
+                      },
                     ),
                   ),
                 ),

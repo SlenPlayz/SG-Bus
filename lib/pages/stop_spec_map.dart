@@ -1,13 +1,9 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:sgbus/components/base_map.dart';
 import 'package:sgbus/components/floating_ad.dart';
-import 'package:sgbus/env.dart';
 import 'package:sgbus/pages/stop.dart';
 
 class StopSpecMap extends StatefulWidget {
@@ -21,6 +17,7 @@ class StopSpecMap extends StatefulWidget {
 
 class _StopSpecMapState extends State<StopSpecMap> {
   MapboxMap? mapboxMap;
+  bool _adFailedToLoad = false;
 
   @override
   void setState(fn) {
@@ -138,7 +135,8 @@ class _StopSpecMapState extends State<StopSpecMap> {
               showCompass: true,
               showScaleBar: true,
               topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
-              bottomPadding: MediaQuery.paddingOf(context).bottom + 65,
+              bottomPadding: MediaQuery.paddingOf(context).bottom +
+                  (_adFailedToLoad ? 16 : 65),
             ),
           ),
           Positioned(
@@ -151,6 +149,13 @@ class _StopSpecMapState extends State<StopSpecMap> {
                   bottom: 8,
                   // left: 3,
                 ),
+                onAdFailedToLoad: () {
+                  if (mounted) {
+                    setState(() {
+                      _adFailedToLoad = true;
+                    });
+                  }
+                },
               ),
             ),
           ),

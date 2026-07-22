@@ -23,6 +23,7 @@ class RouteMap extends StatefulWidget {
 
 class _RouteMapState extends State<RouteMap> {
   bool isLoaded = false;
+  bool _adFailedToLoad = false;
 
   List<LatLng> routeAsLatLng = [];
   List bsids = [];
@@ -346,7 +347,8 @@ class _RouteMapState extends State<RouteMap> {
               showCompass: true,
               showScaleBar: true,
               topPadding: MediaQuery.paddingOf(context).top + kToolbarHeight,
-              bottomPadding: MediaQuery.paddingOf(context).bottom + 65,
+              bottomPadding: MediaQuery.paddingOf(context).bottom +
+                  (_adFailedToLoad ? 16 : 65),
               loadDefaultBusStops: false,
               showBusStopsToggle: false,
             ),
@@ -361,6 +363,13 @@ class _RouteMapState extends State<RouteMap> {
                   bottom: 8,
                   // left: 3,
                 ),
+                onAdFailedToLoad: () {
+                  if (mounted) {
+                    setState(() {
+                      _adFailedToLoad = true;
+                    });
+                  }
+                },
               ),
             ),
           ),

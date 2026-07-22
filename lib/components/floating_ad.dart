@@ -9,10 +9,14 @@ import 'package:sgbus/env.dart';
 
 class FloatingAd extends StatefulWidget {
   final EdgeInsetsGeometry margin;
+  final VoidCallback? onAdLoaded;
+  final VoidCallback? onAdFailedToLoad;
 
   const FloatingAd({
     Key? key,
     required this.margin,
+    this.onAdLoaded,
+    this.onAdFailedToLoad,
   }) : super(key: key);
 
   @override
@@ -31,6 +35,11 @@ class _FloatingAdState extends State<FloatingAd> {
       _loadAd();
     } else {
       _hasError = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          widget.onAdFailedToLoad?.call();
+        }
+      });
     }
   }
 
@@ -41,11 +50,17 @@ class _FloatingAdState extends State<FloatingAd> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          if (mounted) setState(() => _isLoaded = true);
+          if (mounted) {
+            setState(() => _isLoaded = true);
+            widget.onAdLoaded?.call();
+          }
         },
         onAdFailedToLoad: (ad, err) async {
           ad.dispose();
-          if (mounted) setState(() => _hasError = true);
+          if (mounted) {
+            setState(() => _hasError = true);
+            widget.onAdFailedToLoad?.call();
+          }
           if (!kReleaseMode) print(err);
           await Sentry.captureException(err, stackTrace: StackTrace.current);
         },

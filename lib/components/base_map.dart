@@ -171,6 +171,26 @@ class _BaseMapState extends State<BaseMap> {
     _loadPreferences();
   }
 
+  @override
+  void didUpdateWidget(BaseMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.bottomPadding != oldWidget.bottomPadding) {
+      final bottomMargin = widget.bottomPadding ?? 0;
+      final logoLeftMargin =
+          defaultTargetPlatform == TargetPlatform.iOS ? 10.0 : null;
+      final attributionLeftMargin =
+          defaultTargetPlatform == TargetPlatform.iOS ? 95.0 : null;
+      mapboxMap?.logo.updateSettings(
+          LogoSettings(marginBottom: bottomMargin, marginLeft: logoLeftMargin));
+      mapboxMap?.attribution.updateSettings(AttributionSettings(
+          marginBottom: bottomMargin,
+          marginLeft: attributionLeftMargin,
+          position: defaultTargetPlatform == TargetPlatform.iOS
+              ? OrnamentPosition.BOTTOM_LEFT
+              : null));
+    }
+  }
+
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
@@ -464,8 +484,18 @@ class _BaseMapState extends State<BaseMap> {
     map.location.updateSettings(
         LocationComponentSettings(enabled: true, puckBearingEnabled: true));
     final bottomMargin = widget.bottomPadding ?? 0;
-    map.logo.updateSettings(LogoSettings(marginBottom: bottomMargin));
-    map.attribution.updateSettings(AttributionSettings(marginBottom: bottomMargin));
+    final logoLeftMargin =
+        defaultTargetPlatform == TargetPlatform.iOS ? 10.0 : null;
+    final attributionLeftMargin =
+        defaultTargetPlatform == TargetPlatform.iOS ? 95.0 : null;
+    map.logo.updateSettings(
+        LogoSettings(marginBottom: bottomMargin, marginLeft: logoLeftMargin));
+    map.attribution.updateSettings(AttributionSettings(
+        marginBottom: bottomMargin,
+        marginLeft: attributionLeftMargin,
+        position: defaultTargetPlatform == TargetPlatform.iOS
+            ? OrnamentPosition.BOTTOM_LEFT
+            : null));
     if (widget.showCompass) {
       map.compass.updateSettings(CompassSettings(
           enabled: true, marginTop: widget.topPadding ?? 0, marginRight: 10));
