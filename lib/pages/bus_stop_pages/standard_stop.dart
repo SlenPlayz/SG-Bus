@@ -92,7 +92,22 @@ class _StandardStopState extends State<StandardStop> {
       return;
     }
     try {
-      final url = Uri.parse('$endpoint/api/${widget.stopid}');
+      final Map<String, String> queryParams = {};
+      if (coords != null && coords is List && coords.length >= 2) {
+        final lat = coords[1];
+        final lng = coords[0];
+        queryParams['lat'] = '$lat';
+        queryParams['lng'] = '$lng';
+        queryParams['location'] = '$lat,$lng';
+      }
+      if (services.isNotEmpty) {
+        queryParams['buses'] = services.join(',');
+      }
+
+      final url = Uri.parse('$endpoint/api/v2/timings/default/${widget.stopid}')
+          .replace(
+              queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
       Response timings = await get(url).timeout(Duration(seconds: 45));
       var response = timings.body;
 
@@ -252,7 +267,14 @@ class _StandardStopState extends State<StandardStop> {
 
   void calcTimings() {
     if (arrivalData["Services"] != null) {
+      final bool isCM = arrivalData["CM"] == true ||
+          arrivalData["CM"] == "true" ||
+          arrivalData["CM"] == 1;
+
       arrivalData['Services'].forEach((x) {
+        if (isCM) {
+          x["CM"] = true;
+        }
         bool multiple = false;
 
         arrivalData["Services"].forEach((c) {
@@ -269,6 +291,10 @@ class _StandardStopState extends State<StandardStop> {
               var index = arrTimings.indexOf(element);
               if (element['ServiceNo'] == x['ServiceNo'] &&
                   element["NextBus"] == null) {
+                if (isCM) {
+                  x["CM"] = true;
+                  c["CM"] = true;
+                }
                 x["to"] = getStopByID(x["NextBus"]["DestinationCode"])["Name"];
                 c["to"] = getStopByID(c["NextBus"]["DestinationCode"])["Name"];
                 arrTimings[index] = x;
@@ -281,6 +307,9 @@ class _StandardStopState extends State<StandardStop> {
           arrTimings.forEach((element) {
             var index = arrTimings.indexOf(element);
             if (element['ServiceNo'] == x['ServiceNo']) {
+              if (isCM) {
+                x["CM"] = true;
+              }
               arrTimings[index] = x;
             }
           });
@@ -406,7 +435,8 @@ class _StandardStopState extends State<StandardStop> {
               color:
                   Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
             ),
-            child: BusTiming(entry.value),
+            child: BusTiming(entry.value,
+                stopCoords: coords, stopCode: widget.stopid, stopName: name),
           ),
       ],
     );
