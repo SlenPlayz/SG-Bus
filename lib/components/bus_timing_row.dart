@@ -246,11 +246,15 @@ class _BusTimingState extends State<BusTiming> {
 
                         return Column(
                           children: matches.map((match) {
+                            final String? labelKey =
+                                match['label']?.toString().trim();
                             final dir = match['direction'];
                             final String? dirLabel =
-                                (matches.length > 1 && dir != null)
-                                    ? 'Direction $dir'
-                                    : null;
+                                (labelKey != null && labelKey.isNotEmpty)
+                                    ? labelKey
+                                    : ((matches.length > 1 && dir != null)
+                                        ? 'Direction $dir'
+                                        : null);
 
                             final wd = match['WD'] as Map<String, dynamic>?;
                             final sat = match['SAT'] as Map<String, dynamic>?;
@@ -278,18 +282,24 @@ class _BusTimingState extends State<BusTiming> {
                                   if (dirLabel != null)
                                     Padding(
                                       padding: const EdgeInsets.fromLTRB(
-                                          16, 12, 16, 4),
+                                          10, 12, 10, 12),
                                       child: Text(
                                         dirLabel,
+                                        textAlign: TextAlign.center,
                                         style: Theme.of(context)
                                             .textTheme
                                             .labelLarge
                                             ?.copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontVariations: const [
+                                            FontVariation('ROND', 100),
+                                            FontVariation.width(120),
+                                            FontVariation.weight(800),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   Table(
@@ -305,10 +315,11 @@ class _BusTimingState extends State<BusTiming> {
                                               .colorScheme
                                               .primaryContainer
                                               .withOpacity(0.2),
-                                          borderRadius:
-                                              const BorderRadius.vertical(
-                                            top: Radius.circular(16),
-                                          ),
+                                          borderRadius: dirLabel == null
+                                              ? const BorderRadius.vertical(
+                                                  top: Radius.circular(16),
+                                                )
+                                              : null,
                                         ),
                                         children: [
                                           _buildTableCell(context, 'Day',

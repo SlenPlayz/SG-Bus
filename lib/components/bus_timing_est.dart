@@ -1,22 +1,25 @@
 import 'package:flutter/material.dart';
 
 class BusTimingEst extends StatelessWidget {
-  const BusTimingEst({Key? key, this.data, this.isCM = false}) : super(key: key);
+  const BusTimingEst({Key? key, this.data, this.isCM = false})
+      : super(key: key);
   final data;
   final bool isCM;
 
   Widget _buildInfoPill(BuildContext context, String label) {
-    return Padding(
+    Widget pill = Padding(
       padding: const EdgeInsets.only(top: 2),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+            color:
+                Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
+              color:
+                  Theme.of(context).colorScheme.outlineVariant.withOpacity(0.3),
               width: 0.5,
             ),
           ),
@@ -46,6 +49,25 @@ class BusTimingEst extends StatelessWidget {
         ),
       ),
     );
+
+    if (label == 'Estimated') {
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Estimated timings are based on Citymapper data"),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        },
+        child: pill,
+      );
+    }
+
+    return pill;
   }
 
   @override
@@ -98,8 +120,8 @@ class BusTimingEst extends StatelessWidget {
       }
 
       hasType = doubleStat.isNotEmpty;
-      hasLoad = data['Load'] != null &&
-          data['Load'].toString().trim().isNotEmpty;
+      hasLoad =
+          data['Load'] != null && data['Load'].toString().trim().isNotEmpty;
       hasFeature = data['Feature'] != null &&
           data['Feature'].toString().trim().isNotEmpty;
 
@@ -119,7 +141,7 @@ class BusTimingEst extends StatelessWidget {
       estimatedArrTime = '-';
     }
 
-    Widget content = SizedBox(
+    return SizedBox(
         width: width * 0.2,
         height: (data != null &&
                 data["VisitNumber"] != null &&
@@ -245,24 +267,5 @@ class BusTimingEst extends StatelessWidget {
               )
           ],
         ));
-
-    if (cmActive) {
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Estimated timings are provided by Citymapper"),
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        },
-        child: content,
-      );
-    }
-
-    return content;
   }
 }
