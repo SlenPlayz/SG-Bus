@@ -1,18 +1,11 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sgbus/components/searchBar.dart';
 import 'package:sgbus/components/favouritesWidget.dart';
 import 'package:sgbus/components/nearbyWidget.dart';
-import 'package:sgbus/pages/alert_webview_page.dart';
+import 'package:sgbus/components/alert_sheet.dart';
 import 'package:sgbus/pages/cepas_reader.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
-
-import 'dart:ui' as ui;
-
-import 'package:url_launcher/url_launcher.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -190,110 +183,9 @@ class _HomeState extends State<Home> {
                                                                 .compact,
                                                         dense: true,
                                                         onTap: () {
-                                                          if (alert.value[
-                                                                  "type"] ==
-                                                              "webview") {
-                                                            Navigator.of(context).push(MaterialPageRoute(
-                                                                builder: (context) => AlertWebviewPage(
-                                                                    header: alert
-                                                                            .value[
-                                                                        "header"],
-                                                                    message: alert
-                                                                            .value[
-                                                                        "message"],
-                                                                    link: alert
-                                                                            .value[
-                                                                        "link"],
-                                                                    linkDesc: alert
-                                                                            .value[
-                                                                        "linkDesc"])));
-                                                          }
-                                                          if (alert.value[
-                                                                  "type"] ==
-                                                              "text") {
-                                                            showModalBottomSheet(
-                                                              context: context,
-                                                              builder:
-                                                                  (BuildContext
-                                                                      context) {
-                                                                return BottomSheet(
-                                                                  onClosing:
-                                                                      () {},
-                                                                  showDragHandle:
-                                                                      true,
-                                                                  builder:
-                                                                      (BuildContext
-                                                                          context) {
-                                                                    return SingleChildScrollView(
-                                                                        child:
-                                                                            Column(
-                                                                      children: [
-                                                                        Padding(
-                                                                          padding: EdgeInsets.fromLTRB(
-                                                                              15,
-                                                                              0,
-                                                                              15,
-                                                                              0),
-                                                                          child:
-                                                                              Container(
-                                                                            width:
-                                                                                double.infinity,
-                                                                            child:
-                                                                                Text(
-                                                                              alert.value["header"],
-                                                                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                                                                fontVariations: [
-                                                                                  FontVariation('ROND', 100),
-                                                                                  FontVariation.width(100),
-                                                                                  FontVariation.weight(1000)
-                                                                                ],
-                                                                              ),
-                                                                              textAlign: TextAlign.left,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .fromLTRB(
-                                                                              15.0,
-                                                                              15,
-                                                                              15,
-                                                                              100),
-                                                                          child:
-                                                                              MarkdownBody(
-                                                                            data:
-                                                                                alert.value["message"],
-                                                                            styleSheet: MarkdownStyleSheet(
-                                                                                p: TextStyle(
-                                                                              fontVariations: [
-                                                                                FontVariation(
-                                                                                  'ROND',
-                                                                                  100,
-                                                                                ),
-                                                                                FontVariation.weight(
-                                                                                  400,
-                                                                                ),
-                                                                              ],
-                                                                            )),
-                                                                            onTapLink: (text,
-                                                                                href,
-                                                                                title) {
-                                                                              if (href != null) {
-                                                                                launchUrl(
-                                                                                  Uri.parse(href),
-                                                                                  mode: LaunchMode.externalApplication,
-                                                                                );
-                                                                              }
-                                                                            },
-                                                                          ),
-                                                                        )
-                                                                      ],
-                                                                    ));
-                                                                  },
-                                                                );
-                                                              },
-                                                            );
-                                                          }
+                                                          showAlertDetails(
+                                                              context,
+                                                              alert.value);
                                                         },
                                                         title: Text(
                                                           alert.value["header"],

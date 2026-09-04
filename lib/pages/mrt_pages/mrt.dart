@@ -4,13 +4,13 @@ import 'package:from_css_color/from_css_color.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:sgbus/components/searchBar.dart';
-import 'package:sgbus/pages/cepas_reader.dart';
 import 'package:sgbus/pages/mrt_pages/mrt_map.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/location_helper.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:sgbus/pages/mrt_pages/station_page.dart';
 import 'package:sgbus/components/trainStationListView.dart';
+import 'package:sgbus/components/alert_sheet.dart';
 import 'dart:math';
 
 class MRT extends StatefulWidget {
@@ -486,9 +486,12 @@ class _LineStatusListTileState extends State<LineStatusListTile> {
   bool hasLoadedLaunch = hasFetchedLaunchData.value;
 
   void fetchLinesAlerts(String lineCode) {
-    for (var alert in widget.alerts) {
-      if (alert["affectedLine"] == lineCode) {
-        activeAlertData = alert;
+    activeAlertData = null;
+    if (widget.alerts != null) {
+      for (var alert in widget.alerts) {
+        if (alert["affectedLine"] == lineCode) {
+          activeAlertData = alert;
+        }
       }
     }
   }
@@ -497,11 +500,23 @@ class _LineStatusListTileState extends State<LineStatusListTile> {
   void initState() {
     fetchLinesAlerts(widget.line["code"]);
     hasFetchedLaunchData.addListener(() {
-      setState(() {
-        hasLoadedLaunch = hasFetchedLaunchData.value;
-      });
+      if (mounted) {
+        setState(() {
+          hasLoadedLaunch = hasFetchedLaunchData.value;
+        });
+      }
     });
     super.initState();
+  }
+
+  @override
+  void didUpdateWidget(covariant LineStatusListTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.alerts != widget.alerts || oldWidget.line != widget.line) {
+      setState(() {
+        fetchLinesAlerts(widget.line["code"]);
+      });
+    }
   }
 
   @override
@@ -512,6 +527,11 @@ class _LineStatusListTileState extends State<LineStatusListTile> {
         color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
       ),
       child: ListTile(
+        onTap: activeAlertData != null
+            ? () {
+                showAlertDetails(context, activeAlertData);
+              }
+            : null,
         // visualDensity: VisualDensity.compact,
         // dense: true,
         title: Text(
