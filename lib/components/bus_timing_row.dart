@@ -43,7 +43,7 @@ class _BusTimingState extends State<BusTiming> {
     return stopCode;
   }
 
-  Future<List<dynamic>> _getfirstLastTimings(String stopCode) async {
+  static Future<List<dynamic>> getFirstLastTimings(String stopCode) async {
     if (_firstLastTimingsCache.containsKey(stopCode)) {
       return _firstLastTimingsCache[stopCode]!;
     }
@@ -58,15 +58,6 @@ class _BusTimingState extends State<BusTiming> {
     }
   }
 
-  String _formatTiming(String? rawTime) {
-    if (rawTime == null || rawTime.isEmpty || rawTime == '-') return '-';
-    final clean = rawTime.trim();
-    if (clean.length == 4 && RegExp(r'^\d{4}$').hasMatch(clean)) {
-      return '${clean.substring(0, 2)}:${clean.substring(2)}';
-    }
-    return clean;
-  }
-
   void _showFirstLastBusBottomSheet(BuildContext context) {
     final serviceNo = widget.data['ServiceNo']?.toString() ?? '';
     final stopCode = widget.stopCode ?? '';
@@ -77,390 +68,16 @@ class _BusTimingState extends State<BusTiming> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       isScrollControlled: true,
-      builder: (BuildContext context) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28.0)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
-            child: Container(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 36,
-                        height: 4,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant
-                              .withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 6),
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).colorScheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            serviceNo,
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onPrimaryContainer,
-                              fontVariations: const [
-                                FontVariation('ROND', 100),
-                                FontVariation.width(120),
-                                FontVariation.weight(900),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'First & Last Bus Timings',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleMedium
-                                    ?.copyWith(
-                                  fontVariations: [
-                                    FontVariation('ROND', 100),
-                                    FontVariation.width(110),
-                                    FontVariation.weight(900)
-                                  ],
-                                ),
-                              ),
-                              if (displayStopName.isNotEmpty)
-                                Text(
-                                  "at " + displayStopName,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                    fontVariations: [
-                                      FontVariation('ROND', 100),
-                                      FontVariation.width(110),
-                                      FontVariation.weight(700)
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    FutureBuilder<List<dynamic>>(
-                      future: _getfirstLastTimings(stopCode),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
-                              child: ExpressiveLoadingIndicator(),
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError || !snapshot.hasData) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.error_outline_rounded,
-                                  size: 40,
-                                  color: Theme.of(context).colorScheme.error,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Unable to load bus timings',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        final allData = snapshot.data!;
-                        final matches = allData.where((item) {
-                          final sNo = item['serviceNo']?.toString();
-                          return sNo != null &&
-                              sNo.toLowerCase() == serviceNo.toLowerCase();
-                        }).toList();
-
-                        if (matches.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            child: Column(
-                              children: [
-                                Icon(
-                                  Icons.access_time_rounded,
-                                  size: 40,
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant
-                                      .withOpacity(0.6),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'No timing information available for Service $serviceNo.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return Column(
-                          children: matches.map((match) {
-                            final String? labelKey =
-                                match['label']?.toString().trim();
-                            final dir = match['direction'];
-                            final String? dirLabel =
-                                (labelKey != null && labelKey.isNotEmpty)
-                                    ? labelKey
-                                    : ((matches.length > 1 && dir != null)
-                                        ? 'Direction $dir'
-                                        : null);
-
-                            final wd = match['WD'] as Map<String, dynamic>?;
-                            final sat = match['SAT'] as Map<String, dynamic>?;
-                            final sun =
-                                match['SUN / PH'] as Map<String, dynamic>?;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceVariant
-                                    .withOpacity(0.4),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withOpacity(0.3),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  if (dirLabel != null)
-                                    Padding(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          10, 12, 10, 12),
-                                      child: Text(
-                                        dirLabel,
-                                        textAlign: TextAlign.center,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontVariations: const [
-                                            FontVariation('ROND', 100),
-                                            FontVariation.width(120),
-                                            FontVariation.weight(800),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  Table(
-                                    columnWidths: const {
-                                      0: FlexColumnWidth(1.2),
-                                      1: FlexColumnWidth(1.0),
-                                      2: FlexColumnWidth(1.0),
-                                    },
-                                    children: [
-                                      TableRow(
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primaryContainer
-                                              .withOpacity(0.2),
-                                          borderRadius: dirLabel == null
-                                              ? const BorderRadius.vertical(
-                                                  top: Radius.circular(16),
-                                                )
-                                              : null,
-                                        ),
-                                        children: [
-                                          _buildTableCell(context, 'Day',
-                                              isHeader: true),
-                                          _buildTableCell(context, 'First Bus',
-                                              isHeader: true,
-                                              icon: Icons.wb_sunny_outlined),
-                                          _buildTableCell(context, 'Last Bus',
-                                              isHeader: true,
-                                              icon: Icons.bedtime_outlined),
-                                        ],
-                                      ),
-                                      _buildTableRow(
-                                          context,
-                                          'Weekdays',
-                                          _formatTiming(wd?['First']),
-                                          _formatTiming(wd?['Last'])),
-                                      _buildTableRow(
-                                          context,
-                                          'Saturdays',
-                                          _formatTiming(sat?['First']),
-                                          _formatTiming(sat?['Last'])),
-                                      _buildTableRow(
-                                          context,
-                                          'Sun / PH',
-                                          _formatTiming(sun?['First']),
-                                          _formatTiming(sun?['Last']),
-                                          isLast: true),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      builder: (BuildContext sheetContext) {
+        return FirstLastBusBottomSheet(
+          serviceNo: serviceNo,
+          stopCode: stopCode,
+          displayStopName: displayStopName,
         );
       },
-    );
-  }
-
-  Widget _buildTableCell(BuildContext context, String text,
-      {bool isHeader = false, IconData? icon}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        mainAxisAlignment: isHeader && icon != null
-            ? MainAxisAlignment.center
-            : MainAxisAlignment.start,
-        children: [
-          if (icon != null) ...[
-            Icon(
-              icon,
-              size: 14,
-              color: isHeader
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface,
-            ),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            text,
-            textAlign: isHeader ? TextAlign.center : TextAlign.left,
-            style: TextStyle(
-              fontSize: isHeader ? 12 : 14,
-              fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
-              color: isHeader
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurface,
-              fontVariations: const [
-                FontVariation('ROND', 100),
-                FontVariation.weight(600),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  TableRow _buildTableRow(
-      BuildContext context, String day, String first, String last,
-      {bool isLast = false}) {
-    return TableRow(
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(
-                bottom: BorderSide(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .outlineVariant
-                      .withOpacity(0.2),
-                ),
-              ),
-      ),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Text(
-            day,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Text(
-            first,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontVariations: [
-                FontVariation('ROND', 100),
-                FontVariation.weight(700),
-              ],
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Text(
-            last,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 15,
-              fontVariations: [
-                FontVariation('ROND', 100),
-                FontVariation.weight(700),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1021,3 +638,435 @@ class BusMarkerData {
     this.load,
   });
 }
+
+class FirstLastBusBottomSheet extends StatefulWidget {
+  final String serviceNo;
+  final String stopCode;
+  final String displayStopName;
+
+  const FirstLastBusBottomSheet({
+    Key? key,
+    required this.serviceNo,
+    required this.stopCode,
+    required this.displayStopName,
+  }) : super(key: key);
+
+  @override
+  State<FirstLastBusBottomSheet> createState() =>
+      _FirstLastBusBottomSheetState();
+}
+
+class _FirstLastBusBottomSheetState extends State<FirstLastBusBottomSheet> {
+  late final Future<List<dynamic>> _timingsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _timingsFuture = _BusTimingState.getFirstLastTimings(widget.stopCode);
+  }
+
+  String _formatTiming(String? rawTime) {
+    if (rawTime == null || rawTime.isEmpty || rawTime == '-') return '-';
+    final clean = rawTime.trim();
+    if (clean.length == 4 && RegExp(r'^\d{4}$').hasMatch(clean)) {
+      return '${clean.substring(0, 2)}:${clean.substring(2)}';
+    }
+    return clean;
+  }
+
+  Widget _buildTableCell(BuildContext context, String text,
+      {bool isHeader = false, IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        mainAxisAlignment: isHeader && icon != null
+            ? MainAxisAlignment.center
+            : MainAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Icon(
+              icon,
+              size: 14,
+              color: isHeader
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+            const SizedBox(width: 4),
+          ],
+          Text(
+            text,
+            textAlign: isHeader ? TextAlign.center : TextAlign.left,
+            style: TextStyle(
+              fontSize: isHeader ? 12 : 14,
+              fontWeight: isHeader ? FontWeight.bold : FontWeight.w500,
+              color: isHeader
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurface,
+              fontVariations: const [
+                FontVariation('ROND', 100),
+                FontVariation.weight(600),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildTableRow(
+      BuildContext context, String day, String first, String last,
+      {bool isLast = false}) {
+    return TableRow(
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outlineVariant
+                      .withOpacity(0.2),
+                ),
+              ),
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Text(
+            day,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Text(
+            first,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 15,
+              fontVariations: [
+                FontVariation('ROND', 100),
+                FontVariation.weight(700),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Text(
+            last,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 15,
+              fontVariations: [
+                FontVariation('ROND', 100),
+                FontVariation.weight(700),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(28.0)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+        child: Container(
+          color: Theme.of(context).colorScheme.surface.withOpacity(0.92),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant
+                          .withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color:
+                            Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.serviceNo,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimaryContainer,
+                          fontVariations: const [
+                            FontVariation('ROND', 100),
+                            FontVariation.width(120),
+                            FontVariation.weight(900),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'First & Last Bus Timings',
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                              fontVariations: const [
+                                FontVariation('ROND', 100),
+                                FontVariation.width(110),
+                                FontVariation.weight(900),
+                              ],
+                            ),
+                          ),
+                          if (widget.displayStopName.isNotEmpty)
+                            Text(
+                              "at ${widget.displayStopName}",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                fontVariations: const [
+                                  FontVariation('ROND', 100),
+                                  FontVariation.width(110),
+                                  FontVariation.weight(700),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: FutureBuilder<List<dynamic>>(
+                      future: _timingsFuture,
+                      initialData: _BusTimingState
+                          ._firstLastTimingsCache[widget.stopCode],
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                                ConnectionState.waiting &&
+                            !snapshot.hasData) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: Center(
+                              child: ExpressiveLoadingIndicator(),
+                            ),
+                          );
+                        }
+                        if (snapshot.hasError || !snapshot.hasData) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.error_outline_rounded,
+                                  size: 40,
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Unable to load bus timings',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        final allData = snapshot.data!;
+                        final matches = allData.where((item) {
+                          final sNo = item['serviceNo']?.toString();
+                          return sNo != null &&
+                              sNo.toLowerCase() ==
+                                  widget.serviceNo.toLowerCase();
+                        }).toList();
+
+                        if (matches.isEmpty) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.access_time_rounded,
+                                  size: 40,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant
+                                      .withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No timing information available for Service ${widget.serviceNo}.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: matches.map((match) {
+                            final String? labelKey =
+                                match['label']?.toString().trim();
+                            final dir = match['direction'];
+                            final String? dirLabel =
+                                (labelKey != null && labelKey.isNotEmpty)
+                                    ? labelKey
+                                    : ((matches.length > 1 && dir != null)
+                                        ? 'Direction $dir'
+                                        : null);
+
+                            final wd = match['WD'] as Map<String, dynamic>?;
+                            final sat = match['SAT'] as Map<String, dynamic>?;
+                            final sun =
+                                match['SUN / PH'] as Map<String, dynamic>?;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceVariant
+                                    .withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant
+                                      .withOpacity(0.3),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  if (dirLabel != null)
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          10, 12, 10, 12),
+                                      child: Text(
+                                        dirLabel,
+                                        textAlign: TextAlign.center,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontVariations: const [
+                                            FontVariation('ROND', 100),
+                                            FontVariation.width(120),
+                                            FontVariation.weight(800),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  Table(
+                                    columnWidths: const {
+                                      0: FlexColumnWidth(1.2),
+                                      1: FlexColumnWidth(1.0),
+                                      2: FlexColumnWidth(1.0),
+                                    },
+                                    children: [
+                                      TableRow(
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .primaryContainer
+                                              .withOpacity(0.2),
+                                          borderRadius: dirLabel == null
+                                              ? const BorderRadius.vertical(
+                                                  top: Radius.circular(16),
+                                                )
+                                              : null,
+                                        ),
+                                        children: [
+                                          _buildTableCell(context, 'Day',
+                                              isHeader: true),
+                                          _buildTableCell(context, 'First Bus',
+                                              isHeader: true,
+                                              icon: Icons.wb_sunny_outlined),
+                                          _buildTableCell(context, 'Last Bus',
+                                              isHeader: true,
+                                              icon: Icons.bedtime_outlined),
+                                        ],
+                                      ),
+                                      _buildTableRow(
+                                          context,
+                                          'Weekdays',
+                                          _formatTiming(wd?['First']),
+                                          _formatTiming(wd?['Last'])),
+                                      _buildTableRow(
+                                          context,
+                                          'Saturdays',
+                                          _formatTiming(sat?['First']),
+                                          _formatTiming(sat?['Last'])),
+                                      _buildTableRow(
+                                          context,
+                                          'Sun / PH',
+                                          _formatTiming(sun?['First']),
+                                          _formatTiming(sun?['Last']),
+                                          isLast: true),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
