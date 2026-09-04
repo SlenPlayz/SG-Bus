@@ -302,21 +302,20 @@ class _HomeState extends State<Home> {
                                                                 FontWeight.bold,
                                                           ),
                                                         ),
-                                                        // subtitle: Text(
-                                                        //   alert.value["message"]
-                                                        //               .toString()
-                                                        //               .length >
-                                                        //           65
-                                                        //       ? alert.value[
-                                                        //                   "message"]
-                                                        //               .toString()
-                                                        //               .substring(
-                                                        //                   0,
-                                                        //                   65) +
-                                                        //           "..."
-                                                        //       : alert.value[
-                                                        //           "message"],
-                                                        // ),
+                                                        subtitle: (alert.value["ai"] == true ||
+                                                                alert.value["ai"] == "true")
+                                                            ? null
+                                                            : alert.value["message"] != null
+                                                                ? Text(
+                                                                    alert.value["message"]
+                                                                                .toString()
+                                                                                .length >
+                                                                            75
+                                                                        ? "${alert.value["message"].toString().substring(0, 75)}..."
+                                                                        : alert.value["message"]
+                                                                            .toString(),
+                                                                  )
+                                                                : null,
                                                         trailing: Icon(Icons
                                                             .chevron_right_rounded),
                                                         leading: alert.value[
