@@ -50,15 +50,15 @@ void saveMRTData(String data) {
 }
 
 List getStops() {
-  return stops;
+  return stops ?? [];
 }
 
 Map getSvcs() {
-  return svcs;
+  return svcs ?? {};
 }
 
 Map getMRTData() {
-  return mrtData;
+  return mrtData ?? {};
 }
 
 void setTheme(bool data) {

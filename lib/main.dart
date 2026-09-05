@@ -33,13 +33,20 @@ import 'package:sgbus/components/weather_pill.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/data_management/downloadData.dart';
 import 'package:sgbus/scripts/data_management/weather_service.dart';
+import 'package:sgbus/scripts/data_management/startup_logger.dart';
 import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
+  initStartupLogging();
+  logStartup('Flutter process start');
   WidgetsFlutterBinding.ensureInitialized();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    logStartup('first frame rendered');
+  });
+
   // MobileAds.instance.initialize();
 
   // mb.MapboxOptions.setAccessToken(mapboxAccessToken);
@@ -138,29 +145,44 @@ class _MyAppState extends State<MyApp> {
   }
 
   void initPlugins() async {
-    MobileAds.instance.initialize();
-
+    logStartup('Mapbox token set');
     mb.MapboxOptions.setAccessToken(mapboxAccessToken);
 
-    RequestConfiguration adConfig = RequestConfiguration(
-        testDeviceIds:
-            kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
+    try {
+      RequestConfiguration adConfig = RequestConfiguration(
+          testDeviceIds:
+              kReleaseMode ? ["BFE1A462271EE8B4883DB5FC72D986A0"] : null);
 
-    MobileAds.instance.updateRequestConfiguration(adConfig);
+      logStartup('Setting Mobile Ads request configuration');
+      await MobileAds.instance.updateRequestConfiguration(adConfig);
+
+      logStartup('Mobile Ads init started');
+      MobileAds.instance.initialize().then((status) {
+        logStartup('Mobile Ads init completed');
+      }).catchError((e) {
+        logStartup('Mobile Ads init error: $e');
+      });
+    } catch (e) {
+      logStartup('Mobile Ads init error: $e');
+    }
   }
 
   Future<void> appInitialiser() async {
     initPlugins();
     await loadThemeSettings();
-    setState(() {
-      isLoaded = true;
-    });
+    logStartup('theme loaded');
+    if (mounted) {
+      setState(() {
+        isLoaded = true;
+      });
+    }
   }
 
   @override
-  initState() {
-    appInitialiser();
+  void initState() {
     super.initState();
+    logStartup('MyApp init');
+    appInitialiser();
   }
 
   Widget build(BuildContext context) {
@@ -261,14 +283,29 @@ class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
   var prefs;
 
   void checkData() async {
-    NFCAvailability NFCStatus = await FlutterNfcKit.nfcAvailability;
+    logStartup('checkData entered');
+    logStartup('checking NFC availability');
+    NFCAvailability NFCStatus = NFCAvailability.not_supported;
+    try {
+      NFCStatus = await FlutterNfcKit.nfcAvailability
+          .timeout(const Duration(seconds: 2), onTimeout: () {
+        logStartup('NFC availability check timed out');
+        return NFCAvailability.not_supported;
+      });
+    } catch (e) {
+      logStartup('NFC availability check error: $e');
+    }
+    logStartup('NFC availability: $NFCStatus');
 
     if (NFCStatus != NFCAvailability.not_supported) {
       isNFCSupported = true;
     }
 
+    logStartup('getting SharedPreferences');
     prefs = await SharedPreferences.getInstance();
+    logStartup('SharedPreferences loaded');
     PackageInfo appInfo = await PackageInfo.fromPlatform();
+    logStartup('PackageInfo loaded');
 
     var stops = prefs.getString('stops');
     var svcs = prefs.getString('svcs');
@@ -297,59 +334,35 @@ class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
         mrtData == null ||
         localVersion == null ||
         lastOpenedAppVersion == null) {
-      Navigator.of(context).push(MaterialPageRoute(
-          builder: (builder) => DownloadPage(
-                restartOnComplete: true,
+      logStartup('first-run branch entered');
+      if (!mounted) return;
+      final downloaded = await Navigator.of(context).push<bool>(MaterialPageRoute(
+          builder: (builder) => const DownloadPage(
+                restartOnComplete: false,
               )));
-    } else {
+      if (!mounted) return;
+      if (downloaded == true) {
+        stops = prefs.getString('stops');
+        svcs = prefs.getString('svcs');
+        mrtData = prefs.getString('mrt-data');
+        localVersion = prefs.getString('version');
+      }
+    }
+
+    if (stops != null && svcs != null && mrtData != null) {
       saveStops(stops);
       saveSvcs(svcs);
       saveMRTData(mrtData);
-      setState(() {
-        isLoaded = true;
-      });
+      if (mounted) {
+        setState(() {
+          isLoaded = true;
+        });
+      }
 
-      // try {
-      //   AppUpdateInfo updateCheckRes = await InAppUpdate.checkForUpdate();
-      //   if (updateCheckRes.flexibleUpdateAllowed &&
-      //       updateCheckRes.updateAvailability ==
-      //           UpdateAvailability.updateAvailable) {
-      //     showDialog(
-      //         context: context,
-      //         builder: (BuildContext context) {
-      //           return AlertDialog(
-      //             title: Text('App update avaliable'),
-      //             content: Text(
-      //                 'A new version of the app has been released and it\'s recomended to update!! You can continue to use the app while the update is downloaded'),
-      //             actions: [
-      //               TextButton(
-      //                 onPressed: () => Navigator.of(context).pop(),
-      //                 child: Text('Dismiss'),
-      //               ),
-      //               TextButton.icon(
-      //                 onPressed: () {
-      //                   launchUrl(
-      //                     Uri.parse(
-      //                         "https://play.google.com/store/apps/details?id=com.slen.sgbus"),
-      //                     mode: LaunchMode.externalApplication,
-      //                   );
-      //                 },
-      //                 icon: Icon(Icons.download_rounded),
-      //                 label: Text('Update'),
-      //               )
-      //             ],
-      //           );
-      //         });
-      //   }
-      // } catch (exception, stackTrace) {
-      //   await Sentry.captureException(
-      //     exception,
-      //     stackTrace: stackTrace,
-      //   );
-      // }
-      // Fetch weather data simultaneously with launch API
+      logStartup('weather fetch started');
       WeatherService().fetchRealtimeWeather();
 
+      logStartup('launch API started');
       fetchLaunchData(appInfo.buildNumber, localVersion);
     }
   }
@@ -500,9 +513,12 @@ class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
   }
 
   @override
-  initState() {
-    checkData();
+  void initState() {
     super.initState();
+    logStartup('RootPage created');
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkData();
+    });
   }
 
   @override

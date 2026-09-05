@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:restart_app/restart_app.dart';
+import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/data_management/downloadData.dart';
+import 'package:sgbus/scripts/data_management/startup_logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DownloadPage extends StatefulWidget {
   const DownloadPage({Key? key, required this.restartOnComplete})
@@ -15,6 +18,12 @@ class DownloadPage extends StatefulWidget {
 
 class _DownloadPageState extends State<DownloadPage> {
   int currState = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    logStartup('DownloadPage constructed');
+  }
 
   void goto(int i) {
     setState(() {
@@ -50,27 +59,41 @@ class DownloadDataPage extends StatefulWidget {
 class _DownloadDataPageState extends State<DownloadDataPage> {
   Future<void> download() async {
     try {
+      logStartup('transit download started');
       bool success = await downloadData();
+      logStartup('transit download completed: success=$success');
       if (success) {
-        if (widget.restartOnComplete) {
-          if (kReleaseMode) {
-            Restart.restartApp();
-            print("Done. Please hot restart.");
-          }
+        final prefs = await SharedPreferences.getInstance();
+        final stopsData = prefs.getString('stops');
+        final svcsData = prefs.getString('svcs');
+        final mrt = prefs.getString('mrt-data');
+        if (stopsData != null) saveStops(stopsData);
+        if (svcsData != null) saveSvcs(svcsData);
+        if (mrt != null) saveMRTData(mrt);
+
+        if (!mounted) return;
+
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        } else if (widget.restartOnComplete && kReleaseMode) {
+          Restart.restartApp();
         } else {
-          Navigator.of(context).pop();
+          Navigator.of(context).pop(true);
         }
       } else {
         widget.goto(2);
       }
     } catch (e) {
+      logStartup('transit download error: $e');
       widget.goto(3);
     }
   }
 
+  @override
   void initState() {
-    download();
     super.initState();
+    logStartup('DownloadPage init completed');
+    download();
   }
 
   @override

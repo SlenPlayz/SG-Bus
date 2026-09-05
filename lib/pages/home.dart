@@ -6,6 +6,7 @@ import 'package:sgbus/components/nearbyWidget.dart';
 import 'package:sgbus/components/alert_sheet.dart';
 import 'package:sgbus/pages/cepas_reader.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
+import 'package:sgbus/scripts/data_management/startup_logger.dart';
 
 class Home extends StatefulWidget {
   const Home({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _HomeState extends State<Home> {
   @override
   void initState() {
     super.initState();
+    logStartup('Home constructed');
     _loadExpandedStates();
   }
 

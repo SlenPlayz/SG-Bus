@@ -11,6 +11,7 @@ import 'package:sgbus/components/floating_ad.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/pages/stop.dart';
 import 'package:sgbus/scripts/location_helper.dart';
+import 'package:sgbus/scripts/data_management/startup_logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StopsMap extends StatefulWidget {
@@ -36,6 +37,7 @@ class _StopsMapState extends State<StopsMap> {
   MapboxMap? mapboxMap;
 
   _onMapCreated(MapboxMap mapboxMap) {
+    logStartup('Mapbox map constructed');
     this.mapboxMap = mapboxMap;
   }
 
