@@ -29,11 +29,12 @@ import 'package:sgbus/pages/settings.dart';
 import 'package:sgbus/pages/setup.dart';
 import 'package:sgbus/pages/stops_map.dart';
 import 'package:sgbus/pages/search.dart';
+import 'package:sgbus/components/weather_pill.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/data_management/downloadData.dart';
+import 'package:sgbus/scripts/data_management/weather_service.dart';
 import 'package:sgbus/scripts/themes.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:url_launcher/url_launcher.dart';
 // import 'package:url_launcher/url_launcher.dart';
 
@@ -346,109 +347,109 @@ class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
       //     stackTrace: stackTrace,
       //   );
       // }
-      const String endpoint = serverURL;
+      // Fetch weather data simultaneously with launch API
+      WeatherService().fetchRealtimeWeather();
 
+      fetchLaunchData(appInfo.buildNumber, localVersion);
+    }
+  }
+
+  Future<void> fetchLaunchData(
+      [String? buildNumber, String? localVersion]) async {
+    launchApiHasError.value = false;
+    try {
+      final bNumber =
+          buildNumber ?? (await PackageInfo.fromPlatform()).buildNumber;
+      final prefs = await SharedPreferences.getInstance();
+      final lVersion = localVersion ?? prefs.getString('version') ?? '0';
+
+      const String endpoint = serverURL;
       final versionEndpoint = Uri.parse('$endpoint/api/v2/launch');
 
-      get(versionEndpoint, headers: {"version": appInfo.buildNumber})
-          .then((data) async {
-        hasFetchedLaunchData.value = true;
-        var response = jsonDecode(data.body);
-        for (var alert in response["alerts"]) {
-          print(alert["startTimestamp"]);
-          if (alert["startTimestamp"] != null) {
-            if ((DateTime.fromMillisecondsSinceEpoch(
-                        int.parse(alert["startTimestamp"])))
-                    .difference(DateTime.now())
-                    .inSeconds <
-                0) {
-              if (alert["endTimestamp"] != null) {
-                print((DateTime.fromMillisecondsSinceEpoch(
-                        int.parse(alert["endTimestamp"])))
-                    .difference(DateTime.now())
-                    .inSeconds);
-                if ((DateTime.fromMillisecondsSinceEpoch(
-                            int.parse(alert["endTimestamp"])))
-                        .difference(DateTime.now())
-                        .inSeconds >
-                    0) {
-                  setState(() {
-                    alerts.add(alert);
-                  });
-                }
-              } else {
+      final data = await get(versionEndpoint, headers: {"version": bNumber})
+          .timeout(const Duration(seconds: 10));
+
+      if (data.statusCode != 200) {
+        throw Exception('Launch API responded with status ${data.statusCode}');
+      }
+
+      var response = jsonDecode(data.body);
+      hasFetchedLaunchData.value = true;
+      launchApiHasError.value = false;
+
+      for (var alert in response["alerts"]) {
+        print(alert["startTimestamp"]);
+        if (alert["startTimestamp"] != null) {
+          if ((DateTime.fromMillisecondsSinceEpoch(
+                      int.parse(alert["startTimestamp"])))
+                  .difference(DateTime.now())
+                  .inSeconds <
+              0) {
+            if (alert["endTimestamp"] != null) {
+              print((DateTime.fromMillisecondsSinceEpoch(
+                      int.parse(alert["endTimestamp"])))
+                  .difference(DateTime.now())
+                  .inSeconds);
+              if ((DateTime.fromMillisecondsSinceEpoch(
+                          int.parse(alert["endTimestamp"])))
+                      .difference(DateTime.now())
+                      .inSeconds >
+                  0) {
                 setState(() {
                   alerts.add(alert);
                 });
               }
-            }
-          } else {
-            setState(() {
-              alerts.add(alert);
-            });
-          }
-        }
-        setState(() {
-          List newAlerts = [];
-          print("Alerts updated");
-          for (var alert in alerts) {
-            var tmpAlert;
-            var nAffectedLine;
-            print(alert["affectedLine"]);
-            if (alert["affectedLine"] == "SKL") {
-              nAffectedLine = "STL";
-            } else if (alert["affectedLine"] == "PTL") {
-              nAffectedLine = "PTL";
             } else {
-              nAffectedLine = alert["affectedLine"];
+              setState(() {
+                alerts.add(alert);
+              });
             }
-            alert["affectedLine"] = nAffectedLine;
-            newAlerts.add(alert);
           }
-          globalAlerts.value = newAlerts;
-        });
-
-        // alerts.forEach((alert) {
-        //   showDialog(
-        //     context: context,
-        //     builder: (BuildContext context) {
-        //       return AlertDialog(
-        //         title: Text(alert['header']),
-        //         content: Text(alert['message']),
-        //         actions: [
-        //           TextButton(
-        //             onPressed: (() {
-        //               Navigator.of(context).pop();
-        //             }),
-        //             child: const Text('Dismiss'),
-        //           ),
-        //         ],
-        //         scrollable: true,
-        //       );
-        //     },
-        //   );
-        // });
-
-        if (response["lastUpdatedTransitData"] != null) {
-          final lastUpdatedTransit =
-              DateTime.parse(response["lastUpdatedTransitData"]);
-
-          int dateDiff =
-              DateTime.fromMillisecondsSinceEpoch(int.parse(localVersion))
-                  .compareTo(lastUpdatedTransit);
-
-          print(dateDiff);
-          if (dateDiff < 0) {
-            updateData();
-          }
+        } else {
+          setState(() {
+            alerts.add(alert);
+          });
         }
-      }).catchError((err, stackTrace) async {
-        print(err);
-        await Sentry.captureException(
-          "An error occured when checking for or starting downloading data",
-          stackTrace: stackTrace,
-        );
+      }
+      setState(() {
+        List newAlerts = [];
+        print("Alerts updated");
+        for (var alert in alerts) {
+          var tmpAlert;
+          var nAffectedLine;
+          print(alert["affectedLine"]);
+          if (alert["affectedLine"] == "SKL") {
+            nAffectedLine = "STL";
+          } else if (alert["affectedLine"] == "PTL") {
+            nAffectedLine = "PTL";
+          } else {
+            nAffectedLine = alert["affectedLine"];
+          }
+          alert["affectedLine"] = nAffectedLine;
+          newAlerts.add(alert);
+        }
+        globalAlerts.value = newAlerts;
       });
+
+      if (response["lastUpdatedTransitData"] != null) {
+        final lastUpdatedTransit =
+            DateTime.parse(response["lastUpdatedTransitData"]);
+
+        int dateDiff = DateTime.fromMillisecondsSinceEpoch(int.parse(lVersion))
+            .compareTo(lastUpdatedTransit);
+
+        print(dateDiff);
+        if (dateDiff < 0) {
+          updateData();
+        }
+      }
+    } catch (err, stackTrace) {
+      print('Launch API error: $err');
+      launchApiHasError.value = true;
+      await Sentry.captureException(
+        "An error occured when checking for or starting downloading data",
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -520,24 +521,159 @@ class _RootPageState extends State<RootPage> with TickerProviderStateMixin {
               // title: isDataUpdating
               //     ? Text("Updating data..")
               //     : Text(pageName[currPageIndex]),
-              title: Container(
-                decoration: (currPageIndex == 0)
-                    ? BoxDecoration(
-                        borderRadius: BorderRadius.circular(50.0),
-                        color: Theme.of(context).colorScheme.surface,
-                      )
-                    : null,
-                padding: (currPageIndex == 0)
-                    ? EdgeInsets.fromLTRB(15, 8, 15, 8)
-                    : null,
-                child: Text(
-                  isDataUpdating
-                      ? "Updating data.."
-                      : currPageIndex != 1
-                          ? pageName[currPageIndex]
-                          : "SG Bus",
-                ),
-              ),
+              title: (currPageIndex == 1)
+                  ? ValueListenableBuilder<bool>(
+                      valueListenable: hasFetchedLaunchData,
+                      builder: (context, hasLaunch, _) {
+                        return ValueListenableBuilder<dynamic>(
+                          valueListenable: globalWeather,
+                          builder: (context, weatherData, _) {
+                            final weather = weatherData as WeatherSummary?;
+
+                            if (isDataUpdating) {
+                              return const Text("Updating data..");
+                            }
+
+                            // Show weather pill only when:
+                            // 1. Launch API has finished loading (hasLaunch == true)
+                            // 2. Weather service has successfully resolved weather for user's location (weather != null)
+                            // 3. User is within range of a weather station in Singapore (!weather.isTooFarFromStation)
+                            final bool showWeatherPill = hasLaunch &&
+                                (weather != null &&
+                                    !weather.isTooFarFromStation);
+
+                            return AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 400),
+                              switchInCurve: Curves.easeOutCubic,
+                              switchOutCurve: Curves.easeInCubic,
+                              layoutBuilder: (currentChild, previousChildren) {
+                                return Stack(
+                                  alignment: Alignment.centerLeft,
+                                  children: [
+                                    ...previousChildren,
+                                    if (currentChild != null) currentChild,
+                                  ],
+                                );
+                              },
+                              transitionBuilder: (child, animation) {
+                                return FadeTransition(
+                                  opacity: animation,
+                                  child: child,
+                                );
+                              },
+                              child: showWeatherPill
+                                  ? WeatherPill(
+                                      key: const ValueKey('weather_pill'),
+                                      weather: weather,
+                                    )
+                                  : Row(
+                                      key: const ValueKey('sgbus_logo'),
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (!hasLaunch)
+                                          ValueListenableBuilder<bool>(
+                                            valueListenable: launchApiHasError,
+                                            builder: (context, hasError, _) {
+                                              if (hasError) {
+                                                return Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  children: [
+                                                    GestureDetector(
+                                                      behavior: HitTestBehavior
+                                                          .opaque,
+                                                      onTap: () {
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (BuildContext
+                                                              context) {
+                                                            return AlertDialog(
+                                                              content:
+                                                                  const Text(
+                                                                "Something went wrong when getting live alert data & checking for new updates. ",
+                                                              ),
+                                                              actions: [
+                                                                TextButton(
+                                                                  onPressed: () =>
+                                                                      Navigator.of(
+                                                                              context)
+                                                                          .pop(),
+                                                                  child: const Text(
+                                                                      'Dismiss'),
+                                                                ),
+                                                                TextButton(
+                                                                  onPressed:
+                                                                      () {
+                                                                    Navigator.of(
+                                                                            context)
+                                                                        .pop();
+                                                                    fetchLaunchData();
+                                                                  },
+                                                                  child: const Text(
+                                                                      'Retry'),
+                                                                ),
+                                                              ],
+                                                            );
+                                                          },
+                                                        );
+                                                      },
+                                                      child: Icon(
+                                                        Icons
+                                                            .warning_amber_rounded,
+                                                        color: Theme.of(context)
+                                                                    .brightness ==
+                                                                Brightness.dark
+                                                            ? Colors.amber
+                                                            : Colors
+                                                                .amber.shade800,
+                                                        size: 22,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                  ],
+                                                );
+                                              }
+                                              return Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: const [
+                                                  SizedBox(
+                                                    width: 22,
+                                                    height: 22,
+                                                    child: FittedBox(
+                                                      fit: BoxFit.contain,
+                                                      child:
+                                                          LoadingIndicatorM3E(),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 10),
+                                                ],
+                                              );
+                                            },
+                                          ),
+                                        const Text("SG Bus"),
+                                      ],
+                                    ),
+                            );
+                          },
+                        );
+                      },
+                    )
+                  : Container(
+                      decoration: (currPageIndex == 0)
+                          ? BoxDecoration(
+                              borderRadius: BorderRadius.circular(50.0),
+                              color: Theme.of(context).colorScheme.surface,
+                            )
+                          : null,
+                      padding: (currPageIndex == 0)
+                          ? const EdgeInsets.fromLTRB(15, 8, 15, 8)
+                          : null,
+                      child: Text(
+                        isDataUpdating
+                            ? "Updating data.."
+                            : pageName[currPageIndex],
+                      ),
+                    ),
               scrolledUnderElevation: 0,
               elevation: 0,
               surfaceTintColor: Colors.transparent,

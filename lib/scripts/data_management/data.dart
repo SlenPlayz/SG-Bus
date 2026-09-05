@@ -11,6 +11,9 @@ var mrtData;
 // List alerts = [];
 final ValueNotifier<List> globalAlerts = ValueNotifier<List>([]);
 final ValueNotifier<bool> hasFetchedLaunchData = ValueNotifier<bool>(false);
+final ValueNotifier<bool> launchApiHasError = ValueNotifier<bool>(false);
+final ValueNotifier<dynamic> globalWeather = ValueNotifier<dynamic>(null);
+final ValueNotifier<bool> isWeatherLoading = ValueNotifier<bool>(false);
 
 bool isNFCSupported = false;
 
@@ -21,8 +24,9 @@ const double kNavBarOuterPadding = 6.0;
 const double kNavBarInnerVerticalPadding = 12.0;
 const double kNavBarIconSize = 22.0;
 const double kNavBarBottomGap = 12.0;
-const double kNavBarPillHeight =
-    (kNavBarOuterPadding * 2) + (kNavBarInnerVerticalPadding * 2) + kNavBarIconSize;
+const double kNavBarPillHeight = (kNavBarOuterPadding * 2) +
+    (kNavBarInnerVerticalPadding * 2) +
+    kNavBarIconSize;
 
 /// Returns the total bottom clearance needed to keep content above the floating nav bar.
 /// Accounts for device safe area insets dynamically.
