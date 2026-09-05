@@ -133,7 +133,7 @@ class WeatherPill extends StatelessWidget {
               );
             },
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.fromLTRB(12, 7, 8, 7),
           decoration: BoxDecoration(
             color: pillColor,
             borderRadius: BorderRadius.circular(50),
@@ -150,7 +150,7 @@ class WeatherPill extends StatelessWidget {
                 size: 19,
                 color: pillIconColor,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 7),
               Text(
                 weather.showHazeOnPill
                     ? "Haze ${weather.pm25}"
@@ -167,6 +167,12 @@ class WeatherPill extends StatelessWidget {
                   ],
                   color: pillTextColor,
                 ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 17,
+                color: pillTextColor.withValues(alpha: 0.7),
               ),
             ],
           ),
