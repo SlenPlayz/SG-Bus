@@ -25,15 +25,22 @@ class _WeatherPageState extends State<WeatherPage> {
   }
 
   Future<void> _loadData({bool forceRefresh = false}) async {
+    // If bundled weather data and 24-hr forecast are already loaded, use immediately
+    if (!forceRefresh &&
+        globalWeather.value != null &&
+        _weatherService.twentyFourHourForecastNotifier.value != null) {
+      if (_selectedAreaOverride != null) {
+        _activeSummaryOverride =
+            _weatherService.resolveWeatherForArea(_selectedAreaOverride!);
+      }
+      return;
+    }
+
     setState(() {
       _isLoadingForecast = true;
     });
     try {
-      await Future.wait([
-        if (globalWeather.value == null || forceRefresh)
-          _weatherService.fetchRealtimeWeather(forceRefresh: forceRefresh),
-        _weatherService.fetchTwentyFourHourForecast(forceRefresh: forceRefresh),
-      ]);
+      await _weatherService.fetchRealtimeWeather(forceRefresh: forceRefresh);
       if (_selectedAreaOverride != null) {
         _activeSummaryOverride =
             _weatherService.resolveWeatherForArea(_selectedAreaOverride!);

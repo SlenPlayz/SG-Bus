@@ -674,26 +674,14 @@ class WeatherService {
     }
   }
 
-  /// Fetches 24-hour forecast when Weather Page is opened
+  /// Returns the current 24-hour forecast from the bundled weather data,
+  /// or fetches the weather bundle if not yet loaded.
   Future<TwentyFourHourForecast?> fetchTwentyFourHourForecast(
       {bool forceRefresh = false}) async {
-    try {
-      if (!forceRefresh && twentyFourHourForecastNotifier.value != null) {
-        return twentyFourHourForecastNotifier.value;
-      }
-
-      final allData = await _fetchAllWeatherData(forceRefresh: forceRefresh);
-      if (allData != null) {
-        final twentyFourRaw = allData['twentyFourHourForecast'] as Map<String, dynamic>?;
-        final forecast = _parseTwentyFourHourForecast(twentyFourRaw);
-        if (forecast != null) {
-          twentyFourHourForecastNotifier.value = forecast;
-          return forecast;
-        }
-      }
-    } catch (e) {
-      print('WeatherService fetchTwentyFourHourForecast error: $e');
+    if (!forceRefresh && twentyFourHourForecastNotifier.value != null) {
+      return twentyFourHourForecastNotifier.value;
     }
+    await fetchRealtimeWeather(forceRefresh: forceRefresh);
     return twentyFourHourForecastNotifier.value;
   }
 
