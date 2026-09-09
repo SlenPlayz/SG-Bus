@@ -205,6 +205,84 @@ class WeatherSummary {
   }
 }
 
+class RadarBoundaryBox {
+  final double upperLeftLng;
+  final double upperLeftLat;
+  final double lowerRightLng;
+  final double lowerRightLat;
+
+  RadarBoundaryBox({
+    required this.upperLeftLng,
+    required this.upperLeftLat,
+    required this.lowerRightLng,
+    required this.lowerRightLat,
+  });
+
+  factory RadarBoundaryBox.fromJson(Map<String, dynamic> json) {
+    final upperLeft = json['upperLeft'] as Map<String, dynamic>? ?? {};
+    final lowerRight = json['lowerRight'] as Map<String, dynamic>? ?? {};
+    return RadarBoundaryBox(
+      upperLeftLng: (upperLeft['longitude'] as num?)?.toDouble() ?? 103.342685,
+      upperLeftLat: (upperLeft['latitude'] as num?)?.toDouble() ?? 1.97854,
+      lowerRightLng:
+          (lowerRight['longitude'] as num?)?.toDouble() ?? 104.602315,
+      lowerRightLat:
+          (lowerRight['latitude'] as num?)?.toDouble() ?? 0.719515,
+    );
+  }
+
+  /// Clockwise coordinates for Mapbox ImageSource:
+  /// Top-Left, Top-Right, Bottom-Right, Bottom-Left
+  List<List<double>> toMapboxCoordinates() {
+    return [
+      [upperLeftLng, upperLeftLat],
+      [lowerRightLng, upperLeftLat],
+      [lowerRightLng, lowerRightLat],
+      [upperLeftLng, lowerRightLat],
+    ];
+  }
+}
+
+class RadarFrame {
+  final DateTime timestamp;
+  final String url;
+  final String label;
+  final String range;
+
+  RadarFrame({
+    required this.timestamp,
+    required this.url,
+    required this.label,
+    required this.range,
+  });
+
+  factory RadarFrame.fromJson(Map<String, dynamic> json) {
+    final tsStr = json['timestamp']?.toString() ?? '';
+    final dt = DateTime.tryParse(tsStr)?.toLocal() ?? DateTime.now();
+    final img = json['image'] as Map<String, dynamic>? ?? {};
+    return RadarFrame(
+      timestamp: dt,
+      url: img['url']?.toString() ?? '',
+      label: img['label']?.toString() ?? '',
+      range: img['range']?.toString() ?? '70km',
+    );
+  }
+}
+
+class RadarData {
+  final RadarBoundaryBox boundaryBox;
+  final List<RadarFrame> frames;
+  final String range;
+
+  RadarData({
+    required this.boundaryBox,
+    required this.frames,
+    required this.range,
+  });
+
+  RadarFrame? get latestFrame => frames.isNotEmpty ? frames.last : null;
+}
+
 class TwoHourForecastArea {
   final String area;
   final String forecast;
@@ -869,5 +947,57 @@ class WeatherService {
     });
 
     return bestRegion;
+  }
+
+  /// Fetches real-time weather radar imagery and recent frame history from NEA (data.gov.sg).
+  /// [range] can be '70km' (Singapore local) or '240km' (regional).
+  /// [fetchHistory] if true queries today's frames (?date=YYYY-MM-DD) which returns up to ~25 recent frames.
+  Future<RadarData?> fetchWeatherRadar({
+    String range = '70km',
+    bool fetchHistory = true,
+  }) async {
+    try {
+      String urlStr =
+          'https://api-open.data.gov.sg/v2/real-time/api/weather-radar-images/$range';
+      if (fetchHistory) {
+        final now = DateTime.now().toLocal();
+        final yyyy = now.year.toString().padLeft(4, '0');
+        final mm = now.month.toString().padLeft(2, '0');
+        final dd = now.day.toString().padLeft(2, '0');
+        urlStr += '?date=$yyyy-$mm-$dd';
+      }
+
+      final url = Uri.parse(urlStr);
+      final response = await http.get(url, headers: {
+        'Accept': 'application/json',
+      }).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = decoded['data'] as Map<String, dynamic>? ?? {};
+        final bboxJson = data['boundaryBox'] as Map<String, dynamic>? ?? {};
+        final bbox = RadarBoundaryBox.fromJson(bboxJson);
+        final rawRecords = data['records'] as List<dynamic>? ?? [];
+
+        final List<RadarFrame> frames = [];
+        for (final rec in rawRecords) {
+          if (rec is Map<String, dynamic>) {
+            frames.add(RadarFrame.fromJson(rec));
+          }
+        }
+
+        // Sort frames chronologically (oldest to newest) for smooth playback/scrubbing
+        frames.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+        return RadarData(
+          boundaryBox: bbox,
+          frames: frames,
+          range: range,
+        );
+      }
+    } catch (e) {
+      print('Error fetching weather radar: $e');
+    }
+    return null;
   }
 }

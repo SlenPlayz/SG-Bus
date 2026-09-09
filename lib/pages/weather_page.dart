@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:loading_indicator_m3e/loading_indicator_m3e.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
 import 'package:sgbus/scripts/data_management/weather_service.dart';
+import 'package:sgbus/pages/weather_radar_map.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class WeatherPage extends StatefulWidget {
@@ -304,38 +305,37 @@ class _WeatherPageState extends State<WeatherPage> {
                   ),
                   const SizedBox(height: 16),
 
-                    // Side-by-side Live Badges matching main weather page style
-                    Row(
-                      children: [
-                        // PM2.5 Live Card
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            title: "1-Hr PM2.5",
-                            value: "${summary.pm25} µg/m³",
-                            subtitle: summary.airQualityCategory,
-                            subtitleColor: summary.airQualityColor,
-                            icon: Icons.air_rounded,
-                          ),
+                  // Side-by-side Live Badges matching main weather page style
+                  Row(
+                    children: [
+                      // PM2.5 Live Card
+                      Expanded(
+                        child: _buildMetricCard(
+                          context,
+                          title: "1-Hr PM2.5",
+                          value: "${summary.pm25} µg/m³",
+                          subtitle: summary.airQualityCategory,
+                          subtitleColor: summary.airQualityColor,
+                          icon: Icons.air_rounded,
                         ),
-                        const SizedBox(width: 12),
-                        // PSI Live Card
-                        Expanded(
-                          child: _buildMetricCard(
-                            context,
-                            title: "24-Hr PSI",
-                            value: summary.psi > 0 ? "${summary.psi}" : "N/A",
-                            subtitle: summary.psi > 0
-                                ? summary.psiCategory
-                                : "Pending update",
-                            subtitleColor: summary.psi > 0
-                                ? summary.psiColor
-                                : null,
-                            icon: Icons.speed_rounded,
-                          ),
+                      ),
+                      const SizedBox(width: 12),
+                      // PSI Live Card
+                      Expanded(
+                        child: _buildMetricCard(
+                          context,
+                          title: "24-Hr PSI",
+                          value: summary.psi > 0 ? "${summary.psi}" : "N/A",
+                          subtitle: summary.psi > 0
+                              ? summary.psiCategory
+                              : "Pending update",
+                          subtitleColor:
+                              summary.psi > 0 ? summary.psiColor : null,
+                          icon: Icons.speed_rounded,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 20),
 
                   // Explanation of difference
@@ -691,6 +691,9 @@ class _WeatherPageState extends State<WeatherPage> {
                       // PM2.5 / Haze Warning Banner if Elevated (Band II+)
                       if (summary.isHazy) _buildHazeAlertCard(context, summary),
 
+                      // Live NEA Rain Radar Map Card
+                      _buildRadarCard(context),
+
                       // Hourly / 24-hr Forecast Graph Card (Scrollable)
                       ValueListenableBuilder<TwentyFourHourForecast?>(
                         valueListenable:
@@ -724,6 +727,73 @@ class _WeatherPageState extends State<WeatherPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildRadarCard(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const WeatherRadarMap(),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.radar_rounded,
+                  size: 24,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "View Rain Radar Map",
+                        style: _roundedStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      // const SizedBox(height: 2),
+                      // Text(
+                      //   "Live rain cloud overlay showing where it's raining.",
+                      //   style: _roundedStyle(
+                      //     fontSize: 13,
+                      //     color: theme.colorScheme.onSurfaceVariant,
+                      //   ),
+                      // ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
