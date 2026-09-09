@@ -64,7 +64,7 @@ void main() {
       expect(thunderWeather.iconData, equals(Icons.thunderstorm_rounded));
     });
 
-    test('Identifies Haze categories and thresholds (Elevated > 50, Unhealthy > 100)', () {
+    test('Identifies Haze categories and thresholds (Band I <= 55, Band II 56-150, Band III 151-250)', () {
       final normalWeather = WeatherSummary(
         temperature: 30.0,
         temperatureStation: 'Marina Bay',
@@ -81,6 +81,7 @@ void main() {
       );
       expect(normalWeather.isHazy, isFalse);
       expect(normalWeather.isUnhealthyHaze, isFalse);
+      expect(normalWeather.airQualityCategory, equals('Normal'));
       expect(normalWeather.showHazeOnPill, isFalse);
 
       final elevatedHazeWeather = WeatherSummary(
@@ -103,29 +104,29 @@ void main() {
       expect(elevatedHazeWeather.showHazeOnPill, isTrue);
       expect(elevatedHazeWeather.iconData, equals(Icons.blur_on_rounded));
 
-      final unhealthyHazeWeather = WeatherSummary(
+      final highHazeWeather = WeatherSummary(
         temperature: 30.0,
         temperatureStation: 'Marina Bay',
         rainfall: 0.0,
         rainfallStation: 'Marina Bay',
         humidity: 70.0,
         humidityStation: 'Marina Bay',
-        pm25: 125,
+        pm25: 180,
         pm25Region: 'central',
         condition: 'Hazy',
         areaName: 'Downtown Core',
         feelsLike: 34.0,
         timestamp: DateTime.now(),
       );
-      expect(unhealthyHazeWeather.isHazy, isTrue);
-      expect(unhealthyHazeWeather.isUnhealthyHaze, isTrue);
-      expect(unhealthyHazeWeather.airQualityCategory, equals('Unhealthy'));
-      expect(unhealthyHazeWeather.showHazeOnPill, isTrue);
-      expect(unhealthyHazeWeather.iconData, equals(Icons.blur_on_rounded));
+      expect(highHazeWeather.isHazy, isTrue);
+      expect(highHazeWeather.isUnhealthyHaze, isTrue);
+      expect(highHazeWeather.airQualityCategory, equals('High'));
+      expect(highHazeWeather.showHazeOnPill, isTrue);
+      expect(highHazeWeather.iconData, equals(Icons.blur_on_rounded));
     });
 
-    test('Rain takes precedence over haze on pill unless PM2.5 > 100', () {
-      // 1. Raining with elevated haze (PM2.5 = 75, <= 100): rain wins
+    test('Rain takes precedence over haze on pill unless PM2.5 > 150 (Band III High)', () {
+      // 1. Raining with elevated haze (PM2.5 = 75, <= 150): rain wins
       final rainWithElevatedHaze = WeatherSummary(
         temperature: 27.0,
         temperatureStation: 'Ang Mo Kio',
@@ -147,7 +148,7 @@ void main() {
       expect(rainWithElevatedHaze.showHazeOnPill, isFalse); // Rain takes precedence!
       expect(rainWithElevatedHaze.iconData, equals(Icons.water_drop_rounded)); // Rain icon, not haze blur
 
-      // 2. Raining with unhealthy haze (PM2.5 = 115, > 100): haze wins
+      // 2. Raining with high haze (PM2.5 = 180, > 150): haze wins
       final rainWithUnhealthyHaze = WeatherSummary(
         temperature: 27.0,
         temperatureStation: 'Ang Mo Kio',
@@ -155,7 +156,7 @@ void main() {
         rainfallStation: 'Ang Mo Kio',
         humidity: 90.0,
         humidityStation: 'Ang Mo Kio',
-        pm25: 115,
+        pm25: 180,
         pm25Region: 'north',
         condition: 'Moderate Rain',
         areaName: 'Ang Mo Kio',
@@ -166,7 +167,7 @@ void main() {
       expect(rainWithUnhealthyHaze.isRain, isTrue);
       expect(rainWithUnhealthyHaze.isHazy, isTrue);
       expect(rainWithUnhealthyHaze.isUnhealthyHaze, isTrue);
-      expect(rainWithUnhealthyHaze.showHazeOnPill, isTrue); // Unhealthy haze overrides rain!
+      expect(rainWithUnhealthyHaze.showHazeOnPill, isTrue); // High haze overrides rain!
       expect(rainWithUnhealthyHaze.iconData, equals(Icons.blur_on_rounded)); // Blur icon
     });
 

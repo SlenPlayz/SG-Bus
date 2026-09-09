@@ -1,12 +1,33 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sgbus/env.dart';
 import 'package:sgbus/scripts/data_management/data.dart';
+
+class WeatherWarning {
+  final String type;
+  final String description;
+  final String issued;
+
+  WeatherWarning({
+    required this.type,
+    required this.description,
+    required this.issued,
+  });
+
+  factory WeatherWarning.fromJson(Map<String, dynamic> json) {
+    return WeatherWarning(
+      type: json['type']?.toString() ?? 'Weather Warning',
+      description: json['description']?.toString() ?? '',
+      issued: json['issued']?.toString() ?? '',
+    );
+  }
+}
 
 class WeatherSummary {
   final double temperature;
@@ -16,6 +37,7 @@ class WeatherSummary {
   final double humidity;
   final String humidityStation;
   final int pm25;
+  final int psi;
   final String pm25Region;
   final String condition;
   final String areaName;
@@ -23,6 +45,7 @@ class WeatherSummary {
   final DateTime timestamp;
   final List<TwoHourForecastArea> allAreaForecasts;
   final double nearestStationDistance;
+  final List<WeatherWarning> warnings;
 
   final int uvIndex;
 
@@ -36,6 +59,7 @@ class WeatherSummary {
     required this.humidity,
     required this.humidityStation,
     required this.pm25,
+    this.psi = 0,
     required this.pm25Region,
     this.uvIndex = 0,
     required this.condition,
@@ -44,15 +68,22 @@ class WeatherSummary {
     required this.timestamp,
     this.allAreaForecasts = const [],
     this.nearestStationDistance = 0.0,
+    this.warnings = const [],
   });
 
   /// User is considered too far from any Singapore station if distance exceeds 30 km.
-  bool get isTooFarFromStation => nearestStationDistance > kMaxStationDistanceKm;
+  bool get isTooFarFromStation =>
+      nearestStationDistance > kMaxStationDistanceKm;
 
-  bool get isHazy => pm25 > 50;
-  bool get isUnhealthyHaze => pm25 > 100;
+  /// Official NEA 1-hr PM2.5 Bands:
+  /// Band I (Normal): 0 - 55 µg/m³
+  /// Band II (Elevated): 56 - 150 µg/m³
+  /// Band III (High): 151 - 250 µg/m³
+  /// Band IV (Very High): > 250 µg/m³
+  bool get isHazy => pm25 > 55 || (psi > 100);
+  bool get isUnhealthyHaze => pm25 > 150 || (psi > 200);
 
-  /// On the main page weather pill, rain takes precedence over haze unless PM2.5 > 100.
+  /// On the main page weather pill, rain takes precedence over haze unless PM2.5 > 150 (High/Band III)
   bool get showHazeOnPill => isUnhealthyHaze || (isHazy && !isRain);
 
   /// UV warnings: High (6-7), Very High (8-10) or Extremely High (11+)
@@ -61,8 +92,14 @@ class WeatherSummary {
   bool get isExtremeUv => uvIndex >= 11;
   bool get isHighOrAboveUv => uvIndex >= 6;
 
+  /// Show dedicated alert banner for UV when it reaches Very High (8+) or Extreme (11+)
+  bool get showUvAlertBanner => uvIndex >= 8;
+
   /// For the pill: takes least precedence, showing only when no rain, no haze warning, and UV index >= 6
   bool get showUvOnPill => !isRain && !showHazeOnPill && isHighOrAboveUv;
+
+  /// Whether active official weather warnings exist
+  bool get hasWeatherWarnings => warnings.isNotEmpty;
 
   String get uvCategory {
     if (uvIndex >= 11) return 'Extreme';
@@ -80,18 +117,36 @@ class WeatherSummary {
     return Colors.green.shade600;
   }
 
+  /// Air quality category according to official NEA 1-Hour PM2.5 Bands
   String get airQualityCategory {
-    if (pm25 > 300) return 'Hazardous';
-    if (pm25 > 200) return 'Very Unhealthy';
-    if (pm25 > 100) return 'Unhealthy';
-    if (pm25 > 50) return 'Elevated';
-    return 'Good';
+    if (pm25 > 250) return 'Very High';
+    if (pm25 > 150) return 'High';
+    if (pm25 > 55) return 'Elevated';
+    return 'Normal';
   }
 
   Color get airQualityColor {
-    if (pm25 > 100) return Colors.red.shade600;
-    if (pm25 > 50) return Colors.amber.shade700;
-    return Colors.green.shade500;
+    if (pm25 > 250) return Colors.purple.shade700;
+    if (pm25 > 150) return Colors.red.shade600;
+    if (pm25 > 55) return Colors.amber.shade700;
+    return Colors.green.shade600;
+  }
+
+  /// PSI Category according to official NEA 24-hr PSI bands
+  String get psiCategory {
+    if (psi > 300) return 'Hazardous';
+    if (psi > 200) return 'Very Unhealthy';
+    if (psi > 100) return 'Unhealthy';
+    if (psi > 50) return 'Moderate';
+    return 'Good';
+  }
+
+  Color get psiColor {
+    if (psi > 300) return Colors.purple.shade900;
+    if (psi > 200) return Colors.purple.shade700;
+    if (psi > 100) return Colors.red.shade600;
+    if (psi > 50) return Colors.amber.shade700;
+    return Colors.green.shade600;
   }
 
   bool get isRain =>
@@ -136,11 +191,11 @@ class WeatherSummary {
     if (lower.contains('cloudy') || lower.contains('overcast')) {
       return Icons.cloud_rounded;
     }
-    if (lower.contains('wind')) {
-      return Icons.air_rounded;
-    }
     if (lower.contains('mist') || lower.contains('fog')) {
       return Icons.foggy;
+    }
+    if (lower.contains('fair & warm') || lower.contains('fair and warm')) {
+      return Icons.sunny;
     }
     if (lower.contains('fair') || lower.contains('clear')) {
       return isNight ? Icons.nightlight_round : Icons.wb_sunny_rounded;
@@ -221,7 +276,8 @@ class WeatherService {
       ValueNotifier<TwentyFourHourForecast?>(null);
 
   /// Fetch all weather datasets in a single request from $serverURL/api/v2/weather
-  Future<Map<String, dynamic>?> _fetchAllWeatherData({bool forceRefresh = false}) async {
+  Future<Map<String, dynamic>?> _fetchAllWeatherData(
+      {bool forceRefresh = false}) async {
     // If a network request is already running, wait for it instead of duplicating
     if (_pendingFetch != null) {
       return _pendingFetch;
@@ -236,11 +292,14 @@ class WeatherService {
     }
   }
 
-  Future<Map<String, dynamic>?> _doFetchAllWeatherData({bool forceRefresh = false}) async {
+  Future<Map<String, dynamic>?> _doFetchAllWeatherData(
+      {bool forceRefresh = false}) async {
     final now = DateTime.now();
 
     // 1. Check in-memory cache
-    if (!forceRefresh && _cachedAllWeatherData != null && _lastFetchTime != null) {
+    if (!forceRefresh &&
+        _cachedAllWeatherData != null &&
+        _lastFetchTime != null) {
       if (now.difference(_lastFetchTime!) < _cacheTtl) {
         return _cachedAllWeatherData;
       }
@@ -289,7 +348,8 @@ class WeatherService {
 
         return decoded;
       } else {
-        print('WeatherService error: status ${response.statusCode} from /api/v2/weather');
+        print(
+            'WeatherService error: status ${response.statusCode} from /api/v2/weather');
       }
     } catch (e) {
       print('WeatherService error fetching /api/v2/weather: $e');
@@ -324,28 +384,34 @@ class WeatherService {
   Map<String, dynamic>? _lastRainData;
   Map<String, dynamic>? _lastHumData;
   Map<String, dynamic>? _lastPmData;
+  Map<String, dynamic>? _lastPsiData;
   Map<String, dynamic>? _lastUvData;
   Map<String, dynamic>? _lastForecastData;
+  List<WeatherWarning> _lastWarnings = [];
   List<TwoHourForecastArea> _lastAllAreaForecasts = [];
 
   /// Attempt to get user GPS coords with quick timeout.
   /// Returns null if location service is disabled, permission denied, or error.
   Future<Map<String, double>?> _getUserCoordinates() async {
     try {
-      final isServiceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!isServiceEnabled) {
-        return null;
-      }
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return null;
 
-      var permission = await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
       }
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        final lastKnown = await Geolocator.getLastKnownPosition();
-        if (lastKnown != null) {
-          return {'lat': lastKnown.latitude, 'lon': lastKnown.longitude};
+      if (permission == LocationPermission.deniedForever) return null;
+
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null) {
+        return {'lat': last.latitude, 'lon': last.longitude};
+      } else {
+        if (!kIsWeb) {
+          final isLocationServiceAvailable =
+              await Geolocator.isLocationServiceEnabled();
+          if (!isLocationServiceAvailable) return null;
         }
         final current = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
@@ -370,8 +436,10 @@ class WeatherService {
     required Map<String, dynamic>? rainData,
     required Map<String, dynamic>? humData,
     required Map<String, dynamic>? pmData,
+    Map<String, dynamic>? psiData,
     required Map<String, dynamic>? uvData,
     required Map<String, dynamic>? forecastData,
+    List<WeatherWarning> warnings = const [],
     required double targetLat,
     required double targetLon,
     String? areaNameOverride,
@@ -387,7 +455,8 @@ class WeatherService {
       final stations = (tempData['data']['stations'] as List?) ?? [];
       final readingsList = (tempData['data']['readings'] as List?);
       final readings = (_firstOrNull(readingsList)?['data'] as List?) ?? [];
-      final matched = _findNearestStationReading(stations, readings, targetLat, targetLon);
+      final matched =
+          _findNearestStationReading(stations, readings, targetLat, targetLon);
       if (matched != null) {
         temperature = (matched['value'] as num).toDouble();
         tempStationName = matched['name'] as String;
@@ -403,7 +472,8 @@ class WeatherService {
       final stations = (rainData['data']['stations'] as List?) ?? [];
       final readingsList = (rainData['data']['readings'] as List?);
       final readings = (_firstOrNull(readingsList)?['data'] as List?) ?? [];
-      final matched = _findNearestStationReading(stations, readings, targetLat, targetLon);
+      final matched =
+          _findNearestStationReading(stations, readings, targetLat, targetLon);
       if (matched != null) {
         rainfall = (matched['value'] as num).toDouble();
         rainStationName = matched['name'] as String;
@@ -419,7 +489,8 @@ class WeatherService {
       final stations = (humData['data']['stations'] as List?) ?? [];
       final readingsList = (humData['data']['readings'] as List?);
       final readings = (_firstOrNull(readingsList)?['data'] as List?) ?? [];
-      final matched = _findNearestStationReading(stations, readings, targetLat, targetLon);
+      final matched =
+          _findNearestStationReading(stations, readings, targetLat, targetLon);
       if (matched != null) {
         humidity = (matched['value'] as num).toDouble();
         humStationName = matched['name'] as String;
@@ -428,19 +499,40 @@ class WeatherService {
       }
     }
 
-    // 4. PM2.5 (nearest region: north, south, east, west, central)
+    // 4. PM2.5 & PSI (nearest region: north, south, east, west, central)
     int pm25 = 25;
+    int psi = 0;
     String pm25Region = _findNearestPm25Region(targetLat, targetLon);
     if (pmData != null && pmData['data'] != null) {
       final itemsList = (pmData['data']['items'] as List?);
       final items = _firstOrNull(itemsList);
       if (items != null && items['readings'] != null) {
-        final oneHourly = items['readings']['pm25_one_hourly'] as Map<String, dynamic>?;
+        final oneHourly =
+            items['readings']['pm25_one_hourly'] as Map<String, dynamic>?;
         if (oneHourly != null) {
           final val = oneHourly[pm25Region] ?? oneHourly['central'] ?? 25;
           pm25 = (val as num).toInt();
         }
       }
+    }
+
+    // PSI resolution from psiData
+    if (psiData != null) {
+      try {
+        final itemsList = (psiData['items'] as List?) ?? (psiData['data']?['items'] as List?);
+        final firstItem = _firstOrNull(itemsList);
+        final readings = firstItem?['readings'] as Map<String, dynamic>? ??
+            psiData['readings'] as Map<String, dynamic>? ??
+            psiData['data']?['readings'] as Map<String, dynamic>?;
+        if (readings != null) {
+          final psiMap = readings['psi_twenty_four_hourly'] as Map<String, dynamic>? ??
+              readings['psi_three_hourly'] as Map<String, dynamic>?;
+          if (psiMap != null) {
+            final val = psiMap[pm25Region] ?? psiMap['central'] ?? psiMap['national'];
+            if (val is num) psi = val.toInt();
+          }
+        }
+      } catch (_) {}
     }
 
     // 5. UV Index
@@ -482,18 +574,23 @@ class WeatherService {
     // 6. 2-Hour Forecast (nearest area or override)
     String condition = conditionOverride ?? 'Fair';
     String areaName = areaNameOverride ?? 'Singapore';
-    final List<TwoHourForecastArea> allAreaForecasts = existingForecasts != null && existingForecasts.isNotEmpty
-        ? existingForecasts
-        : [];
+    final List<TwoHourForecastArea> allAreaForecasts =
+        existingForecasts != null && existingForecasts.isNotEmpty
+            ? existingForecasts
+            : [];
 
-    if (allAreaForecasts.isEmpty && forecastData != null && forecastData['data'] != null) {
-      final areaMetadata = (forecastData['data']['area_metadata'] as List?) ?? [];
+    if (allAreaForecasts.isEmpty &&
+        forecastData != null &&
+        forecastData['data'] != null) {
+      final areaMetadata =
+          (forecastData['data']['area_metadata'] as List?) ?? [];
       final itemsList = (forecastData['data']['items'] as List?);
       final forecasts = (_firstOrNull(itemsList)?['forecasts'] as List?) ?? [];
 
       final Map<String, String> forecastMap = {};
       for (var f in forecasts) {
-        forecastMap[f['area']?.toString() ?? ''] = f['forecast']?.toString() ?? '';
+        forecastMap[f['area']?.toString() ?? ''] =
+            f['forecast']?.toString() ?? '';
       }
 
       double minDistance = double.infinity;
@@ -535,6 +632,7 @@ class WeatherService {
       humidity: humidity,
       humidityStation: humStationName,
       pm25: pm25,
+      psi: psi,
       pm25Region: pm25Region,
       uvIndex: uvIndex,
       condition: condition,
@@ -543,6 +641,7 @@ class WeatherService {
       timestamp: DateTime.now(),
       allAreaForecasts: allAreaForecasts,
       nearestStationDistance: minStationDist,
+      warnings: warnings,
     );
   }
 
@@ -555,7 +654,8 @@ class WeatherService {
       }
     }
 
-    final matches = _lastAllAreaForecasts.where((a) => a.area == targetAreaName).toList();
+    final matches =
+        _lastAllAreaForecasts.where((a) => a.area == targetAreaName).toList();
     if (matches.isEmpty) return null;
     final match = matches.first;
 
@@ -564,8 +664,10 @@ class WeatherService {
       rainData: _lastRainData,
       humData: _lastHumData,
       pmData: _lastPmData,
+      psiData: _lastPsiData,
       uvData: _lastUvData,
       forecastData: _lastForecastData,
+      warnings: _lastWarnings,
       targetLat: match.latitude,
       targetLon: match.longitude,
       areaNameOverride: match.area,
@@ -574,7 +676,8 @@ class WeatherService {
     );
   }
 
-  TwentyFourHourForecast? _parseTwentyFourHourForecast(Map<String, dynamic>? res) {
+  TwentyFourHourForecast? _parseTwentyFourHourForecast(
+      Map<String, dynamic>? res) {
     if (res == null || res['data'] == null) return null;
     try {
       final recordsList = (res['data']['records'] as List?);
@@ -608,12 +711,18 @@ class WeatherService {
           generalForecast: general['forecast']?['text']?.toString() ?? 'Fair',
           generalCode: general['forecast']?['code']?.toString() ?? 'FN',
           tempLow: (general['temperature']?['low'] as num?)?.toDouble() ?? 25.0,
-          tempHigh: (general['temperature']?['high'] as num?)?.toDouble() ?? 33.0,
-          humidityLow: (general['relativeHumidity']?['low'] as num?)?.toDouble() ?? 60.0,
-          humidityHigh: (general['relativeHumidity']?['high'] as num?)?.toDouble() ?? 90.0,
+          tempHigh:
+              (general['temperature']?['high'] as num?)?.toDouble() ?? 33.0,
+          humidityLow:
+              (general['relativeHumidity']?['low'] as num?)?.toDouble() ?? 60.0,
+          humidityHigh:
+              (general['relativeHumidity']?['high'] as num?)?.toDouble() ??
+                  90.0,
           windDirection: general['wind']?['direction']?.toString() ?? 'SSE',
-          windSpeedLow: (general['wind']?['speed']?['low'] as num?)?.toDouble() ?? 10.0,
-          windSpeedHigh: (general['wind']?['speed']?['high'] as num?)?.toDouble() ?? 25.0,
+          windSpeedLow:
+              (general['wind']?['speed']?['low'] as num?)?.toDouble() ?? 10.0,
+          windSpeedHigh:
+              (general['wind']?['speed']?['high'] as num?)?.toDouble() ?? 25.0,
           periods: periods,
           timestamp: DateTime.now(),
         );
@@ -625,7 +734,8 @@ class WeatherService {
   }
 
   /// Fetch initial real-time weather batch from backend api/v2/weather
-  Future<WeatherSummary?> fetchRealtimeWeather({bool forceRefresh = false}) async {
+  Future<WeatherSummary?> fetchRealtimeWeather(
+      {bool forceRefresh = false}) async {
     try {
       isWeatherLoading.value = true;
       final coords = await _getUserCoordinates();
@@ -642,10 +752,19 @@ class WeatherService {
         _lastRainData = allData['rainfall'] as Map<String, dynamic>?;
         _lastHumData = allData['humidity'] as Map<String, dynamic>?;
         _lastPmData = allData['pm25'] as Map<String, dynamic>?;
+        _lastPsiData = allData['psi'] as Map<String, dynamic>?;
         _lastUvData = allData['uv'] as Map<String, dynamic>?;
         _lastForecastData = allData['twoHourForecast'] as Map<String, dynamic>?;
 
-        final twentyFourRaw = allData['twentyFourHourForecast'] as Map<String, dynamic>?;
+        // Parse weather warnings if present
+        final rawWarnings = allData['warnings'] as List? ?? allData['weatherWarnings'] as List? ?? [];
+        _lastWarnings = rawWarnings
+            .whereType<Map<String, dynamic>>()
+            .map((w) => WeatherWarning.fromJson(w))
+            .toList();
+
+        final twentyFourRaw =
+            allData['twentyFourHourForecast'] as Map<String, dynamic>?;
         final tfForecast = _parseTwentyFourHourForecast(twentyFourRaw);
         if (tfForecast != null) {
           twentyFourHourForecastNotifier.value = tfForecast;
@@ -657,8 +776,10 @@ class WeatherService {
         rainData: _lastRainData,
         humData: _lastHumData,
         pmData: _lastPmData,
+        psiData: _lastPsiData,
         uvData: _lastUvData,
         forecastData: _lastForecastData,
+        warnings: _lastWarnings,
         targetLat: userLat,
         targetLon: userLon,
       );

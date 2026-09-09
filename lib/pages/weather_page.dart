@@ -105,6 +105,43 @@ class _WeatherPageState extends State<WeatherPage> {
     }
   }
 
+  IconData _getConditionIcon(String condition, bool isNight) {
+    final lower = condition.toLowerCase();
+    if (lower.contains('thunder')) {
+      return Icons.thunderstorm_rounded;
+    }
+    if (lower.contains('heavy rain') || lower.contains('heavy shower')) {
+      return Icons.cloudy_snowing;
+    }
+    if (lower.contains('rain') || lower.contains('shower')) {
+      if (lower.contains('light') ||
+          lower.contains('passing') ||
+          lower.contains('drizzle')) {
+        return Icons.water_drop_outlined;
+      }
+      return Icons.water_drop_rounded;
+    }
+    if (lower.contains('partly cloudy')) {
+      return isNight ? Icons.nightlight_outlined : Icons.cloud_queue_rounded;
+    }
+    if (lower.contains('cloudy') || lower.contains('overcast')) {
+      return Icons.cloud_rounded;
+    }
+    if (lower.contains('hazy') || lower.contains('haze')) {
+      return Icons.blur_on_rounded;
+    }
+    if (lower.contains('mist') || lower.contains('fog')) {
+      return Icons.foggy;
+    }
+    if (lower.contains('fair & warm') || lower.contains('fair and warm')) {
+      return Icons.sunny;
+    }
+    if (lower.contains('fair') || lower.contains('clear')) {
+      return isNight ? Icons.nightlight_round : Icons.wb_sunny_rounded;
+    }
+    return isNight ? Icons.nightlight_round : Icons.wb_sunny_rounded;
+  }
+
   void _showAreaPicker(BuildContext context, WeatherSummary summary) {
     if (summary.allAreaForecasts.isEmpty) return;
 
@@ -215,6 +252,307 @@ class _WeatherPageState extends State<WeatherPage> {
           },
         );
       },
+    );
+  }
+
+  void _showAirQualitySheet(BuildContext context, WeatherSummary summary) {
+    final theme = Theme.of(context);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.72,
+          minChildSize: 0.45,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(Icons.air_rounded,
+                          color: summary.airQualityColor, size: 24),
+                      const SizedBox(width: 8),
+                      Text(
+                        "Air Quality & Pollutants",
+                        style: _roundedStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                    // Side-by-side Live Badges matching main weather page style
+                    Row(
+                      children: [
+                        // PM2.5 Live Card
+                        Expanded(
+                          child: _buildMetricCard(
+                            context,
+                            title: "1-Hr PM2.5",
+                            value: "${summary.pm25} µg/m³",
+                            subtitle: summary.airQualityCategory,
+                            subtitleColor: summary.airQualityColor,
+                            icon: Icons.air_rounded,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        // PSI Live Card
+                        Expanded(
+                          child: _buildMetricCard(
+                            context,
+                            title: "24-Hr PSI",
+                            value: summary.psi > 0 ? "${summary.psi}" : "N/A",
+                            subtitle: summary.psi > 0
+                                ? summary.psiCategory
+                                : "Pending update",
+                            subtitleColor: summary.psi > 0
+                                ? summary.psiColor
+                                : null,
+                            icon: Icons.speed_rounded,
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 20),
+
+                  // Explanation of difference
+                  Text(
+                    "What's the difference?",
+                    style: _roundedStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primaryContainer,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.flash_on_rounded,
+                                  size: 14,
+                                  color: theme.colorScheme.onPrimaryContainer),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "1-Hour PM2.5 (Immediate decisions)",
+                                    style: _roundedStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "Measures tiny inhalable particles in real-time. This is the official NEA indicator to decide immediate outdoor activities (e.g. going for a run or walk now).",
+                                    style: _roundedStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Divider(height: 1),
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 2),
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.secondaryContainer,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.history_rounded,
+                                  size: 14,
+                                  color:
+                                      theme.colorScheme.onSecondaryContainer),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "24-Hour PSI (Daily overall trend)",
+                                    style: _roundedStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    "A blended 24-hour rolling average across six air pollutants (PM2.5, PM10, SO2, NO2, Ozone, CO). Used for broad daily activity planning.",
+                                    style: _roundedStyle(
+                                      fontSize: 12,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Official NEA Reference Bands
+                  Text(
+                    "Official NEA 1-Hr PM2.5 Bands",
+                    style: _roundedStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildAirBandRow(
+                    context,
+                    band: "Band I: Normal",
+                    range: "0 – 55 µg/m³",
+                    desc: "Normal activities can be continued.",
+                    color: Colors.green.shade600,
+                  ),
+                  _buildAirBandRow(
+                    context,
+                    band: "Band II: Elevated",
+                    range: "56 – 150 µg/m³",
+                    desc:
+                        "Sensitive groups reduce prolonged strenuous activity.",
+                    color: Colors.amber.shade700,
+                  ),
+                  _buildAirBandRow(
+                    context,
+                    band: "Band III: High",
+                    range: "151 – 250 µg/m³",
+                    desc:
+                        "Sensitive groups avoid; general public reduce exertion.",
+                    color: Colors.red.shade600,
+                  ),
+                  _buildAirBandRow(
+                    context,
+                    band: "Band IV: Very High",
+                    range: "> 250 µg/m³",
+                    desc: "Minimise outdoor activity. Wear N95 masks.",
+                    color: Colors.purple.shade700,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAirBandRow(
+    BuildContext context, {
+    required String band,
+    required String range,
+    required String desc,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      band,
+                      style: _roundedStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    Text(
+                      range,
+                      style: _roundedStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  desc,
+                  style: _roundedStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -341,7 +679,16 @@ class _WeatherPageState extends State<WeatherPage> {
 
                       const SizedBox(height: 24),
 
-                      // PM2.5 Warning Banner if > 50
+                      // Active Weather Warnings (Heavy Rain, Thunderstorm, etc.)
+                      if (summary.hasWeatherWarnings)
+                        ...summary.warnings
+                            .map((w) => _buildWeatherWarningCard(context, w)),
+
+                      // UV Alert Banner if Very High (8+) or Extreme (11+)
+                      if (summary.showUvAlertBanner)
+                        _buildUvAlertCard(context, summary),
+
+                      // PM2.5 / Haze Warning Banner if Elevated (Band II+)
                       if (summary.isHazy) _buildHazeAlertCard(context, summary),
 
                       // Hourly / 24-hr Forecast Graph Card (Scrollable)
@@ -453,6 +800,113 @@ class _WeatherPageState extends State<WeatherPage> {
     );
   }
 
+  Widget _buildWeatherWarningCard(
+      BuildContext context, WeatherWarning warning) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.red.shade900.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_rounded, color: Colors.white, size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      warning.type.toUpperCase(),
+                      style: _roundedStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    if (warning.issued.isNotEmpty)
+                      Text(
+                        "Issued: ${warning.issued.length >= 16 ? warning.issued.substring(11, 16) : warning.issued}",
+                        style: _roundedStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  warning.description,
+                  style: _roundedStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUvAlertCard(BuildContext context, WeatherSummary summary) {
+    final isExtreme = summary.isExtremeUv;
+    final title = isExtreme
+        ? "Extreme UV Index (${summary.uvIndex})"
+        : "Very High UV Index (${summary.uvIndex})";
+    final advice = isExtreme
+        ? "Sun protection essential. Avoid sun between 10am and 4pm. Seek shade, wear UV-blocking clothing, hat, sunglasses, and SPF 30+."
+        : "Extra protection required. Seek shade during midday hours, apply broad-spectrum SPF 30+ sunscreen, wear hat and sunglasses.";
+    final color =
+        isExtreme ? Colors.purple.shade900 : Colors.deepOrange.shade900;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.88),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.wb_sunny_rounded, color: Colors.white, size: 26),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: _roundedStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  advice,
+                  style: _roundedStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHazeAlertCard(BuildContext context, WeatherSummary summary) {
     String title;
     String advice;
@@ -460,30 +914,24 @@ class _WeatherPageState extends State<WeatherPage> {
     Color textColor;
     IconData alertIcon;
 
-    if (summary.pm25 > 300) {
-      title = "Hazardous Air Quality (PM2.5: ${summary.pm25} µg/m³)";
+    if (summary.pm25 > 250 || summary.psi > 300) {
+      title = "Band IV: Very High Haze (PM2.5: ${summary.pm25} µg/m³)";
       advice = "Minimise outdoor activity. Wear N95 masks outdoors.";
-      cardColor = Colors.red.shade900.withOpacity(0.85);
+      cardColor = Colors.purple.shade900.withOpacity(0.88);
       textColor = Colors.white;
       alertIcon = Icons.warning_rounded;
-    } else if (summary.pm25 > 200) {
-      title = "Very Unhealthy Air Quality (PM2.5: ${summary.pm25} µg/m³)";
-      advice = "Avoid prolonged or strenuous outdoor physical exertion.";
-      cardColor = Colors.red.shade900.withOpacity(0.85);
-      textColor = Colors.white;
-      alertIcon = Icons.warning_amber_rounded;
-    } else if (summary.pm25 > 100) {
-      title = "Unhealthy Air Quality (PM2.5: ${summary.pm25} µg/m³)";
+    } else if (summary.pm25 > 150 || summary.psi > 200) {
+      title = "Band III: High Haze (PM2.5: ${summary.pm25} µg/m³)";
       advice =
-          "Reduce prolonged or strenuous outdoor exertion. Sensitive groups should minimise outdoor activity.";
-      cardColor = Colors.red.shade900.withOpacity(0.85);
+          "Sensitive groups should avoid outdoor exertion. General public should reduce strenuous activity.";
+      cardColor = Colors.red.shade900.withOpacity(0.88);
       textColor = Colors.white;
       alertIcon = Icons.warning_amber_rounded;
     } else {
-      title = "Elevated PM2.5 Air Quality (${summary.pm25} µg/m³)";
+      title = "Band II: Elevated PM2.5 (${summary.pm25} µg/m³)";
       advice =
-          "Normal activities for most. Sensitive individuals (elderly, pregnant, children, lung/heart conditions) should monitor symptoms.";
-      cardColor = Colors.amber.shade900.withOpacity(0.85);
+          "Normal activities for most. Sensitive individuals (elderly, pregnant, children, heart/lung conditions) should reduce prolonged strenuous exertion.";
+      cardColor = Colors.amber.shade900.withOpacity(0.88);
       textColor = Colors.white;
       alertIcon = Icons.warning_amber_rounded;
     }
@@ -558,15 +1006,35 @@ class _WeatherPageState extends State<WeatherPage> {
       final tempRound = projectedTemp.round();
 
       IconData hourIcon;
-      if (summary.isRain) {
-        hourIcon = summary.isDrizzle
-            ? Icons.water_drop_outlined
-            : summary.isThunderstorm
-                ? Icons.thunderstorm_rounded
-                : Icons.water_drop_rounded;
+      if (i == 0) {
+        hourIcon = summary.iconData;
       } else {
-        hourIcon =
-            isNightHour ? Icons.nightlight_round : Icons.wb_sunny_rounded;
+        // Find matching period from 24-hour forecast
+        String? projectedCondition;
+        if (forecast24 != null && forecast24.periods.isNotEmpty) {
+          for (final period in forecast24.periods) {
+            try {
+              final start = DateTime.parse(period.startTime);
+              final end = DateTime.parse(period.endTime);
+              if ((hourTime.isAfter(start) ||
+                      hourTime.isAtSameMomentAs(start)) &&
+                  hourTime.isBefore(end)) {
+                projectedCondition = period.regions[summary.pm25Region] ??
+                    period.regions['central'] ??
+                    forecast24.generalForecast;
+                break;
+              }
+            } catch (_) {}
+          }
+          projectedCondition ??= forecast24.generalForecast;
+        }
+
+        if (projectedCondition != null && projectedCondition.isNotEmpty) {
+          hourIcon = _getConditionIcon(projectedCondition, isNightHour);
+        } else {
+          hourIcon =
+              isNightHour ? Icons.nightlight_round : Icons.wb_sunny_rounded;
+        }
       }
 
       hourlyData.add({
@@ -829,6 +1297,7 @@ class _WeatherPageState extends State<WeatherPage> {
     // PM2.5 Air quality status based on chart
     final pm25Status = summary.airQualityCategory;
     final pm25Color = summary.airQualityColor;
+    final theme = Theme.of(context);
 
     // Use direct Rows with Expanded to avoid GridView ambient padding / random gaps
     return Column(
@@ -870,10 +1339,34 @@ class _WeatherPageState extends State<WeatherPage> {
                 context,
                 title: "PM2.5 Air Quality",
                 value: "${summary.pm25} µg/m³",
-                subtitle: pm25Status,
-                subtitleColor: pm25Color,
+                subtitleWidget: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        summary.psi > 0
+                            ? "$pm25Status • PSI ${summary.psi}"
+                            : pm25Status,
+                        style: _roundedStyle(
+                          fontSize: 12,
+                          color: pm25Color,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 13,
+                      color:
+                          theme.colorScheme.onSurfaceVariant.withOpacity(0.7),
+                    ),
+                  ],
+                ),
                 icon: Icons.air_rounded,
                 iconColor: pm25Color,
+                onTap: () => _showAirQualitySheet(context, summary),
               ),
             ),
             const SizedBox(width: 12),
@@ -931,7 +1424,8 @@ class _WeatherPageState extends State<WeatherPage> {
     BuildContext context, {
     required String title,
     required String value,
-    required String subtitle,
+    String? subtitle,
+    Widget? subtitleWidget,
     required IconData icon,
     Color? iconColor,
     Color? subtitleColor,
@@ -981,17 +1475,20 @@ class _WeatherPageState extends State<WeatherPage> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: _roundedStyle(
-              fontSize: 12,
-              color: subtitleColor ?? theme.colorScheme.onSurfaceVariant,
-              fontWeight:
-                  subtitleColor != null ? FontWeight.bold : FontWeight.normal,
+          if (subtitleWidget != null)
+            subtitleWidget
+          else if (subtitle != null)
+            Text(
+              subtitle,
+              style: _roundedStyle(
+                fontSize: 12,
+                color: subtitleColor ?? theme.colorScheme.onSurfaceVariant,
+                fontWeight:
+                    subtitleColor != null ? FontWeight.bold : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
         ],
       ),
     );
