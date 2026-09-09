@@ -325,7 +325,7 @@ class _StationPageState extends State<StationPage>
                         Tab(child: Text("Amenities")),
                         Tab(child: Text("Crowdedness")),
                         Tab(child: Text("First/Last Train")),
-                        Tab(child: Text("Landmarks")),
+                        Tab(child: Text("Exits")),
                         Tab(child: Text("Bus Stops")),
                       ],
                     ),
@@ -376,7 +376,7 @@ class _StationPageState extends State<StationPage>
                           SingleChildScrollView(
                             controller: scrollController,
                             padding: const EdgeInsets.all(8),
-                            child: LandmarksCard(
+                            child: ExitsCard(
                               exits: (station['exits'] as List? ?? [])
                                   .map((e) => e as Map<String, dynamic>)
                                   .toList(),
@@ -1094,19 +1094,19 @@ class _NearbyStopsCardState extends State<NearbyStopsCard> {
   }
 }
 
-// ---------- Landmarks Card ----------
+// ---------- Exits Card ----------
 
-class LandmarksCard extends StatefulWidget {
+class ExitsCard extends StatefulWidget {
   final List<Map<String, dynamic>> exits;
   final bool? exitDataApproximate;
-  const LandmarksCard(
+  const ExitsCard(
       {super.key, required this.exits, this.exitDataApproximate});
 
   @override
-  State<LandmarksCard> createState() => _LandmarksCardState();
+  State<ExitsCard> createState() => _ExitsCardState();
 }
 
-class _LandmarksCardState extends State<LandmarksCard> {
+class _ExitsCardState extends State<ExitsCard> {
   // Tracks which exit indices are expanded
   final Set<int> _expanded = {};
 
